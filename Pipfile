@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 aiohttp = ">=3.5.4"
 aiodns = ">=2.0.0"
-attrs = "==19.1.0"
+attrs = "==19.3.0"
 maxminddb = ">=1.4.1"
 pre-commit = "*"
 black = "*"
@@ -23,4 +23,6 @@ cachetools = "*"
 [dev-packages]
 
 [requires]
-python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true
