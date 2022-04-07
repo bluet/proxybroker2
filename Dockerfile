@@ -1,4 +1,4 @@
-FROM python:3.6-alpine
+FROM python:3.11.0a7-alpine
 WORKDIR /app
 ADD . /app/
 RUN apk --no-cache add --update \
