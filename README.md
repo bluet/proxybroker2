@@ -381,6 +381,27 @@ Contributing
 -   Submit a pull request!
 -   [Contributor workflow](https://github.com/bluet/proxybroker2/issues/93)
 
+### Dev tool on Windows
+In one step: with VS Code just clone project into WSL2 and agree to reopen it in [Dev Containder](https://code.visualstudio.com/learn/develop-cloud/containers).
+Now try application `poetry run proxybroker --log INFO find --types SOCKS5 --lvl High --countries US UK DE FR NL --strict -l 10`
+
+NB: to build your own image you have to switch to usual WSL. Then use Build tool on linux
+
+
+### Build tools on linux
+prerequisites: [buildx](https://docs.docker.com/build/install-buildx/)
+just try `make img-build`, `make run-find` and `make img-push` for linux/amd64
+
+Makefile has instruction for multi-arch build. But you need some prerequisites:
+
+qemu [support](https://stackoverflow.com/questions/60080264/docker-cannot-build-multi-platform-images-with-docker-buildx): 
+```
+sudo apt purge --auto-remove qemu-user qemu-user-binfmt binfmt-support
+sudo apt install qemu-user
+```
+
+After that use `make multi-arch` and wait about 400 seconds
+
 License
 -------
 
