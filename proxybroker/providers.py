@@ -607,7 +607,7 @@ class Proxyb_net(Provider):
             return []
         _hosts, _ports = page.split('","ports":"')
         hosts, ports = [], []
-        for host in _hosts.split('<\/tr><tr>'):  # noqa: W605
+        for host in _hosts.split('</tr><tr>'):  # noqa: W605
             host = IPPattern.findall(host)
             if not host:
                 continue
@@ -720,7 +720,8 @@ PROVIDERS = [
         proto=('HTTP', 'CONNECT:80', 'HTTPS', 'CONNECT:25'),
     ),  # 200
     Provider(
-        url='http://cn-proxy.com/', proto=('HTTP', 'CONNECT:80', 'HTTPS', 'CONNECT:25'),
+        url='http://cn-proxy.com/',
+        proto=('HTTP', 'CONNECT:80', 'HTTPS', 'CONNECT:25'),
     ),  # 70
     Provider(
         url='https://hugeproxies.com/home/',

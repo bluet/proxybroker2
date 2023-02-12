@@ -43,9 +43,9 @@ class Proxy:
 
         :param str host: A passed host can be a domain or IP address.
                          If the host is a domain, try to resolve it
-        :param str \*args:
+        :param str *args:
             (optional) Positional arguments that :class:`Proxy` takes
-        :param str \*\*kwargs:
+        :param str **kwargs:
             (optional) Keyword arguments that :class:`Proxy` takes
 
         :return: :class:`Proxy` object
@@ -253,6 +253,14 @@ class Proxy:
         for tp, lvl in sorted(self.types.items(), key=order):
             info['types'].append({'type': tp, 'level': lvl or ''})
         return info
+
+    def as_text(self):
+        """
+        Return proxy as host:port
+
+        :rtype: str
+        """
+        return "{}:{}\n".format(self.host, self.port)
 
     def log(self, msg, stime=0, err=None):
         ngtr = self.ngtr.name if self.ngtr else 'INFO'

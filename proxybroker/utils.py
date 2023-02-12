@@ -1,5 +1,6 @@
 """Utils."""
 
+import sys
 import logging
 import os
 import os.path
@@ -13,7 +14,7 @@ import urllib.request
 from . import __version__ as version
 from .errors import BadStatusLine
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 log = logging.getLogger(__package__)
 
@@ -58,6 +59,8 @@ def get_all_ip(page):
 
 def get_status_code(resp, start=9, stop=12):
     try:
+        if not isinstance(resp, (bytes, str)):
+            raise TypeError(f'{type(resp).__name__} is not supported')
         code = int(resp[start:stop])
     except ValueError:
         return 400  # Bad Request

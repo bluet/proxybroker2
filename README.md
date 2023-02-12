@@ -1,11 +1,16 @@
 ProxyBroker
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-8-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 ===========
 
-![image](https://img.shields.io/pypi/v/proxybroker.svg?style=flat-square%0A%20:target:%20https://pypi.python.org/pypi/proxybroker/)
-![image](https://img.shields.io/travis/constverum/ProxyBroker.svg?style=flat-square%0A%20:target:%20https://travis-ci.org/constverum/ProxyBroker)
-![image](https://img.shields.io/pypi/wheel/proxybroker.svg?style=flat-square%0A%20:target:%20https://pypi.python.org/pypi/proxybroker/)
-![image](https://img.shields.io/pypi/pyversions/proxybroker.svg?style=flat-square%0A%20:target:%20https://pypi.python.org/pypi/proxybroker/)
-![image](https://img.shields.io/pypi/l/proxybroker.svg?style=flat-square%0A%20:target:%20https://pypi.python.org/pypi/proxybroker/)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=bluet_proxybroker2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=bluet_proxybroker2)
+![test result](https://github.com/bluet/proxybroker2/actions/workflows/python-test-versions.yml/badge.svg)
+[![GitHub issues](https://img.shields.io/github/issues/bluet/proxybroker2)](https://github.com/bluet/proxybroker2/issues)
+[![GitHub stars](https://img.shields.io/github/stars/bluet/proxybroker2)](https://github.com/bluet/proxybroker2/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/bluet/proxybroker2)](https://github.com/bluet/proxybroker2/network)
+[![GitHub license](https://img.shields.io/github/license/bluet/proxybroker2)](https://github.com/bluet/proxybroker2/blob/master/LICENSE)
+[![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fbluet%2Fproxybroker2)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fbluet%2Fproxybroker2)
 
 ProxyBroker is an open source tool that asynchronously finds public proxies from multiple sources and concurrently checks them.
 
@@ -73,7 +78,7 @@ $ docker run --rm bluet/proxybroker2 --help
 Requirements
 ------------
 
--   Python **3.5** or higher
+-   Python 3.8+
 -   [aiohttp](https://pypi.python.org/pypi/aiohttp)
 -   [aiodns](https://pypi.python.org/pypi/aiodns)
 -   [maxminddb](https://pypi.python.org/pypi/maxminddb)
@@ -81,17 +86,51 @@ Requirements
 Installation
 ------------
 
+### Install locally
+
 To install last stable release from pypi:
+> NOT RECOMMEND. It will install the out-dated original proxybroker package, which is no longer maintained by original maintainer. [https://github.com/constverum/ProxyBroker](https://github.com/constverum/ProxyBroker/issues/195)
+> We will upload the up-to-date package under new name (proxybroker2) when the support for 3.10 is ready. [https://github.com/bluet/proxybroker2/issues/89](https://github.com/bluet/proxybroker2/issues/89)
 
 ``` {.sourceCode .bash}
 $ pip install proxybroker
 ```
 
-The latest development version can be installed directly from GitHub:
+To install the latest development version from GitHub:
 
 ``` {.sourceCode .bash}
 $ pip install -U git+https://github.com/bluet/proxybroker2.git
 ```
+
+### Use pre-built Docker image
+
+``` {.sourceCode .bash}
+$ docker pull bluet/proxybroker2
+```
+
+### Build bundled one-file executable with pyinstaller
+
+#### Requirements
+
+*On UNIX-like systems (Linux / macOSX / BSD)*
+
+Install these tools
+ - upx
+ - objdump (this tool is usually in the binutils package)
+ - `$ sudo apt install upx-ucl binutils` (On Ubuntu / Debian)
+
+#### Build
+
+```
+pip install pyinstaller \
+&& pip install . \
+&& mkdir -p build \
+&& cd build \
+&& pyinstaller --onefile --name proxybroker --add-data "../proxybroker/data:data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py \
+&& rm -rf tmp
+```
+
+The executable is now in the build directory
 
 Usage
 -----
@@ -340,6 +379,7 @@ Contributing
 -   Commit your changes: `git commit -am 'Add some feature'`
 -   Push to the branch: `git push origin my-new-feature`
 -   Submit a pull request!
+-   [Contributor workflow](https://github.com/bluet/proxybroker2/issues/93)
 
 License
 -------
@@ -352,4 +392,32 @@ Refs
 ----
 
 -   <https://github.com/constverum/ProxyBroker/pull/161>
--   <https://github.com/davidsarkany/docker-ProxyBroker>
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/a5r0n"><img src="https://avatars.githubusercontent.com/u/32464596?v=4?s=100" width="100px;" alt=""/><br /><sub><b>a5r0n</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=a5r0n" title="Code">💻</a></td>
+    <td align="center"><a href="https://afun.tw"><img src="https://avatars.githubusercontent.com/u/4820492?v=4?s=100" width="100px;" alt=""/><br /><sub><b>C.M. Yang</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=afunTW" title="Code">💻</a> <a href="#ideas-afunTW" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/bluet/proxybroker2/pulls?q=is%3Apr+reviewed-by%3AafunTW" title="Reviewed Pull Requests">👀</a></td>
+    <td align="center"><a href="http://ivanvillareal.com"><img src="https://avatars.githubusercontent.com/u/190708?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Ivan Villareal</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=ivaano" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/quancore"><img src="https://avatars.githubusercontent.com/u/15036825?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Quancore</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=quancore" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/synchronizing"><img src="https://avatars.githubusercontent.com/u/2829082?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Felipe</b></sub></a><br /><a href="#ideas-synchronizing" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://www.vincentinttsh.tw/"><img src="https://avatars.githubusercontent.com/u/14941597?v=4?s=100" width="100px;" alt=""/><br /><sub><b>vincentinttsh</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=vincentinttsh" title="Code">💻</a> <a href="https://github.com/bluet/proxybroker2/pulls?q=is%3Apr+reviewed-by%3Avincentinttsh" title="Reviewed Pull Requests">👀</a></td>
+    <td align="center"><a href="https://github.com/ziloka"><img src="https://avatars.githubusercontent.com/u/50429450?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Ziloka</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=ziloka" title="Code">💻</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="http://hhming.moe"><img src="https://avatars.githubusercontent.com/u/43672033?v=4?s=100" width="100px;" alt=""/><br /><sub><b>hms5232</b></sub></a><br /><a href="https://github.com/bluet/proxybroker2/commits?author=hms5232" title="Code">💻</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

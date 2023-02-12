@@ -43,7 +43,7 @@ class Broker:
         (optional) Flag indicating whether to check the SSL certificates.
         Set to True to check ssl certifications
     :param loop: (optional) asyncio compatible event loop
-    :param stop_broker_on_sigint: (optional) whether set SIGINT signal on broker object. 
+    :param stop_broker_on_sigint: (optional) whether set SIGINT signal on broker object.
         Useful for a thread other than main thread.
 
     .. deprecated:: 0.2.0
@@ -64,8 +64,8 @@ class Broker:
         stop_broker_on_sigint=True,
         **kwargs,
     ):
-        self._loop = loop or asyncio.get_event_loop()
-        self._proxies = queue or asyncio.Queue(loop=self._loop)
+        self._loop = loop or asyncio.get_event_loop_policy().get_event_loop()
+        self._proxies = queue or asyncio.Queue()
         self._resolver = Resolver(loop=self._loop)
         self._timeout = timeout
         self._verify_ssl = verify_ssl
@@ -97,7 +97,7 @@ class Broker:
             max_tries = attempts_conn
 
         # The maximum number of concurrent checking proxies
-        self._on_check = asyncio.Queue(maxsize=max_conn, loop=self._loop)
+        self._on_check = asyncio.Queue(maxsize=max_conn)
         self._max_tries = max_tries
         self._judges = judges
         self._providers = [
@@ -477,7 +477,7 @@ class Broker:
         }
 
         for p in found_proxies:
-            msgs = ' '.join([l[1] for l in p.get_log()])
+            msgs = ' '.join([x[1] for x in p.get_log()])
             full_log = [p]
             for proto in p.types:
                 proxies_by_type[proto].append(p)
