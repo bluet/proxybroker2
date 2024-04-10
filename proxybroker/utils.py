@@ -115,7 +115,8 @@ def update_geoip_db():
     filename = 'GeoLite2-City.tar.gz'
     local_file = os.path.join(DATA_DIR, filename)
     city_db = os.path.join(DATA_DIR, 'GeoLite2-City.mmdb')
-    url = 'http://geolite.maxmind.com/download/geoip/database/%s' % filename
+    url = 'https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=vP65qsGQCxfewnTs' \
+          '&suffix=tar.gz '
 
     urllib.request.urlretrieve(url, local_file)
 
