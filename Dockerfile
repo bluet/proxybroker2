@@ -1,4 +1,4 @@
-FROM python:3.9-slim as base
+FROM python:3.13.0b3-slim as base
 
 ENV \
     # Keeps Python from generating .pyc files in the container
