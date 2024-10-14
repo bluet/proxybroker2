@@ -20,8 +20,12 @@ FROM base AS builder
 WORKDIR /app
 COPY poetry.lock pyproject.toml ./
 
-RUN apt-get update && apt-get install -y gcc libc-dev libffi-dev && \
+RUN apt-get update && \
+    apt-get install -y gcc libc-dev libffi-dev && \
     poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --no-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
     poetry install --no-interaction --no-ansi --no-dev
 
 COPY proxybroker proxybroker
