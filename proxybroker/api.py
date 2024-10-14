@@ -292,10 +292,12 @@ class Broker:
             loop=self._loop,
             **kwargs,
         )
-        self._server.start()
 
-        task = asyncio.ensure_future(self.find(limit=limit, **kwargs))
-        self._all_tasks.append(task)
+        async def run_server():
+            await self._server.start()
+            await self.find(limit=limit, **kwargs)
+
+        self._loop.run_until_complete(run_server())
 
     async def _load(self, data, check=True):
         """Looking for proxies in the passed data.
