@@ -1,4 +1,4 @@
-FROM python:3.9-slim as base
+FROM python:3.13-slim AS base
 
 ENV \
     # Keeps Python from generating .pyc files in the container
@@ -15,12 +15,13 @@ ENV \
 RUN \
     pip install -U poetry
 
-FROM base as builder
+FROM base AS builder
 
 WORKDIR /app
 COPY poetry.lock pyproject.toml ./
 
-RUN poetry config virtualenvs.create false && \
+RUN apt-get update && apt-get install -y gcc libc-dev libffi-dev && \
+    poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-dev
 
 COPY proxybroker proxybroker
