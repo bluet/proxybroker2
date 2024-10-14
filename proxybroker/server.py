@@ -145,16 +145,14 @@ class Server:
         self._resolver = Resolver(loop=self._loop)
         self._http_allowed_codes = http_allowed_codes or []
 
-    def start(self):
-
-        srv = asyncio.start_server(
-            self._accept,
-            host=self.host,
-            port=self.port,
-            backlog=self._backlog,
-            loop=self._loop,
+    async def start(self):
+        srv = await asyncio.start_server(
+            self._handle,
+            self.host,
+            self.port,
+            backlog=self._backlog
         )
-        self._server = self._loop.run_until_complete(srv)
+        self._server = srv
 
         log.info(
             'Listening established on {0}'.format(self._server.sockets[0].getsockname())
