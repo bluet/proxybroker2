@@ -295,7 +295,7 @@ class Broker:
 
         async def run_server():
             await self._server.start()
-            await self.find(limit=limit, **kwargs)
+            self._loop.create_task(self.find(limit=limit, **kwargs))
 
         self._loop.run_until_complete(run_server())
 
