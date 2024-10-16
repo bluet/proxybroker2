@@ -4,6 +4,7 @@ Note: Pay attention to Broker.serve(), instead of the code listed below.
       Perhaps it will be much useful and friendlier.
 """
 
+import sys
 import asyncio
 from urllib.parse import urlparse
 
@@ -12,6 +13,8 @@ import aiohttp
 from proxybroker import Broker, ProxyPool
 from proxybroker.errors import NoProxyError
 
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 async def fetch(url, proxy_pool, timeout, loop):
     resp, proxy = None, None
@@ -47,7 +50,8 @@ async def get_pages(urls, proxy_pool, timeout=10, loop=None):
 
 
 def main():
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     proxies = asyncio.Queue()
     proxy_pool = ProxyPool(proxies)
