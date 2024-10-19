@@ -25,8 +25,7 @@ RUN apt-get update && \
     poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-dev && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    poetry install --no-interaction --no-ansi --no-dev
+    rm -rf /var/lib/apt/lists/*
 
 COPY proxybroker proxybroker
 EXPOSE 8888
