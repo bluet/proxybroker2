@@ -43,7 +43,7 @@ class Checker:
         self._strict = strict
         self._dnsbl = dnsbl or []
         self._types = types or {}
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = loop
         self._resolver = Resolver(loop=self._loop)
 
         self._req_http_proto = not types or bool(

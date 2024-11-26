@@ -29,7 +29,7 @@ class Judge:
         self.marks = {'via': 0, 'proxy': 0}
         self.timeout = timeout
         self.verify_ssl = verify_ssl
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = loop
         self._resolver = Resolver(loop=self._loop)
 
     def __repr__(self):
