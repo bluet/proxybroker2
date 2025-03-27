@@ -1,4 +1,4 @@
-FROM python:3.8-slim as base
+FROM python:3.8-slim AS base
 
 ENV \
     # Keeps Python from generating .pyc files in the container
@@ -21,7 +21,7 @@ RUN apt-get update -y &&\
 RUN \
     pip install -U poetry
 
-FROM base as builder
+FROM base AS builder
 
 WORKDIR /app
 COPY poetry.lock pyproject.toml ./
