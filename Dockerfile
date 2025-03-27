@@ -12,6 +12,12 @@ ENV \
 #    && apt-get install -y --no-install-recommends gcc libc-dev libffi-dev \
 #    && apt-get clean
 
+RUN apt-get update -y &&\
+        apt-get upgrade -y &&\
+        apt-get autoremove -y --purge &&\
+        apt-get clean &&\
+        rm -rf /var/lib/lists/*
+
 RUN \
     pip install -U poetry
 
