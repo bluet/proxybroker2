@@ -1,4 +1,4 @@
-FROM python:3.9-slim as base
+FROM python:3.8-slim as base
 
 ENV \
     # Keeps Python from generating .pyc files in the container
@@ -11,6 +11,12 @@ ENV \
 #RUN apt-get update \
 #    && apt-get install -y --no-install-recommends gcc libc-dev libffi-dev \
 #    && apt-get clean
+
+RUN apt-get update -y &&\
+        apt-get upgrade -y &&\
+        apt-get autoremove -y --purge &&\
+        apt-get clean &&\
+        rm -rf /var/lib/lists/*
 
 RUN \
     pip install -U poetry
