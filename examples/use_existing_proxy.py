@@ -1,10 +1,13 @@
 """Run a local proxy server that distributes
    incoming requests to external proxies."""
 
+import sys
 import asyncio
 
 import aiohttp
 
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 async def fetch(url, proxy_url):
     resp = None
@@ -33,7 +36,8 @@ async def get_pages(urls, proxy_url):
 def main():
     host, port = '127.0.0.1', 8888  # by default
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # types = [('HTTP', 'High'), 'HTTPS', 'CONNECT:80']
     # codes = [200, 301, 302]
