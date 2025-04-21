@@ -19,7 +19,7 @@ RUN apt-get update -y &&\
         rm -rf /var/lib/lists/*
 
 RUN \
-    pip install -U poetry
+    pip install poetry==1.8.4
 
 FROM base AS builder
 
