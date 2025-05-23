@@ -64,7 +64,11 @@ class Broker:
         stop_broker_on_sigint=True,
         **kwargs,
     ):
-        self._loop = loop or asyncio.get_event_loop_policy().get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._proxies = queue or asyncio.Queue()
         self._resolver = Resolver(loop=self._loop)
         self._timeout = timeout
@@ -123,7 +127,7 @@ class Broker:
         """
         self._countries = countries
         self._limit = limit
-        task = asyncio.ensure_future(self._grab(check=False))
+        task = asyncio.create_task(self._grab(check=False))
         self._all_tasks.append(task)
 
     async def find(
@@ -194,11 +198,11 @@ class Broker:
         self._countries = countries
         self._limit = limit
 
-        tasks = [asyncio.ensure_future(self._checker.check_judges())]
+        tasks = [asyncio.create_task(self._checker.check_judges())]
         if data:
-            task = asyncio.ensure_future(self._load(data, check=True))
+            task = asyncio.create_task(self._load(data, check=True))
         else:
-            task = asyncio.ensure_future(self._grab(types, check=True))
+            task = asyncio.create_task(self._grab(types, check=True))
         tasks.append(task)
         self._all_tasks.extend(tasks)
 
@@ -292,10 +296,12 @@ class Broker:
             loop=self._loop,
             **kwargs,
         )
-        self._server.start()
 
-        task = asyncio.ensure_future(self.find(limit=limit, **kwargs))
-        self._all_tasks.append(task)
+        async def run_server():
+            await self._server.start()
+            asyncio.create_task(self.find(limit=limit, **kwargs))
+
+        self._loop.run_until_complete(run_server())
 
     async def _load(self, data, check=True):
         """Looking for proxies in the passed data.
@@ -400,7 +406,7 @@ class Broker:
             log.debug('unpause. proxies: %s' % self._proxies.qsize())
 
         await self._on_check.put(None)
-        task = asyncio.ensure_future(self._checker.check(proxy))
+        task = asyncio.create_task(self._checker.check(proxy))
         task.add_done_callback(partial(_task_done, proxy))
         self._all_tasks.append(task)
 

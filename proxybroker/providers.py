@@ -45,7 +45,11 @@ class Provider:
         self._proxies = set()
         # concurrent connections on the current provider
         self._sem_provider = asyncio.Semaphore(max_conn)
-        self._loop = loop or asyncio.get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
 
     @property
     def proxies(self):
@@ -75,7 +79,7 @@ class Provider:
         log.debug('Try to get proxies from %s' % self.domain)
 
         async with aiohttp.ClientSession(
-            headers=get_headers(), cookies=self._cookies, loop=self._loop
+            headers=get_headers(), cookies=self._cookies
         ) as self._session:
             await self._pipe()
 

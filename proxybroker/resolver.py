@@ -4,9 +4,7 @@ import ipaddress
 import os.path
 import random
 import socket
-import sys
 from collections import namedtuple
-from importlib.util import find_spec
 
 import aiodns
 import aiohttp
@@ -44,8 +42,12 @@ class Resolver:
 
     def __init__(self, timeout=5, loop=None):
         self._timeout = timeout
-        self._loop = loop or asyncio.get_event_loop()
-        self._resolver = aiodns.DNSResolver(loop=self._loop)
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
+        self._resolver = aiodns.DNSResolver()
 
     @staticmethod
     def host_is_ip(host):
@@ -104,7 +106,7 @@ class Resolver:
             try:
                 timeout = aiohttp.ClientTimeout(total=self._timeout)
                 async with aiohttp.ClientSession(
-                    timeout=timeout, loop=self._loop
+                    timeout=timeout
                 ) as session, session.get(self._pop_random_ip_host()) as resp:
                     ip = await resp.text()
             except asyncio.TimeoutError:

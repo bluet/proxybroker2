@@ -81,9 +81,15 @@ docker run --rm proxybroker2 --help
 - Two package managers: Poetry (preferred) and setuptools (legacy)
 - GeoIP database included in package data (`proxybroker/data/GeoLite2-Country.mmdb`)
 - Docker support with multi-stage builds
-- Python 3.8+ support (current version targets 3.8-3.10)
+- Python 3.10-3.13 support (updated for modern asyncio patterns)
 - CLI entry point defined via Poetry scripts: `proxybroker = "proxybroker.cli:cli"`
 
 ### Python Version Support
 
-The project currently supports Python 3.8-3.10. Python 3.11+ support is in progress but not yet complete. Development dependencies include pytest plugins for async testing, linting (flake8), import sorting (isort), and code coverage.
+The project supports Python 3.10-3.13. All asyncio compatibility issues for Python 3.13 have been resolved, including:
+- Replaced deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` with fallback handling
+- Removed deprecated `loop` parameters from aiohttp calls  
+- Updated `asyncio.ensure_future()` to `asyncio.create_task()`
+- Fixed event loop initialization in classes
+
+Development dependencies include pytest plugins for async testing, linting (flake8), import sorting (isort), and code coverage.
