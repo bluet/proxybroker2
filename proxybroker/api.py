@@ -329,7 +329,7 @@ class Broker:
             ]
             while providers:
                 tasks = [
-                    asyncio.ensure_future(pr.get_proxies()) for pr in providers[:by]
+                    asyncio.create_task(pr.get_proxies()) for pr in providers[:by]
                 ]
                 del providers[:by]
                 self._all_tasks.extend(tasks)

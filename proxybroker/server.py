@@ -73,17 +73,31 @@ class ProxyPool:
         return chosen
 
     async def _import(self, expected_scheme):
-        while True:
-            proxy = await self._proxies.get()
-            self._proxies.task_done()
-            if not proxy:
-                raise NoProxyError('No more available proxies')
-            elif expected_scheme not in proxy.schemes:
-                self.put(proxy)
-            else:
-                return proxy
+        max_retries = 100  # Prevent infinite loops
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                proxy = await asyncio.wait_for(self._proxies.get(), timeout=5.0)
+                self._proxies.task_done()
+
+                if not proxy:
+                    raise NoProxyError('No more available proxies')
+                elif expected_scheme not in proxy.schemes:
+                    self.put(proxy)
+                    retry_count += 1
+                else:
+                    return proxy
+
+            except asyncio.TimeoutError:
+                raise NoProxyError(f'Timeout waiting for proxy with scheme {expected_scheme}')
+
+        raise NoProxyError(f'Exceeded max retries ({max_retries}) finding proxy with scheme {expected_scheme}')
 
     def put(self, proxy):
+        if proxy is None:
+            return  # Ignore None proxies
+
         is_exceed_time = (proxy.error_rate > self._max_error_rate) or (
             proxy.avg_resp_time > self._max_resp_time
         )
@@ -92,22 +106,37 @@ class ProxyPool:
         elif proxy.stat['requests'] >= self._min_req_proxy and is_exceed_time:
             log.debug('%s:%d removed from proxy pool' % (proxy.host, proxy.port))
         else:
-            heapq.heappush(self._pool, (proxy.priority, proxy))
+            heapq.heappush(self._pool, (proxy.avg_resp_time, proxy))
 
         log.debug('%s:%d stat: %s' % (proxy.host, proxy.port, proxy.stat))
 
     def remove(self, host, port):
+        # Check newcomers first
         for proxy in self._newcomers:
             if proxy.host == host and proxy.port == port:
                 chosen = proxy
                 self._newcomers.remove(proxy)
+                return chosen
+
+        # Check established pool - use heap-safe removal
+        temp_items = []
+        chosen = None
+
+        # Pop all items until we find the target or empty the heap
+        while self._pool:
+            priority, proxy = heapq.heappop(self._pool)
+            if proxy.host == host and proxy.port == port:
+                chosen = proxy
+                # Put back all other items
+                for item in temp_items:
+                    heapq.heappush(self._pool, item)
                 break
+            else:
+                temp_items.append((priority, proxy))
         else:
-            for priority, proxy in self._pool:
-                if proxy.host == host and proxy.port == port:
-                    chosen = proxy
-                    self._pool.remove((proxy.priority, proxy))
-                    break
+            # Target not found, restore all items
+            for item in temp_items:
+                heapq.heappush(self._pool, item)
 
         return chosen
 
@@ -360,19 +389,19 @@ class Server:
     def _choice_proto(self, proxy, scheme):
         if scheme == 'HTTP':
             if self._prefer_connect and ('CONNECT:80' in proxy.types):
-                proto = 'CONNECT:80'
+                return 'CONNECT:80'
             else:
-                relevant = {
-                    'HTTP',
-                    'CONNECT:80',
-                    'SOCKS4',
-                    'SOCKS5',
-                } & proxy.types.keys()
-                proto = relevant.pop()
+                # Deterministic priority order for HTTP
+                for proto in ['HTTP', 'CONNECT:80', 'SOCKS5', 'SOCKS4']:
+                    if proto in proxy.types:
+                        return proto
+                raise RuntimeError(f'No suitable protocol found for HTTP scheme in {proxy.types.keys()}')
         else:  # HTTPS
-            relevant = {'HTTPS', 'SOCKS4', 'SOCKS5'} & proxy.types.keys()
-            proto = relevant.pop()
-        return proto
+            # Deterministic priority order for HTTPS
+            for proto in ['HTTPS', 'SOCKS5', 'SOCKS4']:
+                if proto in proxy.types:
+                    return proto
+            raise RuntimeError(f'No suitable protocol found for HTTPS scheme in {proxy.types.keys()}')
 
     async def _stream(self, reader, writer, length=65536, scheme=None, inject=None):
         checked = False
