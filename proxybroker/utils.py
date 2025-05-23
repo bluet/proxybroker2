@@ -1,12 +1,12 @@
 """Utils."""
 
-import sys
 import logging
 import os
 import os.path
 import random
 import re
 import shutil
+import sys
 import tarfile
 import tempfile
 import urllib.request
@@ -36,6 +36,7 @@ IPPortPatternGlobal = re.compile(
     r'(?=.*?(?:(?:(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?P<port>\d{2,5})))',  # noqa
     flags=re.DOTALL,
 )
+
 
 def get_headers(rv=False):
     _rv = str(random.randint(1000, 9999)) if rv else ''

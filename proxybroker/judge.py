@@ -29,7 +29,11 @@ class Judge:
         self.marks = {'via': 0, 'proxy': 0}
         self.timeout = timeout
         self.verify_ssl = verify_ssl
-        self._loop = loop or asyncio.get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._resolver = Resolver(loop=self._loop)
 
     def __repr__(self):
@@ -76,7 +80,7 @@ class Judge:
         try:
             timeout = aiohttp.ClientTimeout(total=self.timeout)
             async with aiohttp.ClientSession(
-                connector=connector, timeout=timeout, loop=self._loop
+                connector=connector, timeout=timeout
             ) as session, session.get(
                 url=self.url, headers=headers, allow_redirects=False
             ) as resp:
