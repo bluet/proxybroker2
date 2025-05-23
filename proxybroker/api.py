@@ -64,7 +64,11 @@ class Broker:
         stop_broker_on_sigint=True,
         **kwargs,
     ):
-        self._loop = loop or asyncio.get_event_loop_policy().get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._proxies = queue or asyncio.Queue()
         self._resolver = Resolver(loop=self._loop)
         self._timeout = timeout

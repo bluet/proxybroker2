@@ -50,12 +50,25 @@ class ProxyPool:
         elif len(self._newcomers) > 0:
             chosen = self._newcomers.pop(0)
         elif self._strategy == 'best':
-            for priority, proxy in self._pool:
+            # Create a temporary list to store items we need to put back
+            temp_items = []
+            chosen = None
+            
+            # Pop items from heap until we find a suitable proxy
+            while self._pool:
+                priority, proxy = heapq.heappop(self._pool)
                 if scheme in proxy.schemes:
                     chosen = proxy
-                    self._pool.remove((proxy.priority, proxy))
+                    # Put back the items we popped but didn't use
+                    for item in temp_items:
+                        heapq.heappush(self._pool, item)
                     break
+                else:
+                    temp_items.append((priority, proxy))
             else:
+                # Put back all items if we didn't find a suitable proxy
+                for item in temp_items:
+                    heapq.heappush(self._pool, item)
                 chosen = await self._import(scheme)
 
         return chosen

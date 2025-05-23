@@ -101,7 +101,7 @@ class Checker:
         if self._judges:
             log.debug('Loaded: %d proxy judges' % len(set(self._judges)))
         else:
-            RuntimeError('Not found judges')
+            raise RuntimeError('Not found judges')
 
     def _types_passed(self, proxy):
         if not self._types:
