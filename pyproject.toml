@@ -16,9 +16,10 @@ classifiers = [
     'Environment :: Console',
     'Environment :: Web Environment',
     'Intended Audience :: Developers',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
     'Operating System :: POSIX',
     'Operating System :: MacOS :: MacOS X',
     'Operating System :: Microsoft :: Windows',
@@ -29,7 +30,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 aiohttp = "3.10.11"
 aiodns = "3.1.1"
 attrs = "^22.1.0"
@@ -76,3 +77,5 @@ exclude = '''
 [tool.pytest.ini_options]
 flake8-ignore = ['*.py']
 isort_ignore = ['*.py']
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

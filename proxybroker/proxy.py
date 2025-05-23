@@ -4,14 +4,8 @@ import time
 import warnings
 from collections import Counter
 
-from .errors import (
-    ProxyConnError,
-    ProxyEmptyRecvError,
-    ProxyRecvError,
-    ProxySendError,
-    ProxyTimeoutError,
-    ResolveError,
-)
+from .errors import (ProxyConnError, ProxyEmptyRecvError, ProxyRecvError,
+                     ProxySendError, ProxyTimeoutError, ResolveError)
 from .negotiators import NGTRS
 from .resolver import Resolver
 from .utils import log, parse_headers
@@ -334,11 +328,11 @@ class Proxy:
             return
         self._closed = True
         if self.writer:
-            # try:
-            self.writer.close()
-            # except RuntimeError:
-            #     print('Try proxy.close() when loop is closed:',
-            #           asyncio.get_event_loop()._closed)
+            try:
+                self.writer.close()
+            except Exception as e:
+                # Log the error but don't let it prevent cleanup
+                self.log(f'Error closing writer: {e}')
         self._reader = {'conn': None, 'ssl': None}
         self._writer = {'conn': None, 'ssl': None}
         self.log('Connection: closed')

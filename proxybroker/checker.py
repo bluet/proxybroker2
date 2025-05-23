@@ -3,16 +3,9 @@ import time
 import warnings
 import zlib
 
-from .errors import (
-    BadResponseError,
-    BadStatusError,
-    ProxyConnError,
-    ProxyEmptyRecvError,
-    ProxyRecvError,
-    ProxySendError,
-    ProxyTimeoutError,
-    ResolveError,
-)
+from .errors import (BadResponseError, BadStatusError, ProxyConnError,
+                     ProxyEmptyRecvError, ProxyRecvError, ProxySendError,
+                     ProxyTimeoutError, ResolveError)
 from .judge import Judge, get_judges
 from .negotiators import NGTRS
 from .resolver import Resolver
@@ -43,7 +36,11 @@ class Checker:
         self._strict = strict
         self._dnsbl = dnsbl or []
         self._types = types or {}
-        self._loop = loop or asyncio.get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._resolver = Resolver(loop=self._loop)
 
         self._req_http_proto = not types or bool(
@@ -104,7 +101,7 @@ class Checker:
         if self._judges:
             log.debug('Loaded: %d proxy judges' % len(set(self._judges)))
         else:
-            RuntimeError('Not found judges')
+            raise RuntimeError('Not found judges')
 
     def _types_passed(self, proxy):
         if not self._types:

@@ -4,19 +4,10 @@ import time
 
 from cachetools import TTLCache
 
-from .errors import (
-    BadResponseError,
-    BadStatusError,
-    BadStatusLine,
-    ErrorOnStream,
-    NoProxyError,
-    ProxyConnError,
-    ProxyEmptyRecvError,
-    ProxyRecvError,
-    ProxySendError,
-    ProxyTimeoutError,
-    ResolveError,
-)
+from .errors import (BadResponseError, BadStatusError, BadStatusLine,
+                     ErrorOnStream, NoProxyError, ProxyConnError,
+                     ProxyEmptyRecvError, ProxyRecvError, ProxySendError,
+                     ProxyTimeoutError, ResolveError)
 from .resolver import Resolver
 from .utils import log, parse_headers, parse_status_line
 
@@ -59,12 +50,24 @@ class ProxyPool:
         elif len(self._newcomers) > 0:
             chosen = self._newcomers.pop(0)
         elif self._strategy == 'best':
-            for priority, proxy in self._pool:
+            # Create a temporary list to store items we need to put back
+            temp_items = []
+            chosen = None
+            # Pop items from heap until we find a suitable proxy
+            while self._pool:
+                priority, proxy = heapq.heappop(self._pool)
                 if scheme in proxy.schemes:
                     chosen = proxy
-                    self._pool.remove((proxy.priority, proxy))
+                    # Put back the items we popped but didn't use
+                    for item in temp_items:
+                        heapq.heappush(self._pool, item)
                     break
+                else:
+                    temp_items.append((priority, proxy))
             else:
+                # Put back all items if we didn't find a suitable proxy
+                for item in temp_items:
+                    heapq.heappush(self._pool, item)
                 chosen = await self._import(scheme)
 
         return chosen
@@ -131,7 +134,11 @@ class Server:
     ):
         self.host = host
         self.port = int(port)
-        self._loop = loop or asyncio.get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._timeout = timeout
         self._max_tries = max_tries
         self._backlog = backlog
@@ -145,16 +152,14 @@ class Server:
         self._resolver = Resolver(loop=self._loop)
         self._http_allowed_codes = http_allowed_codes or []
 
-    def start(self):
-
-        srv = asyncio.start_server(
+    async def start(self):
+        srv = await asyncio.start_server(
             self._accept,
-            host=self.host,
-            port=self.port,
-            backlog=self._backlog,
-            loop=self._loop,
+            self.host,
+            self.port,
+            backlog=self._backlog
         )
-        self._server = self._loop.run_until_complete(srv)
+        self._server = srv
 
         log.info(
             'Listening established on {0}'.format(self._server.sockets[0].getsockname())
@@ -191,7 +196,7 @@ class Server:
                 else:
                     raise exc
 
-        f = asyncio.ensure_future(self._handle(client_reader, client_writer))
+        f = asyncio.create_task(self._handle(client_reader, client_writer))
         f.add_done_callback(_on_completion)
         self._connections[f] = (client_reader, client_writer)
 
@@ -288,10 +293,10 @@ class Server:
 
                 stime = time.time()
                 stream = [
-                    asyncio.ensure_future(
+                    asyncio.create_task(
                         self._stream(reader=client_reader, writer=proxy.writer)
                     ),
-                    asyncio.ensure_future(
+                    asyncio.create_task(
                         self._stream(
                             reader=proxy.reader,
                             writer=client_writer,
@@ -300,7 +305,7 @@ class Server:
                         )
                     ),
                 ]
-                await asyncio.gather(*stream, loop=self._loop)
+                await asyncio.gather(*stream)
             except asyncio.CancelledError:
                 log.debug('Cancelled in server._handle')
                 break
