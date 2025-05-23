@@ -21,16 +21,17 @@ jobs:
         poetry-version: ["1.8.4"]
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1.4.1
         with:
           version: ${{ matrix.poetry-version }}
           virtualenvs-in-project: true
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'poetry'
+      - name: Verify Poetry installation
+        run: poetry --version
       - name: Install dependencies
         run: |
           poetry install --no-interaction
