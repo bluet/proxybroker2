@@ -1,5 +1,5 @@
 *Porting to Python3.10+ is painful and the progress is moving slowly.*  
-*We need more volunteers to join. PRs welcome! :joy:*
+*We need more volunteers to join. PRs welcome!*
 
 ProxyBroker
 ===========
@@ -32,118 +32,25 @@ Features
 -   Automatically removes duplicate proxies.
 -   Is asynchronous.
 
-Docker
-------
-Docker Hub https://hub.docker.com/r/bluet/proxybroker2
-
-```
-$ docker run --rm bluet/proxybroker2 --help
-  usage: proxybroker [--max-conn MAX_CONN] [--max-tries MAX_TRIES]
-                     [--timeout SECONDS] [--judge JUDGES] [--provider PROVIDERS]
-                     [--verify-ssl]
-                     [--log [{NOTSET,DEBUG,INFO,WARNING,ERROR,CRITICAL}]]
-                     [--min-queue MINIMUM_PROXIES_IN_QUEUE]
-                     [--version] [--help]
-                     {find,grab,serve,update-geo} ...
-
-  Proxy [Finder | Checker | Server]
-
-  Commands:
-    These are common commands used in various situations
-
-    {find,grab,serve,update-geo}
-      find                Find and check proxies
-      grab                Find proxies without a check
-      serve               Run a local proxy server
-      update-geo          Download and use a detailed GeoIP database
-
-  Options:
-    --max-conn MAX_CONN   The maximum number of concurrent checks of proxies
-    --max-tries MAX_TRIES
-                          The maximum number of attempts to check a proxy
-    --timeout SECONDS, -t SECONDS
-                          Timeout of a request in seconds. The default value is
-                          8 seconds
-    --judge JUDGES        Urls of pages that show HTTP headers and IP address
-    --provider PROVIDERS  Urls of pages where to find proxies
-    --verify-ssl, -ssl    Flag indicating whether to check the SSL certificates
-    --min-queue MINIMUM_PROXIES_IN_QUEUE   The minimum number of proxies in the queue for checking connectivity
-    --log [{NOTSET,DEBUG,INFO,WARNING,ERROR,CRITICAL}]
-                          Logging level
-    --version, -v         Show program's version number and exit
-    --help, -h            Show this help message and exit
-
-  Run 'proxybroker <command> --help' for more information on a command.
-  Suggestions and bug reports are greatly appreciated:
-  <https://github.com/bluet/proxybroker2/issues>
-
-```
-
-
-Requirements
-------------
-
--   Python 3.8+
--   [aiohttp](https://pypi.python.org/pypi/aiohttp)
--   [aiodns](https://pypi.python.org/pypi/aiodns)
--   [maxminddb](https://pypi.python.org/pypi/maxminddb)
-
 Installation
 ------------
 
 ### Install locally
 
-To install last stable release from pypi:
-> NOT RECOMMEND. It will install the out-dated original proxybroker package, which is no longer maintained by original maintainer. [https://github.com/constverum/ProxyBroker](https://github.com/constverum/ProxyBroker/issues/195)
-> We will upload the up-to-date package under new name (proxybroker2) when the support for 3.10 is ready. [https://github.com/bluet/proxybroker2/issues/89](https://github.com/bluet/proxybroker2/issues/89)
-
-``` {.sourceCode .bash}
-$ pip install proxybroker
-```
-
-To install the latest development version from GitHub:
-
-``` {.sourceCode .bash}
-$ pip install -U git+https://github.com/bluet/proxybroker2.git
-```
+> Pypi package in progress. We will upload the up-to-date package under new name (proxybroker2) when the support for 3.10 is ready. https://github.com/bluet/proxybroker2/issues/89
 
 ### Use pre-built Docker image
 
 ``` {.sourceCode .bash}
 $ docker pull bluet/proxybroker2
+$ echo 'alias proxybroker="docker run -p 8888:8888 -v --rm bluet/proxybroker2"' >> ~/.bashrc && . ~/.bashrc # create alias
 ```
 
-### Build bundled one-file executable with pyinstaller
-
-#### Requirements
-Supported Operating System: Windows, Linux, MacOS
-
-*On UNIX-like systems (Linux / macOSX / BSD)*
-
-Install these tools
- - upx
- - objdump (this tool is usually in the binutils package)
-``` {.sourceCode .bash}
-$ sudo apt install -y upx-ucl binutils # On Ubuntu / Debian
-```
-
-#### Build
-
-```
-pip install pyinstaller \
-&& pip install . \
-&& mkdir -p build \
-&& cd build \
-&& pyinstaller --onefile --name proxybroker --add-data "../proxybroker/data:data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py \
-&& rm -rf tmp *.spec
-```
-
-The executable is now in the build directory
-
-Usage
+Usage. CLI Examples
 -----
 
-### CLI Examples
+Run `proxybroker --help` for more information on the options available.
+Run `proxybroker <command> --help` for more information on a command.
 
 #### Find
 
@@ -175,36 +82,10 @@ $ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High -
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_serve_example.gif)
 
-Run `proxybroker --help` for more information on the options available.
-Run `proxybroker <command> --help` for more information on a command.
-
-### Basic code example
-
-Find and show 10 working HTTP(S) proxies:
-
-``` {.sourceCode .python}
-import asyncio
-from proxybroker import Broker
-
-async def show(proxies):
-    while True:
-        proxy = await proxies.get()
-        if proxy is None: break
-        print('Found proxy: %s' % proxy)
-
-proxies = asyncio.Queue()
-broker = Broker(proxies)
-tasks = asyncio.gather(
-    broker.find(types=['HTTP', 'HTTPS'], limit=10),
-    show(proxies))
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(tasks)
-```
-
-[More examples](https://proxybroker.readthedocs.io/en/latest/examples.html).
-
 ### Proxy information per requests
+<details><summary>Expand Dropworn</summary>
+<br>
+
 #### HTTP
 Check `X-Proxy-Info` header in response.
 ```
@@ -362,25 +243,64 @@ $ http_proxy=http://127.0.0.1:8888 https_proxy=http://127.0.0.1:8888 curl -v htt
 <
 * Connection #0 to host 127.0.0.1 left intact
 ```
-
-Documentation
--------------
-
-<https://proxybroker.readthedocs.io/>
+</details>
 
 TODO
 ----
 
--   Check the ping, response time and speed of data transfer
--   Check site access (Google, Twitter, etc) and even your own custom URL's
--   Information about uptime
--   Checksum of data returned
--   Support for proxy authentication
--   Finding outgoing IP for cascading proxy
--   The ability to specify the address of the proxy without port (try to connect on defaulted ports)
+- [ ] Create docs website for new proxybroker  
+- [ ] Check the ping, response time and speed of data transfer
+- [ ] Check site access (Google, Twitter, etc) and even your own custom URL's
+- [ ] Information about uptime
+- [ ] Checksum of data returned
+- [ ] Support for proxy authentication
+- [ ] Finding outgoing IP for cascading proxy
+- [ ] The ability to specify the address of the proxy without port (try to connect on defaulted ports)
 
 Contributing
 ------------
+
+To install the latest development version from GitHub:
+
+``` {.sourceCode .bash}
+$ pip install -U git+https://github.com/bluet/proxybroker2.git
+```
+
+### Build bundled one-file executable with pyinstaller
+
+#### Requirements
+Supported Operating System: Windows, Linux, MacOS
+
+*On UNIX-like systems (Linux / macOSX / BSD)*
+
+Install these tools
+ - upx
+ - objdump (this tool is usually in the binutils package)
+``` {.sourceCode .bash}
+$ sudo apt install -y upx-ucl binutils # On Ubuntu / Debian
+```
+
+#### Build
+
+```
+pip install pyinstaller \
+&& pip install . \
+&& mkdir -p build \
+&& cd build \
+&& pyinstaller --onefile --name proxybroker --add-data "../proxybroker/data:data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py \
+&& rm -rf tmp *.spec
+```
+
+The executable is now in the build directory
+
+### Requirements
+
+-   Python 3.8+
+-   [aiohttp](https://pypi.python.org/pypi/aiohttp)
+-   [aiodns](https://pypi.python.org/pypi/aiodns)
+-   [maxminddb](https://pypi.python.org/pypi/maxminddb)
+
+### Workflow
 
 -   Fork it: <https://github.com/bluet/proxybroker2/fork>
 -   Create your feature branch: `git checkout -b my-new-feature`
