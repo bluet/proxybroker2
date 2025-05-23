@@ -20,14 +20,14 @@ jobs:
         python-version: ["3.11"]  # Use 3.11 for better PyInstaller compatibility
         poetry-version: ["1.8.4"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install and configure Poetry
-        uses: snok/install-poetry@v1.3.1
+        uses: snok/install-poetry@v1.4.1
         with:
           version: ${{ matrix.poetry-version }}
           virtualenvs-in-project: true
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'poetry'
@@ -47,7 +47,7 @@ jobs:
           poetry run pyinstaller --onefile --name proxybroker-${RUNNER_OS}-$(arch) --add-data "../proxybroker/data${PATH_SEPARATOR}data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py;
           rm -rf tmp *.spec;
       - name: Archive proxybroker artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: proxybroker-build-artifacts
+          name: proxybroker-build-artifacts-${{ matrix.os }}
           path: build/proxybroker-*-*
