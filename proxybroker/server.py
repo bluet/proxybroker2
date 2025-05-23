@@ -53,7 +53,6 @@ class ProxyPool:
             # Create a temporary list to store items we need to put back
             temp_items = []
             chosen = None
-            
             # Pop items from heap until we find a suitable proxy
             while self._pool:
                 priority, proxy = heapq.heappop(self._pool)
