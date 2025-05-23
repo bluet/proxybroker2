@@ -13,6 +13,7 @@ Uses Poetry for dependency management:
 ```bash
 poetry install         # Install dependencies
 poetry shell          # Activate virtual environment
+python3 -m venv venv && source venv/bin/activate  # Alternative: use project-level venv
 ```
 
 ### Testing
@@ -20,14 +21,13 @@ poetry shell          # Activate virtual environment
 pytest                 # Run all tests
 pytest tests/test_proxy.py  # Run specific test file
 pytest -v             # Verbose output
-pytest --flake8       # Run with linting
-pytest --isort        # Run with import sorting
-pytest --cov          # Run with coverage reporting
+pytest --cov=proxybroker --cov-report=term-missing  # Coverage analysis
+pytest tests/test_core_functionality.py::TestBrokerCore -v  # Run specific test class
 ```
 
 ### Linting and Code Quality
 ```bash
-flake8                # Check code style
+flake8 proxybroker/ --max-line-length=127 --exclude=__pycache__  # Check code style
 isort .               # Sort imports
 ```
 
@@ -44,52 +44,140 @@ docker run --rm proxybroker2 --help
 
 ## Architecture Overview
 
-### Core Components
+### Core Components and Data Flow
 
-**Broker** (`api.py`): Central orchestrator that manages the entire proxy discovery and checking pipeline. Coordinates providers, checkers, and servers.
+**Broker** (`api.py`): Central orchestrator managing the proxy discovery pipeline. Coordinates providers, checkers, and servers. Contains critical `_grab()` method that implements the main discovery loop with provider concurrency limits.
 
-**ProxyPool** (`server.py`): Manages proxy selection strategies and health tracking. Maintains separate pools for newcomers and established proxies with error rate monitoring.
+**ProxyPool** (`server.py`): Implements sophisticated proxy selection using heap-based priority queue. Maintains separate pools for newcomers (untested proxies) and established proxies with health metrics. **Critical**: Uses `proxy.avg_resp_time` as priority key, not `proxy.priority`.
 
-**Server** (`server.py`): HTTP/HTTPS proxy server that distributes incoming requests across the proxy pool with automatic rotation and failure handling.
+**Server** (`server.py`): HTTP/HTTPS proxy server with automatic proxy rotation. Implements protocol selection strategy and handles both HTTP CONNECT and direct proxy modes. Includes built-in API for proxy management (`proxycontrol` host).
 
-**Checker** (`checker.py`): Validates proxy functionality by testing connectivity, anonymity levels, and protocol support through configurable judges.
+**Checker** (`checker.py`): Validates proxy functionality through judge servers. Implements anonymity level detection by analyzing HTTP headers and IP address leakage. Supports multiple protocol testing (HTTP/HTTPS/SOCKS/SMTP).
 
-**Provider** (`providers.py`): Web scrapers that extract proxy lists from various public sources (~50 different websites).
+**Negotiators** (`negotiators.py`): Protocol-specific connection handlers for HTTP CONNECT, SOCKS4, and SOCKS5. Each negotiator implements the specific handshake protocol.
 
-**Negotiators** (`negotiators.py`): Protocol-specific handlers for HTTP CONNECT, SOCKS4, and SOCKS5 proxy connections.
+### Critical Async Patterns
 
-### Key Data Flow
+The codebase uses modern asyncio patterns post-Python 3.10:
+- **Event Loop Handling**: Uses `asyncio.get_running_loop()` with fallback for import-time instantiation
+- **Task Creation**: `asyncio.create_task()` preferred over deprecated `asyncio.ensure_future()`
+- **Concurrency Control**: Provider concurrency limited by `MAX_CONCURRENT_PROVIDERS` (default: 3)
+- **Resource Management**: Comprehensive connection cleanup in proxy.close() with error handling
 
-1. **Discovery**: Providers scrape proxy sources concurrently (max 3 at once, configurable via MAX_CONCURRENT_PROVIDERS)
-2. **Validation**: Checker tests each proxy against judge servers for connectivity and anonymity
-3. **Pooling**: Valid proxies enter ProxyPool with health tracking and rotation strategies
-4. **Serving**: Server distributes client requests across healthy proxies with automatic failover
+### ProxyPool Priority Logic
 
-### Important Implementation Details
+**Selection Strategy**: Uses min-heap where lower `avg_resp_time` = higher priority
+```python
+# Priority queue: (response_time, proxy)
+heapq.heappush(self._pool, (proxy.avg_resp_time, proxy))
+```
 
-**Async Architecture**: Entire codebase is built on asyncio with careful resource management for connections and timeouts.
+**Health Tracking**: Proxies move between pools based on experience:
+- `_newcomers`: New proxies (< `min_req_proxy` requests)
+- `_pool`: Established proxies meeting quality thresholds
+- Discarded: High error rate (> `max_error_rate`) or slow response (> `max_resp_time`)
 
-**Error Handling**: Comprehensive exception hierarchy in `errors.py` for different failure modes (connection, timeout, protocol-specific errors).
+### Protocol Selection Strategy
 
-**Geolocation**: Uses MaxMind GeoLite2 database (`data/GeoLite2-Country.mmdb`) for country-based proxy filtering.
+Server chooses protocols deterministically with priority order:
+- **HTTP**: `HTTP` > `CONNECT:80` > `SOCKS5` > `SOCKS4`
+- **HTTPS**: `HTTPS` > `SOCKS5` > `SOCKS4`
+- Uses `_prefer_connect` flag to prioritize CONNECT method when available
 
-**Configuration**: CLI interface (`cli.py`) with extensive options for timeouts, concurrency limits, filtering criteria, and output formats.
+### Known Critical Issues (See BUG_REPORT.md)
+
+1. **Heap Corruption Risk**: `ProxyPool.remove()` breaks heap invariant by direct list removal
+2. **Deadlock Potential**: `ProxyPool._import()` infinite loop without proper bounds
+3. **Race Conditions**: Some usage of deprecated asyncio patterns remains
+4. **Resource Leaks**: Signal handlers and connections may not be properly cleaned up
+
+## Configuration and Environment
+
+### Python Version Support
+- **Minimum**: Python 3.10+ (updated from 3.9+ for better asyncio support)
+- **Tested**: Python 3.10-3.13 in CI pipeline
+- **Asyncio Compatibility**: All Python 3.13 deprecations resolved
+
+### Key Configuration Points
+- **Timeouts**: Default 8s, configurable per-component
+- **Concurrency**: `max_conn` (default: 200), `MAX_CONCURRENT_PROVIDERS` (3)
+- **Quality Thresholds**: `max_error_rate` (0.5), `max_resp_time` (8s), `min_req_proxy` (5)
+- **Judge Selection**: Round-robin from available working judges per protocol
 
 ### Project Structure Quirks
 
-- `py2exe_entrypoint.py`: Special entry point for PyInstaller builds
-- Two package managers: Poetry (preferred) and setuptools (legacy)
-- GeoIP database included in package data (`proxybroker/data/GeoLite2-Country.mmdb`)
-- Docker support with multi-stage builds
-- Python 3.10-3.13 support (updated for modern asyncio patterns)
-- CLI entry point defined via Poetry scripts: `proxybroker = "proxybroker.cli:cli"`
+- **Entry Points**: Both `py2exe_entrypoint.py` (PyInstaller) and Poetry script
+- **Package Managers**: Poetry (preferred) + setuptools (legacy compatibility)
+- **GeoIP Database**: Embedded MaxMind GeoLite2 in `proxybroker/data/`
+- **CLI Architecture**: Click-based with subcommands (find/grab/serve)
+- **Test Structure**: Core tests (working) + comprehensive tests (may need fixes)
 
-### Python Version Support
+## Development Guidelines
 
-The project supports Python 3.10-3.13. All asyncio compatibility issues for Python 3.13 have been resolved, including:
-- Replaced deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` with fallback handling
-- Removed deprecated `loop` parameters from aiohttp calls  
-- Updated `asyncio.ensure_future()` to `asyncio.create_task()`
-- Fixed event loop initialization in classes
+### Working with ProxyPool
+- **Never** directly manipulate `_pool` list - use `heapq` operations
+- Always use `proxy.avg_resp_time` for priority calculations
+- Understand newcomer → established proxy lifecycle
 
-Development dependencies include pytest plugins for async testing, linting (flake8), import sorting (isort), and code coverage.
+### Async Development
+- Use `asyncio.create_task()` for new task creation
+- Implement proper cleanup in `finally` blocks
+- Use `asyncio.wait_for()` for timeout protection
+
+### Error Handling Patterns
+- Component-specific exceptions in `errors.py`
+- Log errors before re-raising or handling
+- Use contextual error messages with proxy/host information
+
+### Testing Strategy
+- **Core Tests**: `test_core_functionality.py` (reliable, good coverage)
+- **Comprehensive Tests**: May require adjustment for implementation details
+- **Coverage Goal**: Focus on critical paths (ProxyPool, Broker, Checker)
+- **Mock Infrastructure**: Use `tests/mock_server.py` for HTTP endpoint testing
+
+## HTTP API Features
+
+### Proxy Control API
+Server exposes control API via special `proxycontrol` host:
+- `GET /api/remove/HOST:PORT` - Remove specific proxy from pool
+- `GET /api/history/url:URL` - Get proxy used for specific URL
+
+### Proxy Information Headers
+- **HTTP**: `X-Proxy-Info` header in response contains `host:port`
+- **HTTPS**: Header sent after CONNECT establishment (limited client support)
+
+## CLI Usage Examples
+
+### Find Proxies
+```bash
+proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
+```
+
+### Grab Without Checking
+```bash
+proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
+```
+
+### Run Proxy Server
+```bash
+proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
+```
+
+## Code Quality Maintenance
+
+### Before Making Changes
+1. Review `BUG_REPORT.md` for known issues in affected areas
+2. Run tests to establish baseline: `pytest tests/test_core_functionality.py -v`
+3. Use virtual environment to avoid system pollution
+
+### Critical Areas Requiring Careful Changes
+- **ProxyPool heap operations** (heap invariant preservation)
+- **Async task lifecycle** (proper cleanup and cancellation)
+- **Protocol negotiation** (SOCKS/HTTP handshake sequences)
+- **Event loop handling** (compatibility across Python versions)
+
+### Testing Changes
+- Verify heap integrity after ProxyPool modifications
+- Test async patterns with proper event loop setup
+- Validate protocol compatibility with multiple proxy types
+- Check resource cleanup under exception conditions
