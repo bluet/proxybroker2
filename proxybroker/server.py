@@ -142,7 +142,7 @@ class Server:
 
     async def start(self):
         srv = await asyncio.start_server(
-            self._handle,
+            self._accept,
             self.host,
             self.port,
             backlog=self._backlog
