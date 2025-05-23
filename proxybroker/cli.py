@@ -366,6 +366,7 @@ async def handle(proxies, outfile, format):
             outfile.write(line)
             is_first = False
 
+
 def cli(args=sys.argv[1:]):
     parser = create_parser()
     ns = parser.parse_args(args)

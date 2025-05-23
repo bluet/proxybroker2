@@ -4,14 +4,8 @@ import time
 import warnings
 from collections import Counter
 
-from .errors import (
-    ProxyConnError,
-    ProxyEmptyRecvError,
-    ProxyRecvError,
-    ProxySendError,
-    ProxyTimeoutError,
-    ResolveError,
-)
+from .errors import (ProxyConnError, ProxyEmptyRecvError, ProxyRecvError,
+                     ProxySendError, ProxyTimeoutError, ResolveError)
 from .negotiators import NGTRS
 from .resolver import Resolver
 from .utils import log, parse_headers

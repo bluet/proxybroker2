@@ -4,19 +4,10 @@ import time
 
 from cachetools import TTLCache
 
-from .errors import (
-    BadResponseError,
-    BadStatusError,
-    BadStatusLine,
-    ErrorOnStream,
-    NoProxyError,
-    ProxyConnError,
-    ProxyEmptyRecvError,
-    ProxyRecvError,
-    ProxySendError,
-    ProxyTimeoutError,
-    ResolveError,
-)
+from .errors import (BadResponseError, BadStatusError, BadStatusLine,
+                     ErrorOnStream, NoProxyError, ProxyConnError,
+                     ProxyEmptyRecvError, ProxyRecvError, ProxySendError,
+                     ProxyTimeoutError, ResolveError)
 from .resolver import Resolver
 from .utils import log, parse_headers, parse_status_line
 
@@ -131,7 +122,11 @@ class Server:
     ):
         self.host = host
         self.port = int(port)
-        self._loop = loop or asyncio.get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._timeout = timeout
         self._max_tries = max_tries
         self._backlog = backlog
@@ -189,7 +184,7 @@ class Server:
                 else:
                     raise exc
 
-        f = asyncio.ensure_future(self._handle(client_reader, client_writer))
+        f = asyncio.create_task(self._handle(client_reader, client_writer))
         f.add_done_callback(_on_completion)
         self._connections[f] = (client_reader, client_writer)
 
@@ -286,10 +281,10 @@ class Server:
 
                 stime = time.time()
                 stream = [
-                    asyncio.ensure_future(
+                    asyncio.create_task(
                         self._stream(reader=client_reader, writer=proxy.writer)
                     ),
-                    asyncio.ensure_future(
+                    asyncio.create_task(
                         self._stream(
                             reader=proxy.reader,
                             writer=client_writer,
@@ -298,7 +293,7 @@ class Server:
                         )
                     ),
                 ]
-                await asyncio.gather(*stream, loop=self._loop)
+                await asyncio.gather(*stream)
             except asyncio.CancelledError:
                 log.debug('Cancelled in server._handle')
                 break
