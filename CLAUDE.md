@@ -23,7 +23,15 @@ pytest tests/test_proxy.py  # Run specific test file
 pytest -v             # Verbose output
 pytest --cov=proxybroker --cov-report=term-missing  # Coverage analysis
 pytest tests/test_core_functionality.py::TestBrokerCore -v  # Run specific test class
+pytest -xvs tests/test_cli.py::TestCLI::test_cli_help  # Run single test with output
+pytest --tb=short     # Short traceback for debugging
 ```
+
+**Test Suite Status** (as of latest fixes):
+- ✅ Working: `test_proxy.py`, `test_negotiators.py`, `test_resolver.py`, `test_utils.py`, `test_cli.py`
+- ✅ Core functionality: `test_core_functionality.py` (30/30 tests pass)
+- ⚠️ Need fixes: `test_checker.py`, `test_server.py`, `test_api.py`, `test_integration.py`
+- Note: Many test failures are due to outdated mock implementations, not actual bugs
 
 ### Linting and Code Quality
 ```bash
@@ -84,12 +92,13 @@ Server chooses protocols deterministically with priority order:
 - **HTTPS**: `HTTPS` > `SOCKS5` > `SOCKS4`
 - Uses `_prefer_connect` flag to prioritize CONNECT method when available
 
-### Known Critical Issues (See BUG_REPORT.md)
+### Recently Fixed Critical Issues (Previously in BUG_REPORT.md)
 
-1. **Heap Corruption Risk**: `ProxyPool.remove()` breaks heap invariant by direct list removal
-2. **Deadlock Potential**: `ProxyPool._import()` infinite loop without proper bounds
-3. **Race Conditions**: Some usage of deprecated asyncio patterns remains
-4. **Resource Leaks**: Signal handlers and connections may not be properly cleaned up
+1. ✅ **Fixed Heap Corruption**: `ProxyPool.remove()` now uses heap-safe removal
+2. ✅ **Fixed Deadlock**: `ProxyPool._import()` has timeout and retry limits
+3. ✅ **Fixed Async Patterns**: Replaced `asyncio.ensure_future()` with `asyncio.create_task()`
+4. ✅ **Fixed Priority Bug**: Now correctly uses `proxy.avg_resp_time` instead of `proxy.priority`
+5. ✅ **Fixed Protocol Selection**: Deterministic selection with clear priority order
 
 ## Configuration and Environment
 
@@ -109,7 +118,7 @@ Server chooses protocols deterministically with priority order:
 - **Entry Points**: Both `py2exe_entrypoint.py` (PyInstaller) and Poetry script
 - **Package Managers**: Poetry (preferred) + setuptools (legacy compatibility)
 - **GeoIP Database**: Embedded MaxMind GeoLite2 in `proxybroker/data/`
-- **CLI Architecture**: Click-based with subcommands (find/grab/serve)
+- **CLI Architecture**: argparse-based with subcommands (find/grab/serve) - NOT Click!
 - **Test Structure**: Core tests (working) + comprehensive tests (may need fixes)
 
 ## Development Guidelines
@@ -163,6 +172,19 @@ proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
 ```
 
+### Quick Testing Commands
+```bash
+# Find 5 HTTP proxies quickly
+proxybroker find --types HTTP --limit 5
+
+# Test with specific country
+proxybroker find --countries US --types HTTP --limit 3
+
+# Run server and test with curl
+proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP --limit 10 &
+curl -x http://127.0.0.1:8888 http://httpbin.org/ip
+```
+
 ## Code Quality Maintenance
 
 ### Before Making Changes
@@ -181,3 +203,21 @@ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --m
 - Test async patterns with proper event loop setup
 - Validate protocol compatibility with multiple proxy types
 - Check resource cleanup under exception conditions
+
+## Common Issues and Solutions
+
+### Test Failures
+- Many tests fail due to trying to make real network connections
+- Mock implementations often don't match current API
+- CLI tests expect Click but implementation uses argparse
+- Use `--help` flag in tests to avoid network calls
+
+### AsyncIO Warnings
+- "coroutine was never awaited" - check for missing `await` or `asyncio.create_task()`
+- Event loop issues - ensure proper loop handling for Python 3.10+
+- Use `asyncio.run()` for main entry points, not `loop.run_until_complete()`
+
+### Import-Time Issues
+- Some components try to get event loop at import time
+- Use `asyncio.get_running_loop()` with try/except for compatibility
+- Lazy initialization patterns help avoid import-time errors

@@ -144,6 +144,22 @@ pip install pyinstaller \
 
 The executable is now in the build directory
 
+Quick Start
+-----------
+
+After installation, you can immediately start finding proxies:
+
+``` {.sourceCode .bash}
+# Find 5 working HTTP proxies
+$ proxybroker find --types HTTP --limit 5
+
+# Find 10 US proxies
+$ proxybroker find --countries US --limit 10
+
+# Run local proxy server on port 8888
+$ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
+```
+
 Usage
 -----
 
@@ -196,14 +212,18 @@ async def show(proxies):
         if proxy is None: break
         print('Found proxy: %s' % proxy)
 
-proxies = asyncio.Queue()
-broker = Broker(proxies)
-tasks = asyncio.gather(
-    broker.find(types=['HTTP', 'HTTPS'], limit=10),
-    show(proxies))
+async def main():
+    proxies = asyncio.Queue()
+    broker = Broker(proxies)
+    
+    # Gather coroutines
+    await asyncio.gather(
+        broker.find(types=['HTTP', 'HTTPS'], limit=10),
+        show(proxies)
+    )
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(tasks)
+if __name__ == '__main__':
+    asyncio.run(main())
 ```
 
 [More examples](https://proxybroker.readthedocs.io/en/latest/examples.html).
