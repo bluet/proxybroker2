@@ -12,12 +12,12 @@ from proxybroker.server import CONNECTED, ProxyPool, Server
 def mock_proxy():
     """Create a mock proxy for testing."""
     proxy = MagicMock(spec=Proxy)
-    proxy.host = '127.0.0.1'
+    proxy.host = "127.0.0.1"
     proxy.port = 8080
-    proxy.schemes = ('HTTP', 'HTTPS')
+    proxy.schemes = ("HTTP", "HTTPS")
     proxy.avg_resp_time = 1.0
     proxy.error_rate = 0.1
-    proxy.stat = {'requests': 10}
+    proxy.stat = {"requests": 10}
     proxy.log = MagicMock()
     proxy.close = MagicMock()
     proxy.connect = AsyncMock()
@@ -26,7 +26,7 @@ def mock_proxy():
     proxy.reader = MagicMock()
     proxy.writer = MagicMock()
     proxy.ngtr = Mock()
-    proxy.ngtr.name = 'HTTP'
+    proxy.ngtr.name = "HTTP"
     proxy.ngtr.negotiate = AsyncMock()
     return proxy
 
@@ -41,7 +41,14 @@ def mock_queue():
 @pytest.fixture
 def proxy_pool(mock_queue):
     """Create a ProxyPool instance for testing."""
-    return ProxyPool(proxies=mock_queue, min_req_proxy=2, max_error_rate=0.5, max_resp_time=5, min_queue=2, strategy='best')
+    return ProxyPool(
+        proxies=mock_queue,
+        min_req_proxy=2,
+        max_error_rate=0.5,
+        max_resp_time=5,
+        min_queue=2,
+        strategy="best",
+    )
 
 
 @pytest.fixture
@@ -56,7 +63,9 @@ def mock_proxy_pool():
 @pytest.fixture
 def server(mock_proxy_pool):
     """Create a Server instance for testing."""
-    return Server(host='localhost', port=8888, proxies=mock_proxy_pool, timeout=5, backlog=100)
+    return Server(
+        host="localhost", port=8888, proxies=mock_proxy_pool, timeout=5, backlog=100
+    )
 
 
 class TestProxyPool:
@@ -65,21 +74,28 @@ class TestProxyPool:
     def test_proxy_pool_init(self):
         """Test ProxyPool initialization."""
         queue = asyncio.Queue()
-        pool = ProxyPool(proxies=queue, min_req_proxy=5, max_error_rate=0.5, max_resp_time=8, min_queue=5, strategy='best')
+        pool = ProxyPool(
+            proxies=queue,
+            min_req_proxy=5,
+            max_error_rate=0.5,
+            max_resp_time=8,
+            min_queue=5,
+            strategy="best",
+        )
         assert pool._proxies is queue
         assert pool._min_req_proxy == 5
         assert pool._max_error_rate == 0.5
         assert pool._max_resp_time == 8
         assert pool._min_queue == 5
-        assert pool._strategy == 'best'
+        assert pool._strategy == "best"
         assert pool._pool == []
         assert pool._newcomers == []
 
     def test_proxy_pool_invalid_strategy(self):
         """Test ProxyPool with invalid strategy raises error."""
         queue = asyncio.Queue()
-        with pytest.raises(ValueError, match='`strategy` only support `best` for now'):
-            ProxyPool(proxies=queue, strategy='invalid')
+        with pytest.raises(ValueError, match="`strategy` only support `best` for now"):
+            ProxyPool(proxies=queue, strategy="invalid")
 
     @pytest.mark.asyncio
     async def test_proxy_pool_get_from_newcomers(self, proxy_pool, mock_proxy):
@@ -89,9 +105,9 @@ class TestProxyPool:
         proxy_pool._min_queue = 1  # Lower threshold
 
         # Mock the proxy to have HTTP scheme
-        mock_proxy.schemes = ('HTTP',)
+        mock_proxy.schemes = ("HTTP",)
 
-        result = await proxy_pool.get('HTTP')
+        result = await proxy_pool.get("HTTP")
         assert result is mock_proxy
         assert len(proxy_pool._newcomers) == 0
 
@@ -105,9 +121,9 @@ class TestProxyPool:
         proxy_pool._min_queue = 1  # Lower threshold
 
         # Mock the proxy to have HTTP scheme
-        mock_proxy.schemes = ('HTTP',)
+        mock_proxy.schemes = ("HTTP",)
 
-        result = await proxy_pool.get('HTTP')
+        result = await proxy_pool.get("HTTP")
         assert result is mock_proxy
         assert len(proxy_pool._pool) == 0
 
@@ -115,7 +131,7 @@ class TestProxyPool:
         """Test getting proxy with scheme mismatch returns None."""
         # Add proxy with different scheme
         proxy_pool._newcomers.append(mock_proxy)
-        mock_proxy.schemes = ('SOCKS5',)  # Different from requested HTTP
+        mock_proxy.schemes = ("SOCKS5",)  # Different from requested HTTP
         proxy_pool._min_queue = 1  # Lower threshold
 
         # This should not return the proxy since schemes don't match
@@ -126,40 +142,44 @@ class TestProxyPool:
         """Test importing proxy from queue."""
         # Put proxy in queue
         await proxy_pool._proxies.put(mock_proxy)
-        mock_proxy.schemes = ('HTTP',)
+        mock_proxy.schemes = ("HTTP",)
 
-        result = await proxy_pool._import('HTTP')
+        result = await proxy_pool._import("HTTP")
         assert result is mock_proxy
 
     @pytest.mark.asyncio
     async def test_proxy_pool_import_empty_queue(self, proxy_pool):
         """Test importing from empty queue raises NoProxyError."""
         # Empty queue should timeout
-        with pytest.raises(NoProxyError, match='Timeout waiting for proxy with scheme HTTP'):
-            await proxy_pool._import('HTTP')
+        with pytest.raises(
+            NoProxyError, match="Timeout waiting for proxy with scheme HTTP"
+        ):
+            await proxy_pool._import("HTTP")
 
     @pytest.mark.asyncio
     async def test_proxy_pool_import_scheme_mismatch(self, proxy_pool, mock_proxy):
         """Test importing proxy with scheme mismatch."""
         # Put proxy with different scheme in queue
         await proxy_pool._proxies.put(mock_proxy)
-        mock_proxy.schemes = ('HTTP',)  # Will be put back for SOCKS5 request
+        mock_proxy.schemes = ("HTTP",)  # Will be put back for SOCKS5 request
 
         # Mock the proxy attributes properly
         mock_proxy.error_rate = 0.1  # Not a MagicMock
-        mock_proxy.stat = {'requests': 10}
+        mock_proxy.stat = {"requests": 10}
 
         # Should put proxy back and eventually timeout looking for SOCKS5
-        with pytest.raises(NoProxyError, match='Timeout waiting for proxy with scheme SOCKS5'):
-            await proxy_pool._import('SOCKS5')
+        with pytest.raises(
+            NoProxyError, match="Timeout waiting for proxy with scheme SOCKS5"
+        ):
+            await proxy_pool._import("SOCKS5")
 
     def test_proxy_pool_put_newcomer(self, proxy_pool):
         """Test putting a newcomer proxy with real proxy object."""
         from proxybroker import Proxy
 
         # Create a real proxy object
-        proxy = Proxy('127.0.0.1', 8080, 'http')
-        proxy.stat['requests'] = 1  # Less than min_req_proxy (2)
+        proxy = Proxy("127.0.0.1", 8080, "http")
+        proxy.stat["requests"] = 1  # Less than min_req_proxy (2)
 
         proxy_pool.put(proxy)
         assert proxy in proxy_pool._newcomers
@@ -169,9 +189,9 @@ class TestProxyPool:
         from proxybroker import Proxy
 
         # Create a real proxy object
-        proxy = Proxy('127.0.0.1', 8080, 'http')
-        proxy.stat['requests'] = 10  # More than min_req_proxy (2)
-        proxy.stat['errors'] = {'ProxyTimeoutError': 1}
+        proxy = Proxy("127.0.0.1", 8080, "http")
+        proxy.stat["requests"] = 10  # More than min_req_proxy (2)
+        proxy.stat["errors"] = {"ProxyTimeoutError": 1}
         # Add response times to calculate avg_resp_time
         for _ in range(10):
             proxy._runtimes.append(1.0)
@@ -188,10 +208,10 @@ class TestProxyPool:
         from proxybroker import Proxy
 
         # Create a real proxy object
-        proxy = Proxy('127.0.0.1', 8080, 'http')
-        proxy.stat['requests'] = 10  # More than min_req_proxy (2)
+        proxy = Proxy("127.0.0.1", 8080, "http")
+        proxy.stat["requests"] = 10  # More than min_req_proxy (2)
         # Set high error count to get high error rate (6/10 = 0.6 > 0.5)
-        proxy.stat['errors'] = {'ProxyTimeoutError': 6}
+        proxy.stat["errors"] = {"ProxyTimeoutError": 6}
         # Add response times
         for _ in range(10):
             proxy._runtimes.append(1.0)
@@ -204,7 +224,7 @@ class TestProxyPool:
     def test_proxy_pool_put_slow_proxy(self, proxy_pool, mock_proxy):
         """Test putting a slow proxy (should be discarded)."""
         # Mock proxy as slow
-        mock_proxy.stat = {'requests': 10}  # More than min_req_proxy (2)
+        mock_proxy.stat = {"requests": 10}  # More than min_req_proxy (2)
         mock_proxy.error_rate = 0.1  # Good error rate
         mock_proxy.avg_resp_time = 10.0  # More than max_resp_time (5)
 
@@ -220,8 +240,10 @@ class TestServer:
     def test_server_init(self):
         """Test Server initialization."""
         queue = asyncio.Queue()
-        server = Server(host='localhost', port=9999, proxies=queue, timeout=10, backlog=50)
-        assert server.host == 'localhost'
+        server = Server(
+            host="localhost", port=9999, proxies=queue, timeout=10, backlog=50
+        )
+        assert server.host == "localhost"
         assert server.port == 9999
         assert server._timeout == 10
         assert server._backlog == 50
@@ -237,16 +259,20 @@ class TestServer:
         mock_server_obj.close = MagicMock()
         mock_server_obj.wait_closed = AsyncMock()
         mock_server_obj.sockets = [MagicMock()]
-        mock_server_obj.sockets[0].getsockname.return_value = ('localhost', 8888)
+        mock_server_obj.sockets[0].getsockname.return_value = ("localhost", 8888)
 
-        with patch('asyncio.start_server', return_value=mock_server_obj) as mock_start_server:
+        with patch(
+            "asyncio.start_server", return_value=mock_server_obj
+        ) as mock_start_server:
             # Test start
             await server.start()
             assert server._server is mock_server_obj
-            mock_start_server.assert_called_once_with(server._accept, server.host, server.port, backlog=server._backlog)
+            mock_start_server.assert_called_once_with(
+                server._accept, server.host, server.port, backlog=server._backlog
+            )
 
         # Test stop (mock loop to avoid actual stopping)
-        with patch.object(server, '_loop') as mock_loop:
+        with patch.object(server, "_loop") as mock_loop:
             mock_loop.is_running.return_value = False
             mock_loop.run_until_complete = MagicMock()
             mock_loop.stop = MagicMock()
@@ -260,11 +286,11 @@ class TestServer:
         # Mock reader and writer
         mock_reader = MagicMock()
         mock_writer = MagicMock()
-        mock_writer.get_extra_info.return_value = ('127.0.0.1', 12345)
+        mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
         mock_writer.close = MagicMock()
 
         # Mock _handle method to avoid actual request processing
-        with patch.object(server, '_handle', new_callable=AsyncMock) as mock_handle:
+        with patch.object(server, "_handle", new_callable=AsyncMock) as mock_handle:
             # Call _accept
             server._accept(mock_reader, mock_writer)
 
@@ -280,7 +306,7 @@ class TestServer:
         # Mock reader and writer
         mock_reader = MagicMock()
         mock_writer = MagicMock()
-        mock_writer.get_extra_info.return_value = ('127.0.0.1', 12345)
+        mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
         mock_writer.write = MagicMock()
         mock_writer.drain = AsyncMock()
 
@@ -288,13 +314,19 @@ class TestServer:
         server._proxy_pool.get = AsyncMock(return_value=mock_proxy)
 
         # Mock request parsing
-        with patch.object(server, '_parse_request', return_value=(b'GET / HTTP/1.1', {'Host': 'example.com', 'Path': '/'})):
-            with patch.object(server, '_identify_scheme', return_value='HTTP'):
-                with patch.object(server, '_choice_proto', return_value='HTTP'):
-                    with patch.object(server, '_stream', new_callable=AsyncMock):
-                        with patch.object(server._resolver, 'resolve', new_callable=AsyncMock):
+        with patch.object(
+            server,
+            "_parse_request",
+            return_value=(b"GET / HTTP/1.1", {"Host": "example.com", "Path": "/"}),
+        ):
+            with patch.object(server, "_identify_scheme", return_value="HTTP"):
+                with patch.object(server, "_choice_proto", return_value="HTTP"):
+                    with patch.object(server, "_stream", new_callable=AsyncMock):
+                        with patch.object(
+                            server._resolver, "resolve", new_callable=AsyncMock
+                        ):
                             await server._handle(mock_reader, mock_writer)
-                            server._proxy_pool.get.assert_called_once_with('HTTP')
+                            server._proxy_pool.get.assert_called_once_with("HTTP")
 
     @pytest.mark.asyncio
     async def test_server_handle_connect_request(self, server, mock_proxy):
@@ -302,7 +334,7 @@ class TestServer:
         # Mock reader and writer
         mock_reader = MagicMock()
         mock_writer = MagicMock()
-        mock_writer.get_extra_info.return_value = ('127.0.0.1', 12345)
+        mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
         mock_writer.write = MagicMock()
         mock_writer.drain = AsyncMock()
 
@@ -313,14 +345,14 @@ class TestServer:
                 self._ngtr = base_proxy.ngtr
 
             def __getattr__(self, name):
-                if name == 'ngtr':
+                if name == "ngtr":
                     return self._ngtr
                 return getattr(self.base, name)
 
             def __setattr__(self, name, value):
-                if name in ('base', '_ngtr'):
+                if name in ("base", "_ngtr"):
                     object.__setattr__(self, name, value)
-                elif name == 'ngtr':
+                elif name == "ngtr":
                     # When setting ngtr, just keep our mock negotiator
                     self._ngtr = self.base.ngtr
                 else:
@@ -334,18 +366,23 @@ class TestServer:
         # Mock request parsing for CONNECT
         with patch.object(
             server,
-            '_parse_request',
+            "_parse_request",
             return_value=(
-                b'CONNECT example.com:443 HTTP/1.1',
-                {'Host': 'example.com', 'Port': 443, 'Path': 'example.com:443'},
+                b"CONNECT example.com:443 HTTP/1.1",
+                {"Host": "example.com", "Port": 443, "Path": "example.com:443"},
             ),
         ):
-            with patch.object(server, '_identify_scheme', return_value='HTTPS'):
-                with patch.object(server, '_choice_proto', return_value='SOCKS5'):
-                    with patch.object(server, '_stream', new_callable=AsyncMock):
-                        with patch.object(server._resolver, 'resolve', return_value='93.184.216.34', new_callable=AsyncMock):
+            with patch.object(server, "_identify_scheme", return_value="HTTPS"):
+                with patch.object(server, "_choice_proto", return_value="SOCKS5"):
+                    with patch.object(server, "_stream", new_callable=AsyncMock):
+                        with patch.object(
+                            server._resolver,
+                            "resolve",
+                            return_value="93.184.216.34",
+                            new_callable=AsyncMock,
+                        ):
                             await server._handle(mock_reader, mock_writer)
-                            server._proxy_pool.get.assert_called_once_with('HTTPS')
+                            server._proxy_pool.get.assert_called_once_with("HTTPS")
 
     @pytest.mark.asyncio
     async def test_server_handle_no_proxy_available(self, server):
@@ -353,16 +390,22 @@ class TestServer:
         # Mock reader and writer
         mock_reader = MagicMock()
         mock_writer = MagicMock()
-        mock_writer.get_extra_info.return_value = ('127.0.0.1', 12345)
+        mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
         mock_writer.write = MagicMock()
         mock_writer.drain = AsyncMock()
 
         # Mock the proxy pool to raise NoProxyError
-        server._proxy_pool.get = AsyncMock(side_effect=NoProxyError('No proxy available'))
+        server._proxy_pool.get = AsyncMock(
+            side_effect=NoProxyError("No proxy available")
+        )
 
         # Mock request parsing
-        with patch.object(server, '_parse_request', return_value=(b'GET / HTTP/1.1', {'Host': 'example.com', 'Path': '/'})):
-            with patch.object(server, '_identify_scheme', return_value='HTTP'):
+        with patch.object(
+            server,
+            "_parse_request",
+            return_value=(b"GET / HTTP/1.1", {"Host": "example.com", "Path": "/"}),
+        ):
+            with patch.object(server, "_identify_scheme", return_value="HTTP"):
                 with pytest.raises(NoProxyError):
                     await server._handle(mock_reader, mock_writer)
 
@@ -372,16 +415,20 @@ class TestServer:
         # Mock reader and writer
         mock_reader = MagicMock()
         mock_writer = MagicMock()
-        mock_writer.get_extra_info.return_value = ('127.0.0.1', 12345)
+        mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
 
         # Mock proxy connection to fail
-        mock_proxy.connect.side_effect = ProxyConnError('Connection failed')
+        mock_proxy.connect.side_effect = ProxyConnError("Connection failed")
         server._proxy_pool.get = AsyncMock(return_value=mock_proxy)
 
         # Mock request parsing
-        with patch.object(server, '_parse_request', return_value=(b'GET / HTTP/1.1', {'Host': 'example.com', 'Path': '/'})):
-            with patch.object(server, '_identify_scheme', return_value='HTTP'):
-                with patch.object(server, '_choice_proto', return_value='HTTP'):
+        with patch.object(
+            server,
+            "_parse_request",
+            return_value=(b"GET / HTTP/1.1", {"Host": "example.com", "Path": "/"}),
+        ):
+            with patch.object(server, "_identify_scheme", return_value="HTTP"):
+                with patch.object(server, "_choice_proto", return_value="HTTP"):
                     # Should handle the error and continue to next attempt or fail
                     await server._handle(mock_reader, mock_writer)
 
@@ -391,15 +438,21 @@ class TestServer:
         # Mock reader and writer
         mock_reader = MagicMock()
         mock_writer = MagicMock()
-        mock_writer.get_extra_info.return_value = ('127.0.0.1', 12345)
+        mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
 
         # Mock _parse_request to return proper response
-        mock_reader.read = MagicMock(return_value=b'GET / HTTP/1.1\r\nHost: example.com\r\n\r\n')
+        mock_reader.read = MagicMock(
+            return_value=b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n"
+        )
 
-        with patch.object(server, '_parse_request', return_value=(b'GET / HTTP/1.1', {'Host': 'example.com', 'Path': '/'})):
-            with patch.object(server, '_identify_scheme', return_value='HTTP'):
-                with patch.object(server, '_proxy_pool') as mock_pool:
-                    mock_pool.get.side_effect = NoProxyError('No proxy available')
+        with patch.object(
+            server,
+            "_parse_request",
+            return_value=(b"GET / HTTP/1.1", {"Host": "example.com", "Path": "/"}),
+        ):
+            with patch.object(server, "_identify_scheme", return_value="HTTP"):
+                with patch.object(server, "_proxy_pool") as mock_pool:
+                    mock_pool.get.side_effect = NoProxyError("No proxy available")
                     try:
                         await server._handle(mock_reader, mock_writer)
                     except NoProxyError:
@@ -407,20 +460,20 @@ class TestServer:
 
     def test_server_constants(self):
         """Test server constants."""
-        assert CONNECTED == b'HTTP/1.1 200 Connection established\r\n\r\n'
+        assert CONNECTED == b"HTTP/1.1 200 Connection established\r\n\r\n"
 
     @pytest.mark.asyncio
     async def test_server_context_manager(self, server):
         """Test server as context manager."""
         # Server doesn't implement context manager, so this should fail
         # This test documents the current behavior
-        with pytest.raises(AttributeError, match='__aenter__'):
+        with pytest.raises(AttributeError, match="__aenter__"):
             async with server:
                 pass
 
     def test_server_relay_data(self):
         """Test data relay functionality constants."""
         # Test that the server has the expected constants
-        assert hasattr(Server, '_handle')
-        assert hasattr(Server, '_accept')
+        assert hasattr(Server, "_handle")
+        assert hasattr(Server, "_accept")
         # The actual relay logic is complex and would need extensive mocking

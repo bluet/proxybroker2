@@ -37,14 +37,28 @@ pytest --tb=short     # Short traceback for debugging
 ### Linting and Code Quality
 **Use automated tools for efficient formatting:**
 ```bash
-# Automated formatting (preferred)
+# Modern approach: Use ruff (fastest, most comprehensive)
+ruff check proxybroker/ tests/ --fix         # Fix linting issues automatically
+ruff format proxybroker/ tests/              # Format code automatically
+
+# Alternative: Traditional tools combination
 isort proxybroker/ tests/                    # Organize imports automatically
 black proxybroker/ tests/ --line-length 127 # Format code automatically
 flake8 proxybroker/ tests/ --max-line-length=127 --exclude=__pycache__  # Verify clean
 
+# One-liner for complete formatting:
+ruff check . --fix && ruff format .
+
 # Legacy manual approach (avoid)
 # Manual fixes are tedious and error-prone - use automated tools instead
 ```
+
+**Available Tools:**
+- **`ruff`**: Ultra-fast linter + formatter (recommended)
+- **`black`**: Code formatter (good alternative)
+- **`isort`**: Import organizer (included in ruff)
+- **`flake8`**: Linter (included in ruff)
+- **`autopep8`**: PEP8 formatter (use ruff instead)
 
 ### Building
 ```bash
