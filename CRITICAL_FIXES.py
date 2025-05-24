@@ -211,7 +211,6 @@ async def _handle(self, proxy, check=False):
 
 AFTER (FIXED):
 """
-import logging
 
 async def _handle_fixed(self, proxy, check=False):
     """Handle proxy with proper error logging."""

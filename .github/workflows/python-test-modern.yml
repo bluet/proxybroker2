@@ -1,0 +1,93 @@
+# Modern Python CI/CD with ruff, comprehensive testing, and quality gates
+name: Modern CI/CD
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  quality-checks:
+    name: Code Quality & Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          
+      - name: Install ruff
+        run: pip install ruff
+        
+      - name: Lint with ruff
+        run: ruff check . --output-format=github
+        
+      - name: Check formatting with ruff
+        run: ruff format --check .
+
+  test-matrix:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.4.1
+        with:
+          version: "1.8.4"
+          virtualenvs-in-project: true
+          
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'poetry'
+          
+      - name: Install dependencies
+        run: poetry install --no-interaction
+        
+      - name: Run test suite with coverage
+        run: |
+          poetry run pytest --cov=proxybroker --cov-report=term-missing --cov-report=xml --cov-fail-under=60
+          
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  contract-tests:
+    name: API Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install and configure Poetry  
+        uses: snok/install-poetry@v1.4.1
+        with:
+          version: "1.8.4"
+          virtualenvs-in-project: true
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'poetry'
+          
+      - name: Install dependencies
+        run: poetry install --no-interaction
+        
+      - name: Run API contract tests
+        run: poetry run pytest tests/test_api_contracts.py -v
+        
+      - name: Run integration tests  
+        run: poetry run pytest tests/test_integration.py -v --tb=short

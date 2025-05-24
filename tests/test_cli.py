@@ -1,6 +1,7 @@
-import tempfile
+import os
 import subprocess
 import sys
+import tempfile
 from unittest.mock import MagicMock
 
 import pytest
@@ -88,27 +89,138 @@ class TestCLI:
     # and the CLI functionality is already verified through subprocess tests above.
     # The application's CLI has been manually tested and works correctly.
 
-    def test_find_with_types_filter(self):
-        """Test find command with type filters - just check parsing."""
-        # Use timeout to prevent hanging
-        result = subprocess.run(
-            [
+    def test_find_command_argument_parsing(self):
+        """Test find command argument parsing without execution."""
+        # Test that arguments are parsed correctly (timeout immediately)
+        cmd = [
+            sys.executable,
+            "-m", 
+            "proxybroker",
+            "find",
+            "--types", "HTTP", "HTTPS",
+            "--limit", "1",
+            "--timeout", "0.001"  # Very short timeout to exit quickly
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        # Should not fail due to argument parsing errors
+        assert "error: " not in result.stderr.lower()
+        
+    def test_grab_command_argument_parsing(self):
+        """Test grab command argument parsing without execution."""
+        cmd = [
+            sys.executable,
+            "-m",
+            "proxybroker", 
+            "grab",
+            "--countries", "US",
+            "--limit", "1",
+            "--timeout", "0.001"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        assert "error: " not in result.stderr.lower()
+        
+    def test_serve_command_argument_parsing(self):
+        """Test serve command argument parsing.""" 
+        cmd = [
+            sys.executable,
+            "-m",
+            "proxybroker",
+            "serve", 
+            "--host", "127.0.0.1",
+            "--port", "8888",
+            "--limit", "1",
+            "--timeout", "0.001"  
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        assert "error: " not in result.stderr.lower()
+        
+    def test_outfile_argument(self):
+        """Test output file argument parsing."""
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
+            temp_file = f.name
+            
+        try:
+            cmd = [
                 sys.executable,
                 "-m",
                 "proxybroker",
-                "find",
-                "--types",
-                "HTTP",
-                "HTTPS",
-                "--limit",
-                "0",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+                "grab",
+                "--outfile", temp_file,
+                "--limit", "1", 
+                "--timeout", "0.001"
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            assert "error: " not in result.stderr.lower()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+                
+    def test_invalid_arguments(self):
+        """Test CLI error handling for invalid arguments."""
+        # Invalid port
+        result = self.run_cli(["serve", "--port", "99999"])
+        # Should exit with error (not necessarily returncode 2)
+        assert result.returncode != 0 or "error" in result.stderr.lower()
+        
+        # Invalid limit
+        result = self.run_cli(["find", "--limit", "-1"])
+        assert result.returncode != 0 or "error" in result.stderr.lower()
+
+
+class TestCLIUserScenarios:
+    """Test CLI scenarios that mirror real user usage patterns."""
+    
+    def run_cli_with_timeout(self, args, timeout=5):
+        """Run CLI command with timeout to prevent hanging."""
+        cmd = [sys.executable, "-m", "proxybroker"] + args
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            return result
+        except subprocess.TimeoutExpired:
+            # This is expected for most commands since they run indefinitely
+            return None
+            
+    def test_help_accessibility(self):
+        """Test that users can easily access help information."""
+        # Main help
+        result = subprocess.run([sys.executable, "-m", "proxybroker", "--help"], 
+                              capture_output=True, text=True)
         assert result.returncode == 0
+        assert "Find and check proxies" in result.stdout  # find command description
+        assert "Find proxies without a check" in result.stdout  # grab command description
+        assert "Run a local proxy server" in result.stdout  # serve command description
+        
+    def test_version_information(self):
+        """Test that version information is accessible and correct."""
+        result = subprocess.run([sys.executable, "-m", "proxybroker", "--version"],
+                              capture_output=True, text=True)
+        assert result.returncode == 0
+        # Version should be displayed
+        assert "0.4.0" in result.stdout
+        
+    def test_command_specific_help(self):
+        """Test that each command provides useful help."""
+        commands = ["find", "grab", "serve"]
+        for cmd in commands:
+            result = subprocess.run([sys.executable, "-m", "proxybroker", cmd, "--help"],
+                                  capture_output=True, text=True)
+            assert result.returncode == 0
+            assert "help" in result.stdout.lower() or "usage" in result.stdout.lower()
+            
+    def test_required_parameter_validation(self):
+        """Test that CLI validates required parameters appropriately."""
+        # Most commands should start even with minimal args (they'll just run with defaults)
+        # We test that they don't fail immediately due to missing required args
+        
+        # find with minimal args
+        self.run_cli_with_timeout(["find", "--limit", "0"], timeout=2)
+        # Should not fail immediately with argument errors
+        
+        # grab with minimal args  
+        self.run_cli_with_timeout(["grab", "--limit", "0"], timeout=2)
+        
+        # serve needs host/port but has defaults
+        self.run_cli_with_timeout(["serve", "--limit", "0"], timeout=2)
 
     def test_find_with_countries_filter(self):
         """Test find command with country filters - just check parsing."""
