@@ -173,38 +173,52 @@ class TestProxyPool:
         with pytest.raises(NoProxyError, match='Timeout waiting for proxy with scheme SOCKS5'):
             await proxy_pool._import('SOCKS5')
 
-    def test_proxy_pool_put_newcomer(self, proxy_pool, mock_proxy):
-        """Test putting a newcomer proxy."""
-        # Mock proxy as newcomer (few requests)
-        mock_proxy.stat = {'requests': 1}  # Less than min_req_proxy (2)
-        mock_proxy.error_rate = 0.1
-        mock_proxy.avg_resp_time = 1.0
+    def test_proxy_pool_put_newcomer(self, proxy_pool):
+        """Test putting a newcomer proxy with real proxy object."""
+        from proxybroker import Proxy
         
-        proxy_pool.put(mock_proxy)
-        assert mock_proxy in proxy_pool._newcomers
+        # Create a real proxy object
+        proxy = Proxy('127.0.0.1', 8080, 'http')
+        proxy.stat['requests'] = 1  # Less than min_req_proxy (2)
+        
+        proxy_pool.put(proxy)
+        assert proxy in proxy_pool._newcomers
 
-    def test_proxy_pool_put_experienced_good_proxy(self, proxy_pool, mock_proxy):
-        """Test putting an experienced, good proxy in main pool."""
-        # Mock proxy as experienced and good
-        mock_proxy.stat = {'requests': 10}  # More than min_req_proxy (2)
-        mock_proxy.error_rate = 0.1  # Less than max_error_rate (0.5)
-        mock_proxy.avg_resp_time = 1.0  # Less than max_resp_time (5)
+    def test_proxy_pool_put_experienced_good_proxy(self, proxy_pool):
+        """Test putting an experienced, good proxy in main pool with real proxy object."""
+        from proxybroker import Proxy
         
-        proxy_pool.put(mock_proxy)
+        # Create a real proxy object
+        proxy = Proxy('127.0.0.1', 8080, 'http')
+        proxy.stat['requests'] = 10  # More than min_req_proxy (2)
+        proxy.stat['errors'] = {'ProxyTimeoutError': 1}
+        # Add response times to calculate avg_resp_time
+        for _ in range(10):
+            proxy._runtimes.append(1.0)
+        
+        proxy_pool.put(proxy)
         # Should be in main pool (as heapq item)
         assert len(proxy_pool._pool) == 1
-        assert proxy_pool._pool[0][1] is mock_proxy
+        assert proxy_pool._pool[0][1] is proxy
+        # Verify priority is avg_resp_time
+        assert proxy_pool._pool[0][0] == proxy.avg_resp_time
 
-    def test_proxy_pool_put_experienced_bad_proxy(self, proxy_pool, mock_proxy):
-        """Test putting an experienced but bad proxy (should be discarded)."""
-        # Mock proxy as experienced but bad (high error rate)
-        mock_proxy.stat = {'requests': 10}  # More than min_req_proxy (2)
-        mock_proxy.error_rate = 0.6  # More than max_error_rate (0.5)
-        mock_proxy.avg_resp_time = 1.0
+    def test_proxy_pool_put_experienced_bad_proxy(self, proxy_pool):
+        """Test putting an experienced but bad proxy (should be discarded) with real proxy object."""
+        from proxybroker import Proxy
         
-        proxy_pool.put(mock_proxy)
+        # Create a real proxy object
+        proxy = Proxy('127.0.0.1', 8080, 'http')
+        proxy.stat['requests'] = 10  # More than min_req_proxy (2)
+        # Set high error count to get high error rate (6/10 = 0.6 > 0.5)
+        proxy.stat['errors'] = {'ProxyTimeoutError': 6}
+        # Add response times
+        for _ in range(10):
+            proxy._runtimes.append(1.0)
+        
+        proxy_pool.put(proxy)
         # Should be discarded (not in newcomers or pool)
-        assert mock_proxy not in proxy_pool._newcomers
+        assert proxy not in proxy_pool._newcomers
         assert len(proxy_pool._pool) == 0
 
     def test_proxy_pool_put_slow_proxy(self, proxy_pool, mock_proxy):
