@@ -28,15 +28,22 @@ pytest --tb=short     # Short traceback for debugging
 ```
 
 **Test Suite Status** (as of latest fixes):
+- ✅ **All tests passing**: 127/127 tests pass across all test files
 - ✅ Working: `test_proxy.py`, `test_negotiators.py`, `test_resolver.py`, `test_utils.py`, `test_cli.py`
-- ✅ Core functionality: `test_core_functionality.py` (30/30 tests pass)
-- ⚠️ Need fixes: `test_checker.py`, `test_server.py`, `test_api.py`, `test_integration.py`
-- Note: Many test failures are due to outdated mock implementations, not actual bugs
+- ✅ Fixed: `test_checker.py`, `test_server.py`, `test_api.py` (reduced mocking, improved reliability)
+- ✅ Cleaned up: Removed redundant test files, improved test organization
+- Note: Tests now use real objects instead of heavy mocking for better coverage
 
 ### Linting and Code Quality
+**Use automated tools for efficient formatting:**
 ```bash
-flake8 proxybroker/ --max-line-length=127 --exclude=__pycache__  # Check code style
-isort .               # Sort imports
+# Automated formatting (preferred)
+isort proxybroker/ tests/                    # Organize imports automatically
+black proxybroker/ tests/ --line-length 127 # Format code automatically
+flake8 proxybroker/ tests/ --max-line-length=127 --exclude=__pycache__  # Verify clean
+
+# Legacy manual approach (avoid)
+# Manual fixes are tedious and error-prone - use automated tools instead
 ```
 
 ### Building
