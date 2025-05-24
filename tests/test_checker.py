@@ -1,14 +1,11 @@
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from proxybroker import Proxy
 from proxybroker.checker import Checker, _check_test_response, _get_anonymity_lvl
-from proxybroker.errors import (BadResponseError, BadStatusError, 
-                                ProxyConnError, ProxyTimeoutError)
+from proxybroker.errors import (BadResponseError, ProxyConnError, ProxyTimeoutError)
 from proxybroker.judge import Judge
-from proxybroker.negotiators import NGTRS, HttpNgtr
 
 
 @pytest.fixture
@@ -140,7 +137,7 @@ class TestChecker:
                 response_content = f'{real_rv} 127.0.0.1 {real_headers["Referer"]} {real_headers["Cookie"]}'
                 proxy.recv.return_value = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{response_content}'.encode()
                 
-                result = await checker.check(proxy)
+                await checker.check(proxy)
                 
                 # Verify proxy was tested
                 proxy.connect.assert_called()
@@ -251,6 +248,7 @@ class TestChecker:
                 
                 # Create a counter to track calls
                 call_count = 0
+
                 def side_effect_func(*args, **kwargs):
                     nonlocal call_count
                     call_count += 1
@@ -319,9 +317,9 @@ class TestChecker:
         
         # parse_headers expects full HTTP response headers starting with status line
         headers_bytes = (b'HTTP/1.1 200 OK\r\n'
-                        b'Content-Type: application/json\r\n'
-                        b'X-Forwarded-For: 1.2.3.4\r\n'
-                        b'Via: 1.1 proxy')
+                         b'Content-Type: application/json\r\n'
+                         b'X-Forwarded-For: 1.2.3.4\r\n'
+                         b'Via: 1.1 proxy')
         
         headers = parse_headers(headers_bytes)
         

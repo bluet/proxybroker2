@@ -1,11 +1,10 @@
 import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
 from proxybroker import Proxy
-from proxybroker.errors import NoProxyError, ProxyConnError, ProxyTimeoutError
+from proxybroker.errors import NoProxyError, ProxyConnError
 from proxybroker.server import CONNECTED, ProxyPool, Server
 
 

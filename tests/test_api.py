@@ -3,9 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from proxybroker import Broker, Proxy
+from proxybroker import Broker
 from proxybroker.api import GRAB_PAUSE, MAX_CONCURRENT_PROVIDERS
-from proxybroker.errors import ResolveError
 
 
 @pytest.fixture
@@ -249,7 +248,7 @@ async def test_broker_context_manager():
 async def test_broker_stop_on_keyboard_interrupt(broker, mocker):
     """Test broker handles KeyboardInterrupt gracefully."""
     # Mock signal handling
-    mock_signal = mocker.patch('proxybroker.api.signal')
+    mocker.patch('proxybroker.api.signal')
     
     # Create broker with signal handling disabled for testing
     broker_with_signal = Broker(timeout=0.1, stop_broker_on_sigint=False)
