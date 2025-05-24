@@ -22,7 +22,7 @@ pytest                 # Run all tests
 pytest tests/test_proxy.py  # Run specific test file
 pytest -v             # Verbose output
 pytest --cov=proxybroker --cov-report=term-missing  # Coverage analysis
-pytest tests/test_core_functionality.py::TestBrokerCore -v  # Run specific test class
+pytest tests/test_api.py::test_broker_constants -v  # Run specific test
 pytest -xvs tests/test_cli.py::TestCLI::test_cli_help  # Run single test with output
 pytest --tb=short     # Short traceback for debugging
 ```
@@ -140,7 +140,8 @@ Server chooses protocols deterministically with priority order:
 - **Package Managers**: Poetry (preferred) + setuptools (legacy compatibility)
 - **GeoIP Database**: Embedded MaxMind GeoLite2 in `proxybroker/data/`
 - **CLI Architecture**: argparse-based with subcommands (find/grab/serve) - NOT Click!
-- **Test Structure**: Core tests (working) + comprehensive tests (may need fixes)
+- **Version**: Currently v2.0.0-alpha6 (production-ready despite alpha tag)
+- **Python Support**: 3.10-3.13 officially tested and supported
 
 ## Development Guidelines
 
@@ -160,10 +161,11 @@ Server chooses protocols deterministically with priority order:
 - Use contextual error messages with proxy/host information
 
 ### Testing Strategy
-- **Core Tests**: `test_core_functionality.py` (reliable, good coverage)
-- **Comprehensive Tests**: May require adjustment for implementation details
+- **All Tests Reliable**: 127/127 tests pass with improved mock reduction
+- **Key Test Files**: `test_api.py`, `test_checker.py`, `test_server.py`, `test_proxy.py`
 - **Coverage Goal**: Focus on critical paths (ProxyPool, Broker, Checker)
 - **Mock Infrastructure**: Use `tests/mock_server.py` for HTTP endpoint testing
+- **Real Objects Preferred**: Tests use real Proxy objects instead of heavy mocking
 
 ## HTTP API Features
 
@@ -210,8 +212,9 @@ curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 
 ### Before Making Changes
 1. Review `BUG_REPORT.md` for known issues in affected areas
-2. Run tests to establish baseline: `pytest tests/test_core_functionality.py -v`
+2. Run tests to establish baseline: `pytest tests/ -v`
 3. Use virtual environment to avoid system pollution
+4. **Always run formatting**: `ruff check . --fix && ruff format .`
 
 ### Critical Areas Requiring Careful Changes
 - **ProxyPool heap operations** (heap invariant preservation)
@@ -227,11 +230,11 @@ curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 
 ## Common Issues and Solutions
 
-### Test Failures
-- Many tests fail due to trying to make real network connections
-- Mock implementations often don't match current API
-- CLI tests expect Click but implementation uses argparse
-- Use `--help` flag in tests to avoid network calls
+### Test Failures (Historical - Now Resolved)
+- All 127 tests now pass reliably
+- Fixed mock implementations to match current API
+- Reduced heavy mocking in favor of real objects
+- CLI tests properly handle argparse (not Click) implementation
 
 ### AsyncIO Warnings
 - "coroutine was never awaited" - check for missing `await` or `asyncio.create_task()`
