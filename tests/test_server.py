@@ -289,16 +289,36 @@ class TestServer:
         mock_writer.get_extra_info.return_value = ("127.0.0.1", 12345)
         mock_writer.close = MagicMock()
 
-        # Mock _handle method to avoid actual request processing
-        with patch.object(server, "_handle", new_callable=AsyncMock) as mock_handle:
+        # Mock _handle method to return immediately
+        original_handle = server._handle
+        handle_called = False
+        handle_args = None
+        
+        async def mock_handle_func(*args):
+            nonlocal handle_called, handle_args
+            handle_called = True
+            handle_args = args
+            return None
+        
+        # Replace the method directly
+        server._handle = mock_handle_func
+        
+        try:
             # Call _accept
             server._accept(mock_reader, mock_writer)
 
-            # Wait a moment for the async task to start
-            await asyncio.sleep(0.01)
+            # Wait for the task to complete
+            timeout_counter = 0
+            while len(server._connections) > 0 and timeout_counter < 100:
+                await asyncio.sleep(0.01)
+                timeout_counter += 1
 
             # Check that _handle was called
-            mock_handle.assert_called_once_with(mock_reader, mock_writer)
+            assert handle_called, "_handle method should have been called"
+            assert handle_args == (mock_reader, mock_writer), "Should be called with correct args"
+        finally:
+            # Restore original method
+            server._handle = original_handle
 
     @pytest.mark.asyncio
     async def test_server_handle_http_request(self, server, mock_proxy):
