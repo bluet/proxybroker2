@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from proxybroker import Proxy
 from proxybroker.checker import Checker
-from proxybroker.errors import ProxyConnError, ProxyTimeoutError
 from proxybroker.judge import Judge
 
 
@@ -242,7 +241,7 @@ class TestCheckerBehavior:
                 mock_check.return_value = True
                 
                 # Now the checker should be able to run without hanging
-                result = await checker.check(proxy)
+                await checker.check(proxy)
                 
                 # The mock should have been called
                 mock_check.assert_called()

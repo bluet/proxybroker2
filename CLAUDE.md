@@ -27,12 +27,13 @@ pytest -xvs tests/test_cli.py::TestCLI::test_cli_help  # Run single test with ou
 pytest --tb=short     # Short traceback for debugging
 ```
 
-**Test Suite Status** (as of latest fixes):
-- ✅ **All tests passing**: 127/127 tests pass across all test files
+**Test Suite Status** (as of latest comprehensive testing implementation):
+- ✅ **All tests passing**: 159/159 tests pass across all test files
+- ✅ **New behavior tests**: `test_server_behavior.py` (18 tests), `test_checker_behavior.py` (14 tests)
 - ✅ Working: `test_proxy.py`, `test_negotiators.py`, `test_resolver.py`, `test_utils.py`, `test_cli.py`
-- ✅ Fixed: `test_checker.py`, `test_server.py`, `test_api.py` (reduced mocking, improved reliability)
-- ✅ Cleaned up: Removed redundant test files, improved test organization
-- Note: Tests now use real objects instead of heavy mocking for better coverage
+- ✅ Enhanced: `test_checker.py`, `test_server.py`, `test_api.py` (reduced mocking, improved reliability)
+- ✅ Contract-based approach: Tests protect user APIs while enabling internal improvements
+- Note: Focus on user-visible behavior rather than implementation details
 
 ### Linting and Code Quality
 **Use automated tools for efficient formatting:**

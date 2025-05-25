@@ -1,5 +1,5 @@
 *ProxyBroker2 is now production-ready with Python 3.10+ support!*  
-*✅ All critical issues fixed | ✅ 127/127 tests passing | ✅ Modern automated toolchain*
+*✅ All critical issues fixed | ✅ 159/159 tests passing | ✅ Modern automated toolchain | ✅ Comprehensive behavior testing*
 
 ProxyBroker
 ===========
@@ -36,7 +36,7 @@ What's New in ProxyBroker2 (v2.0.0+)
 -------------------------------------
 
 ### 🚀 **Production Ready**
--   **127/127 tests passing** - Comprehensive test suite with 100% reliability
+-   **159/159 tests passing** - Comprehensive test suite with 100% reliability including new behavior tests
 -   **Python 3.10-3.13 support** - Modern Python with full async compatibility
 -   **Zero critical bugs** - All known issues resolved
 -   **Modern CI/CD pipeline** - Enhanced GitHub Actions with `ruff` and comprehensive testing
@@ -51,7 +51,8 @@ What's New in ProxyBroker2 (v2.0.0+)
 ### 🧪 **Advanced Testing Strategy**
 -   **Contract-based testing** - Protects public APIs while enabling internal improvements
 -   **Behavior-focused tests** - Tests "does it work" rather than implementation details
--   **Integration test coverage** - Real user workflows from examples/ directory
+-   **User scenario coverage** - 32 new tests covering real workflows from examples/ directory
+-   **Server & checker testing** - Comprehensive coverage of proxy server and validation behavior
 -   **API stability guarantees** - Backward compatibility testing for major version confidence
 
 ### 🛠️ **Developer Experience**

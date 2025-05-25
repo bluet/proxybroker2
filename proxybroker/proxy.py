@@ -100,7 +100,10 @@ class Proxy:
         e.g. <Proxy US 1.12 [HTTP: Anonymous, HTTPS] 10.0.0.1:8080>
         """
         tpinfo = []
-        order = lambda tp_lvl: (len(tp_lvl[0]), tp_lvl[0][-1])  # noqa: 731
+        
+        def order(tp_lvl):
+            return (len(tp_lvl[0]), tp_lvl[0][-1])
+            
         for tp, lvl in sorted(self.types.items(), key=order):
             s = '{tp}: {lvl}' if lvl else '{tp}'
             s = s.format(tp=tp, lvl=lvl)
@@ -246,7 +249,9 @@ class Proxy:
             'error_rate': self.error_rate,
         }
 
-        order = lambda tp_lvl: (len(tp_lvl[0]), tp_lvl[0][-1])  # noqa: 731
+        def order(tp_lvl):
+            return (len(tp_lvl[0]), tp_lvl[0][-1])
+            
         for tp, lvl in sorted(self.types.items(), key=order):
             info['types'].append({'type': tp, 'level': lvl or ''})
         return info

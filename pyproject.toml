@@ -74,6 +74,9 @@ exclude = '''
 )
 '''
 
+[tool.ruff]
+exclude = ["CRITICAL_FIXES.py"]
+
 [tool.pytest.ini_options]
 flake8-ignore = ['*.py']
 isort_ignore = ['*.py']

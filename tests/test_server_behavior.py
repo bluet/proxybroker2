@@ -5,13 +5,12 @@ These tests ensure server stability and expected behavior for production usage.
 """
 
 import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
 from proxybroker import Proxy
-from proxybroker.errors import NoProxyError, ProxyConnError
+from proxybroker.errors import NoProxyError
 from proxybroker.server import CONNECTED, ProxyPool, Server
 
 
@@ -475,7 +474,7 @@ class TestProxyPoolUserBehavior:
             try:
                 proxy = await user_pool.get("HTTP")
                 proxies.append(proxy)
-            except:
+            except Exception:
                 break  # May not have enough proxies
         
         # Should have gotten at least one proxy
