@@ -218,6 +218,8 @@ class TestProxyPoolPublicContract:
             "max_resp_time",
             "min_queue",
             "strategy",
+            "import_timeout",
+            "max_import_retries",
         }
         actual_params = set(sig.parameters.keys())
         assert expected_params == actual_params

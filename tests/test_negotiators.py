@@ -38,8 +38,12 @@ class TestNegotiatorBehavior:
         self, mock_proxy, protocol, check_anon_lvl, use_full_path
     ):
         """Test that negotiators have correct protocol attributes."""
-        # This test validates the negotiator configuration that affects user behavior
-        mock_proxy.ngtr = protocol
+        from proxybroker.negotiators import NGTRS
+        
+        # Create the appropriate negotiator instance
+        negotiator_class = NGTRS[protocol]
+        mock_proxy.ngtr = negotiator_class(mock_proxy)
+        
         assert mock_proxy.ngtr.name == protocol
         assert mock_proxy.ngtr.check_anon_lvl is check_anon_lvl
         assert mock_proxy.ngtr.use_full_path is use_full_path
