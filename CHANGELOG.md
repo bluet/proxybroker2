@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0-beta1] - 2025-01-27
+## [2.0.0b1] - 2025-01-27
 
 🎯 **Near-Production Release - Enhanced Documentation & Testing**
 
@@ -187,8 +187,8 @@ _Note: This is the last release of the original ProxyBroker project by constveru
 ### Added
 - Initial commit with proxy checking functionality
 
-[Unreleased]: https://github.com/bluet/proxybroker2/compare/v2.0.0-beta1...HEAD
-[2.0.0-beta1]: https://github.com/bluet/proxybroker2/compare/v2.0.0-alpha8...v2.0.0-beta1
+[Unreleased]: https://github.com/bluet/proxybroker2/compare/v2.0.0b1...HEAD
+[2.0.0b1]: https://github.com/bluet/proxybroker2/compare/v2.0.0-alpha8...v2.0.0b1
 [2.0.0-alpha8]: https://github.com/bluet/proxybroker2/compare/v0.3.2...v2.0.0-alpha8
 [0.3.2]: https://github.com/constverum/ProxyBroker/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/constverum/ProxyBroker/compare/v0.3.0...v0.3.1
