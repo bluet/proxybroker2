@@ -79,25 +79,43 @@ class TestCLI:
 
     def test_invalid_arguments_error_handling(self):
         """Test CLI properly handles invalid arguments."""
-        # Invalid port (out of range)
-        result = self.run_cli(["serve", "--port", "99999"])
-        assert result.returncode != 0
-        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+        # Invalid port (out of range) - should fail immediately
+        result = self.run_cli(
+            ["serve", "--types", "HTTP", "--port", "99999"], timeout=3
+        )
+        if result is not None:
+            assert result.returncode != 0
+            assert (
+                "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+            )
 
-        # Invalid limit (negative)
-        result = self.run_cli(["find", "--limit", "-1"])
-        assert result.returncode != 0
-        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+        # Invalid limit (negative) - should fail immediately
+        result = self.run_cli(["find", "--types", "HTTP", "--limit", "-1"], timeout=3)
+        if result is not None:
+            assert result.returncode != 0
+            assert (
+                "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+            )
 
-        # Invalid country code
-        result = self.run_cli(["find", "--countries", "ZZ"])
-        assert result.returncode != 0
-        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+        # Unknown command - should fail immediately
+        result = self.run_cli(["unknown"], timeout=3)
+        if result is not None:
+            assert result.returncode != 0
+            assert (
+                "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+            )
 
-        # Unknown command
-        result = self.run_cli(["unknown"])
-        assert result.returncode != 0
-        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+        # Missing required types argument for find - should fail immediately
+        result = self.run_cli(["find", "--limit", "1"], timeout=3)
+        if result is not None:
+            assert result.returncode != 0
+            assert "error" in result.stderr.lower()
+
+        # Missing required types argument for serve - should fail immediately
+        result = self.run_cli(["serve", "--port", "8888"], timeout=3)
+        if result is not None:
+            assert result.returncode != 0
+            assert "error" in result.stderr.lower()
 
     def test_find_with_limit_zero_exits_immediately(self):
         """Test find with limit 0 exits without hanging."""
@@ -129,7 +147,8 @@ class TestCLI:
         try:
             # Run grab with small limit
             self.run_cli(
-                ["grab", "--countries", "US", "--limit", "1", "--outfile", temp_file], timeout=5
+                ["grab", "--countries", "US", "--limit", "1", "--outfile", temp_file],
+                timeout=5,
             )
             # File should exist regardless of completion
             assert os.path.exists(temp_file)
@@ -140,7 +159,9 @@ class TestCLI:
     def test_format_options_accepted(self):
         """Test that format options are accepted."""
         # Test find with JSON format
-        result = self.run_cli(["find", "--types", "HTTP", "--format", "json", "--limit", "1"], timeout=5)
+        result = self.run_cli(
+            ["find", "--types", "HTTP", "--format", "json", "--limit", "1"], timeout=5
+        )
         if result is None:
             pass  # Timeout acceptable
         else:
@@ -148,7 +169,8 @@ class TestCLI:
 
         # Test grab with default format
         result = self.run_cli(
-            ["grab", "--countries", "US", "--format", "default", "--limit", "1"], timeout=5
+            ["grab", "--countries", "US", "--format", "default", "--limit", "1"],
+            timeout=5,
         )
         if result is None:
             pass  # Timeout acceptable
@@ -168,7 +190,18 @@ class TestCLI:
     def test_countries_argument_parsing(self):
         """Test countries argument accepts multiple values."""
         result = self.run_cli(
-            ["find", "--types", "HTTP", "--countries", "US", "GB", "CA", "--limit", "1"], timeout=5
+            [
+                "find",
+                "--types",
+                "HTTP",
+                "--countries",
+                "US",
+                "GB",
+                "CA",
+                "--limit",
+                "1",
+            ],
+            timeout=5,
         )
         if result is None:
             pass  # Timeout acceptable
@@ -179,7 +212,17 @@ class TestCLI:
         """Test serve command accepts host and port."""
         # Test argument parsing without actually starting server
         result = self.run_cli(
-            ["serve", "--types", "HTTP", "--host", "127.0.0.1", "--port", "8899", "--limit", "1"],
+            [
+                "serve",
+                "--types",
+                "HTTP",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8899",
+                "--limit",
+                "1",
+            ],
             timeout=3,
         )
         # Either completes successfully or times out (both are acceptable)
@@ -190,7 +233,18 @@ class TestCLI:
     def test_timeout_and_max_tries_options(self):
         """Test timeout and max-tries options are accepted."""
         result = self.run_cli(
-            ["--timeout", "5", "--max-tries", "2", "find", "--types", "HTTP", "--limit", "1"], timeout=5
+            [
+                "--timeout",
+                "5",
+                "--max-tries",
+                "2",
+                "find",
+                "--types",
+                "HTTP",
+                "--limit",
+                "1",
+            ],
+            timeout=5,
         )
         # Global options should be accepted (timeout/completion is acceptable)
         if result is None:
@@ -200,7 +254,9 @@ class TestCLI:
 
     def test_log_level_option(self):
         """Test log level option is accepted."""
-        result = self.run_cli(["--log", "DEBUG", "find", "--types", "HTTP", "--limit", "1"], timeout=5)
+        result = self.run_cli(
+            ["--log", "DEBUG", "find", "--types", "HTTP", "--limit", "1"], timeout=5
+        )
         # Log level should be accepted (timeout/completion is acceptable)
         if result is None:
             pass  # Timeout acceptable

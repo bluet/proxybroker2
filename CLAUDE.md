@@ -9,7 +9,7 @@ ProxyBroker2 is a production-ready async proxy finder, checker, and server that 
 **Repository**: `bluet/proxybroker2` (GitHub)  
 **Status**: Production-ready with all critical bugs fixed  
 **Python Support**: 3.10-3.13  
-**Test Coverage**: 121/129 tests passing (94%)
+**Test Coverage**: 125/131 tests passing (95%)
 
 ## Common Development Commands
 
@@ -125,11 +125,14 @@ finally:
 
 ### Testing Philosophy
 
-Tests follow contract-based approach - test user-visible behavior, not implementation:
-- ✅ Test that proxies can be found and used
-- ✅ Test API signatures remain stable  
+Tests follow modern behavior-focused approach - test user-visible behavior, not implementation:
+- ✅ **Contract-based testing** - Protect public APIs while enabling refactoring
+- ✅ **Behavior-driven tests** - Test outcomes users care about, not internal mechanisms  
+- ✅ **Simple and maintainable** - Clear tests that serve as documentation
+- ✅ **Edge case handling** - Proper timeout and error condition testing
 - ❌ Don't test exact bytes in protocol handshakes
 - ❌ Don't test internal algorithm details
+- ❌ Don't use complex mock-heavy integration tests
 
 ## Recent Improvements (v2.0.0-alpha8)
 
@@ -142,10 +145,12 @@ Tests follow contract-based approach - test user-visible behavior, not implement
 - **Protocol selection**: Deterministic priority order
 
 ### Test Suite Overhaul ✅
-- **Behavior-focused testing**: Removed implementation-detail tests
-- **80% improvement**: From 42 failures to 8 failures
-- **Simple and maintainable**: Clean tests that serve as documentation
-- **Contract-based**: Protect public APIs while enabling refactoring
+- **Modern testing principles**: Behavior-focused, contract-based, maintainable
+- **Significant improvement**: From 8-10 failures to 6 failures (95% passing)
+- **125 passing tests**: Increased from 121 tests with better coverage
+- **Removed bad practices**: Eliminated complex mock-heavy integration tests
+- **Simple and maintainable**: Clean tests that serve as behavior documentation
+- **Contract-based**: Protect public APIs while enabling safe refactoring
 
 ### Known Remaining Issues
 
@@ -156,7 +161,7 @@ Tests follow contract-based approach - test user-visible behavior, not implement
 #### Development Notes
 - Remember to run `ruff` before committing
 - Always specify repo for GitHub CLI: `gh pr view 123 --repo bluet/proxybroker2`
-- Remaining 8 test failures are in complex checker mocks (non-critical)
+- Remaining 6 test failures are async edge cases (non-critical to core functionality)
 
 ## Development Workflows
 
