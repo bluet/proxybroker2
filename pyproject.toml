@@ -9,7 +9,7 @@ homepage = "https://proxybroker2.readthedocs.io/"
 documentation = "https://proxybroker2.readthedocs.io/"
 license = "Apache-2.0"
 readme = "README.md"
-packages = []
+packages = [{include = "proxybroker"}]
 include = ["proxybroker/data/*.mmdb"]
 classifiers = [
     'Development Status :: 5 - Production/Stable',
