@@ -181,6 +181,23 @@ Server chooses protocols deterministically with priority order:
 - **Tested**: Python 3.10-3.13 in CI pipeline
 - **Asyncio Compatibility**: All Python 3.13 deprecations resolved
 
+### Available Testing Environments
+Conda environments are pre-configured for cross-version testing:
+- **System Python**: 3.10.12 (`/usr/bin/python3`)
+- **py311-proxybroker**: Python 3.11.11 (`conda activate py311-proxybroker`)
+- **py312-proxybroker**: Python 3.12.9 (`conda activate py312-proxybroker`)
+- **py313-proxybroker**: Python 3.13.2 (`conda activate py313-proxybroker`)
+
+To run tests in a specific Python version:
+```bash
+# Example: Test with Python 3.11
+conda activate py311-proxybroker
+pytest tests/test_server.py -v
+
+# Or run without activating:
+conda run -n py311-proxybroker pytest tests/test_server.py -v
+```
+
 ### Key Configuration Points
 - **Timeouts**: Default 8s, configurable per-component
 - **Concurrency**: `max_conn` (default: 200), `MAX_CONCURRENT_PROVIDERS` (3)
