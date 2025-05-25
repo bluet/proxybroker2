@@ -462,11 +462,9 @@ We welcome contributions! The project has excellent test coverage and developmen
 ### Development Tools
 - **Poetry**: Dependency management
 - **ruff**: Ultra-fast linting and formatting
-- **pytest**: Testing framework with 131 passing tests
+- **pytest**: Testing framework
 - **Documentation**: See [CLAUDE.md](CLAUDE.md) for architecture details
 
-### Test Status
-✅ **All 131 tests passing** - The test suite is comprehensive and reliable, covering all core functionality.
 
 License
 -------
