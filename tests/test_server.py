@@ -485,11 +485,23 @@ class TestServer:
         assert CONNECTED == b"HTTP/1.1 200 Connection established\r\n\r\n"
 
     @pytest.mark.asyncio
-    async def test_server_context_manager(self, server):
-        """Test server as context manager."""
-        # Server doesn't implement context manager, so this should fail
-        # This test documents the current behavior
-        with pytest.raises(AttributeError, match="__aenter__"):
+    async def test_server_context_manager_not_implemented(self, server):
+        """Test that Server currently doesn't implement async context manager protocol.
+        
+        Note: This is not a requirement, just documenting current behavior.
+        Supporting async context manager would be a nice enhancement for cleaner API:
+        
+        async with Server(...) as server:
+            # server started automatically
+            pass
+        # server stopped automatically
+        """
+        # Server doesn't implement async context manager protocol
+        # Python 3.10: AttributeError('__aenter__')
+        # Python 3.11+: TypeError('Server' object does not support the asynchronous context manager protocol)
+        # This change was introduced in Python 3.11 (bpo-12022, bpo-44471)
+        # to provide clearer error messages for protocol violations
+        with pytest.raises((AttributeError, TypeError)):
             async with server:
                 pass
 
