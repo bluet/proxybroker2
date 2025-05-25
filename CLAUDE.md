@@ -13,7 +13,7 @@ ProxyBroker2 is an async proxy finder, checker, and server that discovers and va
 When using `gh` (GitHub CLI), always specify the repository as `bluet/proxybroker2`:
 ```bash
 # View PR
-gh pr view 185 --repo bluet/proxybroker2
+gh pr view <PR_NUMBER> --repo bluet/proxybroker2
 
 # Get PR comments
 gh api repos/bluet/proxybroker2/pulls/185/comments
