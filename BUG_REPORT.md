@@ -5,6 +5,7 @@
 ### 1. **Race Condition in api.py `_grab()` method** 
 **File**: `proxybroker/api.py:332`
 **Severity**: High
+**Status**: **FIXED** - Now uses `asyncio.create_task()` instead of deprecated `asyncio.ensure_future()`
 **Issue**: Uses deprecated `asyncio.ensure_future()` which can cause race conditions
 ```python
 # Line 332 - PROBLEMATIC
@@ -18,6 +19,7 @@ tasks = [asyncio.create_task(pr.get_proxies()) for pr in providers[:by]]
 ### 2. **Potential Deadlock in server.py `ProxyPool._import()`**
 **File**: `proxybroker/server.py:76-84`
 **Severity**: High
+**Status**: **FIXED** - Added timeout and maximum retry limit to prevent infinite loops
 **Issue**: Infinite loop with potential deadlock when proxy queue is exhausted
 ```python
 async def _import(self, expected_scheme):
@@ -36,6 +38,7 @@ async def _import(self, expected_scheme):
 ### 3. **Heap Corruption in server.py `ProxyPool.remove()`**
 **File**: `proxybroker/server.py:99-112`
 **Severity**: High
+**Status**: **FIXED** - Now properly rebuilds heap using heapq.heapify() after removal
 **Issue**: Direct list removal from heap breaks heap property
 ```python
 # Lines 106-110 - HEAP CORRUPTION
@@ -50,6 +53,7 @@ for priority, proxy in self._pool:
 ### 4. **Memory Leak in api.py Signal Handler**
 **File**: `proxybroker/api.py:113`
 **Severity**: Medium-High
+**Status**: **FIXED** - Signal handlers are now properly removed in cleanup/stop methods
 **Issue**: Signal handler may not be properly cleaned up
 ```python
 self._loop.add_signal_handler(signal.SIGINT, self.stop)
@@ -89,6 +93,7 @@ raise RuntimeError('Not found judges')  # ✅ Now correctly raises
 ### 8. **Proxy Priority Logic Issue in server.py**
 **File**: `proxybroker/server.py:95`
 **Severity**: Medium
+**Status**: **FIXED** - Now correctly uses `proxy.avg_resp_time` for heap priority
 **Issue**: Uses `proxy.priority` but Proxy class doesn't define this attribute
 ```python
 heapq.heappush(self._pool, (proxy.priority, proxy))  # ⚠️ AttributeError risk
@@ -98,6 +103,7 @@ heapq.heappush(self._pool, (proxy.priority, proxy))  # ⚠️ AttributeError ris
 ### 9. **Type Safety Issues in server.py**
 **File**: `proxybroker/server.py:361-374`
 **Severity**: Medium
+**Status**: **FIXED** - Now uses deterministic priority order for protocol selection
 **Issue**: Protocol selection uses `.pop()` on set which is non-deterministic
 ```python
 relevant = {'HTTP', 'CONNECT:80', 'SOCKS4', 'SOCKS5'} & proxy.types.keys()

@@ -78,6 +78,7 @@ class Broker:
         self._all_tasks = []
         self._checker = None
         self._server = None
+        self._signal_handler_registered = False
         self._limit = 0  # not limited
         self._countries = None
 
@@ -111,6 +112,7 @@ class Broker:
         if stop_broker_on_sigint and self._loop:
             try:
                 self._loop.add_signal_handler(signal.SIGINT, self.stop)
+                self._signal_handler_registered = True
                 # add_signal_handler() is not implemented on Win
                 # https://docs.python.org/3.5/library/asyncio-eventloops.html#windows
             except NotImplementedError:
@@ -424,6 +426,14 @@ class Broker:
         if self._server:
             self._server.stop()
             self._server = None
+        # Clean up signal handler to prevent memory leak
+        if self._signal_handler_registered and self._loop:
+            try:
+                self._loop.remove_signal_handler(signal.SIGINT)
+                self._signal_handler_registered = False
+            except (NotImplementedError, ValueError):
+                # NotImplementedError on Windows, ValueError if handler wasn't set
+                pass
         log.info("Stop!")
 
     def _done(self):
