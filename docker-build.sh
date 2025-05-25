@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=v2.0.0-alpha8
+VERSION=v2.0.0-beta1
 IMAGE_NAME=bluet/proxybroker2
 
 docker build --pull -t ${IMAGE_NAME} .

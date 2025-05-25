@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-beta1] - 2025-01-27
+
+🎯 **Near-Production Release - Enhanced Documentation & Testing**
+
+### Added
+- Enhanced auto-generated documentation with Napoleon and autosummary
+- Comprehensive serve command testing and production verification
+- Modern MyST-Parser configuration with advanced Markdown features
+- Cross-references to Python and aiohttp documentation
+- Conventional commit template for structured development
+
+### Changed
+- Modernized documentation stack to 2025 best practices (Sphinx 8.x, MyST-Parser 4.x)
+- Updated all README examples to work correctly (fixed missing --types parameters)
+- Corrected ReadTheDocs project name to proxybroker2
+- Enhanced CLAUDE.md with comprehensive documentation strategy
+- Improved migration guide with correct v0.3.2 baseline
+- Optimized Sphinx configuration with latest extensions
+
+### Fixed
+- All README command examples now work without errors
+- ReadTheDocs URLs point to proxybroker2 instead of legacy proxybroker
+- Documentation builds successfully with modern toolchain
+- Serve command thoroughly tested for Docker/production use
+
+### Removed
+- Outdated analysis files (BUG_REPORT.md, CODE_ISSUES_FOUND.md, CRITICAL_FIXES.py)
+- Old RST changelog in favor of modern Markdown format
+- Redundant test status documentation (CI badges show real-time status)
+
 ## [2.0.0-alpha8] - 2025-01-26
 
 🚀 **Production-Ready Release - All Critical Bugs Fixed**
@@ -157,7 +187,8 @@ _Note: This is the last release of the original ProxyBroker project by constveru
 ### Added
 - Initial commit with proxy checking functionality
 
-[Unreleased]: https://github.com/bluet/proxybroker2/compare/v2.0.0-alpha8...HEAD
+[Unreleased]: https://github.com/bluet/proxybroker2/compare/v2.0.0-beta1...HEAD
+[2.0.0-beta1]: https://github.com/bluet/proxybroker2/compare/v2.0.0-alpha8...v2.0.0-beta1
 [2.0.0-alpha8]: https://github.com/bluet/proxybroker2/compare/v0.3.2...v2.0.0-alpha8
 [0.3.2]: https://github.com/constverum/ProxyBroker/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/constverum/ProxyBroker/compare/v0.3.0...v0.3.1
