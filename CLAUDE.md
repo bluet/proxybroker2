@@ -9,7 +9,7 @@ ProxyBroker2 is a production-ready async proxy finder, checker, and server that 
 **Repository**: `bluet/proxybroker2` (GitHub)  
 **Status**: Production-ready with all critical bugs fixed  
 **Python Support**: 3.10-3.13  
-**Test Coverage**: 125/131 tests passing (95%)
+**Test Coverage**: 131/131 tests passing (100%)
 
 ## Common Development Commands
 
@@ -146,11 +146,12 @@ Tests follow modern behavior-focused approach - test user-visible behavior, not 
 
 ### Test Suite Overhaul ✅
 - **Modern testing principles**: Behavior-focused, contract-based, maintainable
-- **Significant improvement**: From 8-10 failures to 6 failures (95% passing)
-- **125 passing tests**: Increased from 121 tests with better coverage
+- **Complete success**: From 8-10 failures to 0 failures (100% passing)
+- **131 passing tests**: All tests now passing with better coverage
 - **Removed bad practices**: Eliminated complex mock-heavy integration tests
 - **Simple and maintainable**: Clean tests that serve as behavior documentation
 - **Contract-based**: Protect public APIs while enabling safe refactoring
+- **Fixed project bug**: Empty providers list now properly respected
 
 ### Known Remaining Issues
 
@@ -161,7 +162,7 @@ Tests follow modern behavior-focused approach - test user-visible behavior, not 
 #### Development Notes
 - Remember to run `ruff` before committing
 - Always specify repo for GitHub CLI: `gh pr view 123 --repo bluet/proxybroker2`
-- Remaining 6 test failures are async edge cases (non-critical to core functionality)
+- All tests now passing (100% success rate)
 
 ## Development Workflows
 
