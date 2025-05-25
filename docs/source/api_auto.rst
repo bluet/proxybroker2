@@ -1,7 +1,7 @@
-API Reference (Auto-Generated)
-===============================
+Complete API Reference (Auto-Generated)
+=========================================
 
-This page demonstrates auto-generated documentation from docstrings.
+This is the complete technical reference auto-generated from docstrings. For a user-friendly guide, see :doc:`api`.
 
 .. currentmodule:: proxybroker
 
@@ -23,6 +23,7 @@ Broker
    :members:
    :inherited-members:
    :show-inheritance:
+   :noindex:
 
 Proxy
 -----
@@ -31,6 +32,15 @@ Proxy
    :members:
    :inherited-members:
    :show-inheritance:
+   :noindex:
+
+Provider
+--------
+
+.. autoclass:: Provider
+   :members:
+   :show-inheritance:
+   :noindex:
 
 Errors
 ------

@@ -74,7 +74,5 @@ exclude = '''
 exclude = ["CRITICAL_FIXES.py"]
 
 [tool.pytest.ini_options]
-flake8-ignore = ['*.py']
-isort_ignore = ['*.py']
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

@@ -43,10 +43,8 @@ class Proxy:
 
         :param str host: A passed host can be a domain or IP address.
                          If the host is a domain, try to resolve it
-        :param str *args:
-            (optional) Positional arguments that :class:`Proxy` takes
-        :param str **kwargs:
-            (optional) Keyword arguments that :class:`Proxy` takes
+        :param args: (optional) Positional arguments that :class:`Proxy` takes
+        :param kwargs: (optional) Keyword arguments that :class:`Proxy` takes
 
         :return: :class:`Proxy` object
         :rtype: proxybroker.Proxy
@@ -198,7 +196,8 @@ class Proxy:
 
     @property
     def avgRespTime(self):
-        """
+        """Deprecated property, use avg_resp_time instead.
+
         .. deprecated:: 2.0
             Use :attr:`avg_resp_time` instead.
         """

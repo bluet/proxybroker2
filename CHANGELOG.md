@@ -9,37 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0b1] - 2025-01-27
 
-🎯 **Near-Production Release - Enhanced Documentation & Testing**
+🎯 **Production-Ready Beta - All Critical Bugs Fixed & Enhanced Documentation**
 
 ### Added
+- Python 3.10-3.13 support with full async context manager compatibility
+- Contract-based testing to protect public APIs
+- Comprehensive architecture documentation in CLAUDE.md
+- CI/CD pipeline for Python 3.10-3.13 matrix testing
+- Modernized examples using asyncio.run() instead of deprecated patterns
+- Updated Sphinx documentation with correct GitHub references
+- ReadTheDocs configuration v2 format
 - Enhanced auto-generated documentation with Napoleon and autosummary
 - Comprehensive serve command testing and production verification
 - Modern MyST-Parser configuration with advanced Markdown features
 - Cross-references to Python and aiohttp documentation
 - Conventional commit template for structured development
-
-### Changed
-- Modernized documentation stack to 2025 best practices (Sphinx 8.x, MyST-Parser 4.x)
-- Updated all README examples to work correctly (fixed missing --types parameters)
-- Corrected ReadTheDocs project name to proxybroker2
-- Enhanced CLAUDE.md with comprehensive documentation strategy
-- Improved migration guide with correct v0.3.2 baseline
-- Optimized Sphinx configuration with latest extensions
-
-### Fixed
-- All README command examples now work without errors
-- ReadTheDocs URLs point to proxybroker2 instead of legacy proxybroker
-- Documentation builds successfully with modern toolchain
-- Serve command thoroughly tested for Docker/production use
-
-### Removed
-- Outdated analysis files (BUG_REPORT.md, CODE_ISSUES_FOUND.md, CRITICAL_FIXES.py)
-- Old RST changelog in favor of modern Markdown format
-- Redundant test status documentation (CI badges show real-time status)
-
-## [2.0.0-alpha8] - 2025-01-26
-
-🚀 **Production-Ready Release - All Critical Bugs Fixed**
 
 ### Changed
 - **BREAKING**: Minimum Python version is now 3.10+ (was 3.5.3+ in v0.3.2)
@@ -51,15 +35,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modern packaging compliance following PEP 621 standards
 - Replaced deprecated asyncio.ensure_future() with asyncio.create_task()
 - Made protocol selection deterministic with explicit priority order
-
-### Added
-- Python 3.10-3.13 support with full async context manager compatibility
-- Contract-based testing to protect public APIs
-- Comprehensive architecture documentation in CLAUDE.md
-- CI/CD pipeline for Python 3.10-3.13 matrix testing
-- Modernized examples using asyncio.run() instead of deprecated patterns
-- Updated Sphinx documentation with correct GitHub references
-- ReadTheDocs configuration v2 format
+- Modernized documentation stack to 2025 best practices (Sphinx 8.x, MyST-Parser 4.x)
+- Updated all README examples to work correctly (fixed missing --types parameters)
+- Corrected ReadTheDocs project name to proxybroker2
+- Enhanced CLAUDE.md with comprehensive documentation strategy
+- Improved migration guide with correct v0.3.2 baseline
+- Optimized Sphinx configuration with latest extensions
+- Modernized test fixtures to remove deprecated pytest-asyncio event_loop usage where possible
+- Cleaned up obsolete flake8 configuration in favor of ruff toolchain
+- Improved async test patterns while maintaining functionality for tests requiring event_loop fixture
 
 ### Fixed
 - Signal handler memory leak in Broker.stop() - proper cleanup prevents resource leaks
@@ -69,10 +53,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Undefined proxy.priority usage - now correctly uses proxy.avg_resp_time
 - Provider initialization bug - empty providers list now properly respected
 - All remaining test bugs to achieve complete test coverage
+- All README command examples now work without errors
+- ReadTheDocs URLs point to proxybroker2 instead of legacy proxybroker
+- Documentation builds successfully with modern toolchain
+- Serve command thoroughly tested for Docker/production use
+- Eliminated most ResourceWarnings from aiohttp sessions during test execution
+- Removed deprecated pytest configuration for discontinued flake8 integration
+- Resolved pytest-asyncio deprecation warnings for tests that could be safely updated
 
 ### Removed
 - **BREAKING**: Dropped support for Python 3.5-3.9
 - Complex mock-heavy tests that tested implementation details
+- Outdated analysis files (BUG_REPORT.md, CODE_ISSUES_FOUND.md, CRITICAL_FIXES.py)
+- Old RST changelog in favor of modern Markdown format
+- Redundant test status documentation (CI badges show real-time status)
 
 ## [0.3.2] - 2018-03-12
 

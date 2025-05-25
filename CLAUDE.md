@@ -134,6 +134,13 @@ Single source of truth in `pyproject.toml`, auto-detected in development mode
 - Don't overfit tests to current implementation
 - Simple tests that serve as documentation
 
+### Warning Management
+- **Function over form** - Keep warnings that preserve functionality (e.g., event_loop fixture for working tests)
+- **Fix fixable warnings** - Address RST syntax errors, deprecated configurations, resource leaks
+- **External dependency warnings** - Accept pycares/aiodns DNS resolver cleanup warnings (unfixable)
+- **Documentation warnings** - Reduce from 42 to 34 using proper architecture, maintain full content
+- **Avoid anti-patterns** - No broad warning suppressions or `:noindex:` misuse
+
 ## Documentation Guidelines
 
 ### Auto-Generated vs Hand-Written Strategy
@@ -196,7 +203,7 @@ docs/source/
 - **attrs** 22.1.0 → 25.3.0 (Python 3.10+ optimizations)
 - **pytest** 7.1.2 → 8.3.5 (modern testing framework)
 - **Removed redundant tools** - flake8/isort replaced by ruff
-- **Zero deprecation warnings** - Clean asyncio SSL connections
+- **Clean warning profile** - Fixed asyncio SSL deprecations, minimal remaining warnings
 
 ### Documentation Strategy
 - **80% Auto-generated** - API reference from docstrings (19.6% coverage, high quality)
