@@ -487,10 +487,10 @@ class TestServer:
     @pytest.mark.asyncio
     async def test_server_context_manager_not_implemented(self, server):
         """Test that Server currently doesn't implement async context manager protocol.
-        
+
         Note: This is not a requirement, just documenting current behavior.
         Supporting async context manager would be a nice enhancement for cleaner API:
-        
+
         async with Server(...) as server:
             # server started automatically
             pass
