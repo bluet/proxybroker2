@@ -12,7 +12,7 @@ ProxyBroker2
     :target: https://github.com/bluet/proxybroker2/releases
 .. image:: https://img.shields.io/github/actions/workflow/status/bluet/proxybroker2/python-test-versions.yml?style=flat-square
     :target: https://github.com/bluet/proxybroker2/actions
-.. image:: https://img.shields.io/badge/python-3.10%2B-blue.svg?style=flat-square
+.. image:: https://img.shields.io/badge/python-3.10--3.13-blue.svg?style=flat-square
     :target: https://github.com/bluet/proxybroker2
 .. image:: https://img.shields.io/github/license/bluet/proxybroker2.svg?style=flat-square
     :target: https://github.com/bluet/proxybroker2/blob/master/LICENSE

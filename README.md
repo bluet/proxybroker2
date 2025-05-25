@@ -98,10 +98,14 @@ $ docker run --rm bluet/proxybroker2 --help
 Requirements
 ------------
 
--   Python 3.10+
--   [aiohttp](https://pypi.python.org/pypi/aiohttp)
--   [aiodns](https://pypi.python.org/pypi/aiodns)
--   [maxminddb](https://pypi.python.org/pypi/maxminddb)
+-   **Python 3.10-3.13** (latest stable versions supported)
+-   **Core Dependencies** (automatically installed):
+    -   [aiohttp](https://pypi.python.org/pypi/aiohttp) 3.12.0+ (modern asyncio HTTP client/server)
+    -   [aiodns](https://pypi.python.org/pypi/aiodns) 3.4.0+ (fast async DNS resolution)
+    -   [maxminddb](https://pypi.python.org/pypi/maxminddb) 2.7.0+ (GeoIP database reader)
+    -   [attrs](https://pypi.python.org/pypi/attrs) 25.3.0+ (modern data classes)
+    -   [cachetools](https://pypi.python.org/pypi/cachetools) 5.5.2+ (caching utilities)
+    -   [click](https://pypi.python.org/pypi/click) 8.2.1+ (CLI framework)
 
 Installation
 ------------
@@ -531,10 +535,12 @@ We welcome contributions! The project has excellent test coverage and developmen
 7. **Submit a pull request**!
 
 ### Development Tools
-- **Poetry**: Dependency management and virtual environments
-- **ruff**: Ultra-fast linting and formatting (zero violations)
-- **pytest**: Testing framework with comprehensive coverage
-- **Sphinx + MyST**: Modern documentation with auto-generation
+- **Poetry 2.1.3+**: Modern dependency management and virtual environments
+- **ruff**: Ultra-fast linting and formatting (replaces flake8/isort)
+- **pytest 8.3.5+**: Modern testing framework with async support
+- **pytest-asyncio 0.26.0+**: Enhanced async testing capabilities
+- **pytest-cov 6.1.1+**: Comprehensive coverage reporting
+- **Sphinx 8.0+ + MyST-Parser 4.0+**: Modern documentation with auto-generation
 - **ReadTheDocs**: Professional documentation hosting
 - **Conventional commits**: Structured commit format for automation
 - **Architecture guide**: See [CLAUDE.md](CLAUDE.md) for detailed insights

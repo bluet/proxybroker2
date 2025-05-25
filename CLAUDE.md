@@ -8,7 +8,7 @@ ProxyBroker2 is an async proxy finder, checker, and server. It discovers public 
 
 **Repository**: `bluet/proxybroker2` (GitHub)  
 **Python**: 3.10-3.13  
-**Key Dependencies**: aiohttp, aiodns, asyncio
+**Key Dependencies**: aiohttp 3.12.0+, aiodns 3.4.0+, attrs 25.3.0+, asyncio
 
 ## Common Development Commands
 
@@ -181,12 +181,22 @@ docs/source/
 - **Zero critical bugs** - Fixed all signal handler leaks, deadlocks, heap corruption
 - **Modern async patterns** - Updated from deprecated asyncio patterns
 - **Python 3.10-3.13 support** - Full compatibility with latest Python versions
+- **Modern dependencies** - Updated to latest stable versions (May 2025)
 
 ### Testing & Quality
 - **Behavior-focused tests** - Contract-based testing protects APIs during refactoring
 - **Eliminated brittle tests** - Removed implementation-detail testing
 - **Comprehensive coverage** - Tests protect user-visible functionality
 - **CI/CD matrix testing** - Verified across Python 3.10-3.13
+- **Modern toolchain** - ruff for linting/formatting, pytest 8.3.5+
+
+### Dependency Updates (May 2025)
+- **aiohttp** 3.10.11 → 3.12.0 (asyncio deprecation fixes)
+- **aiodns** 3.1.1 → 3.4.0 (DNS resolution improvements)
+- **attrs** 22.1.0 → 25.3.0 (Python 3.10+ optimizations)
+- **pytest** 7.1.2 → 8.3.5 (modern testing framework)
+- **Removed redundant tools** - flake8/isort replaced by ruff
+- **Zero deprecation warnings** - Clean asyncio SSL connections
 
 ### Documentation Strategy
 - **80% Auto-generated** - API reference from docstrings (19.6% coverage, high quality)
