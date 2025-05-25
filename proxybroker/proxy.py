@@ -304,18 +304,36 @@ class Proxy:
         try:
             if ssl:
                 _type = "ssl"
-                sock = self._writer["conn"].get_extra_info("socket")
-                params = {
-                    "ssl": self._ssl_context,
-                    "sock": sock,
-                    "server_hostname": self.host,
-                }
+                # For SSL connections over existing proxy connection, we need to upgrade
+                # the existing connection to SSL. Use start_tls to avoid deprecated socket access.
+                transport = self._writer["conn"].transport
+                protocol = asyncio.StreamReaderProtocol(asyncio.StreamReader())
+
+                # Upgrade transport to SSL
+                ssl_transport = await asyncio.wait_for(
+                    asyncio.get_event_loop().start_tls(
+                        transport,
+                        protocol,
+                        self._ssl_context,
+                        server_hostname=self.host,
+                    ),
+                    timeout=self._timeout,
+                )
+
+                # Create new reader/writer for SSL connection
+                self._reader[_type] = protocol._stream_reader
+                self._writer[_type] = asyncio.StreamWriter(
+                    ssl_transport,
+                    protocol,
+                    self._reader[_type],
+                    asyncio.get_event_loop(),
+                )
             else:
                 _type = "conn"
                 params = {"host": self.host, "port": self.port}
-            self._reader[_type], self._writer[_type] = await asyncio.wait_for(
-                asyncio.open_connection(**params), timeout=self._timeout
-            )
+                self._reader[_type], self._writer[_type] = await asyncio.wait_for(
+                    asyncio.open_connection(**params), timeout=self._timeout
+                )
         except asyncio.TimeoutError:
             msg += "Connection: timeout"
             err = ProxyTimeoutError(msg)
@@ -338,12 +356,22 @@ class Proxy:
         if self._closed:
             return
         self._closed = True
-        if self.writer:
+
+        # Close SSL writer first if it exists
+        if self._writer.get("ssl"):
             try:
-                self.writer.close()
+                self._writer["ssl"].close()
             except Exception as e:
-                # Log the error but don't let it prevent cleanup
-                self.log(f"Error closing writer: {e}")
+                self.log(f"Error closing SSL writer: {e}")
+
+        # Close connection writer
+        if self._writer.get("conn"):
+            try:
+                self._writer["conn"].close()
+            except Exception as e:
+                self.log(f"Error closing connection writer: {e}")
+
+        # Clear references
         self._reader = {"conn": None, "ssl": None}
         self._writer = {"conn": None, "ssl": None}
         self.log("Connection: closed")
