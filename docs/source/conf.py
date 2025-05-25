@@ -33,8 +33,31 @@ _docs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _path_to_init = os.path.abspath(
     os.path.join(_docs_path, "..", "proxybroker", "__init__.py")
 )
+
+
+# Modern version management: Single source of truth in pyproject.toml
+def get_version():
+    """Get version from pyproject.toml."""
+    pyproject_path = os.path.abspath(os.path.join(_docs_path, "..", "pyproject.toml"))
+    try:
+        with codecs.open(pyproject_path, mode="r", encoding="utf-8") as f:
+            content = f.read()
+            # Match both [tool.poetry] and [project] sections
+            match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+            if match:
+                return match.group(1)
+    except FileNotFoundError:
+        pass
+    raise RuntimeError("Unable to find version in pyproject.toml")
+
+
+# Get metadata from __init__.py (everything except version)
 with codecs.open(_path_to_init, mode="r", encoding="utf-8") as f:
-    _INFO = dict(re.findall(r"__(\w+)__ = '([^']+)'", f.read(), re.MULTILINE))
+    content = f.read()
+    _INFO = dict(re.findall(r"__(\w+)__ = ['\"]([^'\"]+)['\"]", content, re.MULTILINE))
+
+# Get version from pyproject.toml (single source of truth)
+_INFO["version"] = get_version()
 
 # If your documentation needs a minimal Sphinx version, state it here.
 # needs_sphinx = '1.0'

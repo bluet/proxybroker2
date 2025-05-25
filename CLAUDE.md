@@ -175,4 +175,10 @@ python -X dev -m proxybroker find --limit 5
 - CLI uses argparse (not Click) with subcommands
 - Entry points: `__main__.py` for module, `py2exe_entrypoint.py` for executables
 - GeoIP database bundled in `proxybroker/data/`
-- Version should be updated in `pyproject.toml` only
+
+### Version Management (Modern Approach)
+- **Single source of truth**: `pyproject.toml` version field
+- **Development mode**: Automatically reads from pyproject.toml when available
+- **Installed mode**: Uses `importlib.metadata` for installed packages
+- **Auto-parsed by**: setup.py, docs/source/conf.py, CLI, runtime imports
+- **To update version**: Only edit `pyproject.toml` - all other sources sync automatically

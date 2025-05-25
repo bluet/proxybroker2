@@ -5,8 +5,29 @@ from setuptools import setup
 
 # https://packaging.python.org/en/latest/distributing/
 
+
+# Modern version management: Single source of truth in pyproject.toml
+def get_version():
+    """Get version from pyproject.toml."""
+    try:
+        with codecs.open("pyproject.toml", mode="r", encoding="utf-8") as f:
+            content = f.read()
+            # Match both [tool.poetry] and [project] sections
+            match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+            if match:
+                return match.group(1)
+    except FileNotFoundError:
+        pass
+    raise RuntimeError("Unable to find version in pyproject.toml")
+
+
+# Get metadata from __init__.py (everything except version)
 with codecs.open("proxybroker/__init__.py", mode="r", encoding="utf-8") as f:
-    INFO = dict(re.findall(r"__(\w+)__ = '([^']+)'", f.read(), re.MULTILINE))
+    content = f.read()
+    INFO = dict(re.findall(r"__(\w+)__ = ['\"]([^'\"]+)['\"]", content, re.MULTILINE))
+
+# Get version from pyproject.toml (single source of truth)
+INFO["version"] = get_version()
 
 with codecs.open("README.md", mode="r", encoding="utf-8") as f:
     INFO["long_description"] = f.read()
