@@ -165,8 +165,8 @@ After installation, you can immediately start finding proxies:
 # Find 5 working HTTP proxies
 $ python -m proxybroker find --types HTTP --limit 5
 
-# Find 10 US proxies
-$ python -m proxybroker find --countries US --limit 10
+# Find 10 US HTTP proxies
+$ python -m proxybroker find --types HTTP --countries US --limit 10
 
 # Run local proxy server on port 8888
 $ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
@@ -221,20 +221,19 @@ from proxybroker import Broker
 async def show(proxies):
     while True:
         proxy = await proxies.get()
-        if proxy is None: break
-        print('Found proxy: %s' % proxy)
+        if proxy is None:
+            break
+        print("Found proxy: %s" % proxy)
 
 async def main():
     proxies = asyncio.Queue()
     broker = Broker(proxies)
-    
-    # Gather coroutines
     await asyncio.gather(
-        broker.find(types=['HTTP', 'HTTPS'], limit=10),
+        broker.find(types=["HTTP", "HTTPS"], limit=10),
         show(proxies)
     )
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
 ```
 
