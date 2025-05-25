@@ -40,6 +40,18 @@ pytest --cov=proxybroker --cov-report=term-missing
 ruff check . --fix && ruff format .
 ```
 
+### Documentation
+```bash
+# Build documentation locally
+cd docs && make html
+
+# Clean build
+cd docs && make clean && make html
+
+# Docstring coverage check
+python -c "import ast; import os; ..." # See script in README for details
+```
+
 ### CLI Usage
 ```bash
 # Find proxies
@@ -122,6 +134,40 @@ Single source of truth in `pyproject.toml`, auto-detected in development mode
 - Don't overfit tests to current implementation
 - Simple tests that serve as documentation
 
+## Documentation Guidelines
+
+### Auto-Generated vs Hand-Written Strategy
+- **Auto-generate**: API reference, function signatures, class hierarchies
+- **Hand-write**: Getting started, tutorials, architecture explanations, migration guides
+- **Leverage existing**: 44/224 (19.6%) functions have high-quality docstrings
+
+### Sphinx Configuration (docs/source/conf.py)
+```python
+extensions = [
+    "sphinx.ext.autodoc",      # Auto-generate from docstrings
+    "sphinx.ext.autosummary",  # Create overview tables
+    "sphinx.ext.napoleon",     # Google/NumPy style docstrings
+    "myst_parser",            # Modern Markdown support
+]
+```
+
+### MyST-Parser Features Enabled
+- `colon_fence` - ::: directive fences
+- `deflist` - Definition lists  
+- `tasklist` - GitHub-style checkboxes
+- `linkify` - Auto-link URLs
+- `strikethrough` - ~~text~~ support
+
+### Documentation Structure
+```
+docs/source/
+├── api.rst          # Curated API guide
+├── api_auto.rst     # Auto-generated complete reference  
+├── examples.rst     # Hand-written tutorials
+├── changelog.md     # Auto-included from root CHANGELOG.md
+└── index.rst        # Main documentation page
+```
+
 ## Known Quirks
 
 - Uses both Poetry and setuptools for compatibility
@@ -142,9 +188,11 @@ Single source of truth in `pyproject.toml`, auto-detected in development mode
 - **Comprehensive coverage** - Tests protect user-visible functionality
 - **CI/CD matrix testing** - Verified across Python 3.10-3.13
 
-### Documentation
-- **Updated Sphinx docs** - Correct GitHub references and modern examples
-- **ReadTheDocs ready** - Modern v2 configuration
-- **Modern changelog** - Converted to CHANGELOG.md following Keep a Changelog standard
-- **Comprehensive CLAUDE.md** - Architecture insights for AI assistance
-- **Conventional commits** - Template for structured commit messages
+### Documentation Strategy
+- **80% Auto-generated** - API reference from docstrings (19.6% coverage, high quality)
+- **20% Hand-written** - Guides, tutorials, architecture explanations
+- **Sphinx 8.1.3 + MyST-Parser 4.0.1** - Latest stable versions (Feb 2025)
+- **Enhanced autodoc** - Napoleon, autosummary, inheritance display
+- **Modern changelog** - CHANGELOG.md following Keep a Changelog standard
+- **ReadTheDocs hosting** - Multiple formats (HTML, PDF, htmlzip)
+- **Conventional commits** - Structured format for release automation

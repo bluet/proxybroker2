@@ -473,7 +473,18 @@ asyncio.run(main())  # Modern async pattern
 Documentation
 -------------
 
-<https://proxybroker.readthedocs.io/>
+**📚 Complete Documentation**: <https://proxybroker.readthedocs.io/>
+
+Our documentation uses a modern approach:
+- **Auto-generated API reference** - Always current with source code
+- **Hand-written guides** - Installation, tutorials, architecture
+- **Enhanced Sphinx setup** - MyST-Parser, auto-linking, cross-references
+
+### Documentation Features
+- **Live API docs** - Generated from docstrings (19.6% coverage, high quality)
+- **Multiple formats** - HTML, PDF, downloadable archives
+- **Modern Markdown** - Enhanced syntax with MyST-Parser
+- **Cross-references** - Links to Python and aiohttp documentation
 
 TODO
 ----
@@ -521,10 +532,13 @@ We welcome contributions! The project has excellent test coverage and developmen
 7. **Submit a pull request**!
 
 ### Development Tools
-- **Poetry**: Dependency management
-- **ruff**: Ultra-fast linting and formatting
-- **pytest**: Testing framework
-- **Documentation**: See [CLAUDE.md](CLAUDE.md) for architecture details
+- **Poetry**: Dependency management and virtual environments
+- **ruff**: Ultra-fast linting and formatting (zero violations)
+- **pytest**: Testing framework with comprehensive coverage
+- **Sphinx + MyST**: Modern documentation with auto-generation
+- **ReadTheDocs**: Professional documentation hosting
+- **Conventional commits**: Structured commit format for automation
+- **Architecture guide**: See [CLAUDE.md](CLAUDE.md) for detailed insights
 
 
 License
