@@ -1,4 +1,3 @@
-
 import asyncio
 import ipaddress
 import os.path
@@ -14,11 +13,11 @@ from .errors import ResolveError
 from .utils import DATA_DIR, log
 
 GeoData = namedtuple(
-    'GeoData', ['code', 'name', 'region_code', 'region_name', 'city_name']
+    "GeoData", ["code", "name", "region_code", "region_name", "city_name"]
 )
 
-_countrydb = os.path.join(DATA_DIR, 'GeoLite2-Country.mmdb')
-_citydb = os.path.join(DATA_DIR, 'GeoLite2-City.mmdb')
+_countrydb = os.path.join(DATA_DIR, "GeoLite2-Country.mmdb")
+_citydb = os.path.join(DATA_DIR, "GeoLite2-City.mmdb")
 _geo_db = _citydb if os.path.exists(_citydb) else _countrydb
 
 _mmdb_reader = maxminddb.open_database(_geo_db)
@@ -29,13 +28,13 @@ class Resolver:
 
     _cached_hosts = {}
     _ip_hosts = [
-        'https://wtfismyip.com/text',
-        'http://api.ipify.org/',
-        'http://ipinfo.io/ip',
-        'http://ipv4.icanhazip.com/',
-        'http://myexternalip.com/raw',
-        'http://ipinfo.io/ip',
-        'http://ifconfig.io/ip',
+        "https://wtfismyip.com/text",
+        "http://api.ipify.org/",
+        "http://ipinfo.io/ip",
+        "http://ipv4.icanhazip.com/",
+        "http://myexternalip.com/raw",
+        "http://ipinfo.io/ip",
+        "http://ifconfig.io/ip",
     ]
     # the list of resolvers will point a copy of original one
     _temp_host = []
@@ -54,7 +53,7 @@ class Resolver:
         """Check a host is IP address."""
         # TODO: add IPv6 support
         try:
-            host = '.'.join(f'{int(n)}' for n in host.split('.'))
+            host = ".".join(f"{int(n)}" for n in host.split("."))
             ipaddress.IPv4Address(host)
         except (ipaddress.AddressValueError, ValueError):
             return False
@@ -77,19 +76,19 @@ class Resolver:
         except (maxminddb.errors.InvalidDatabaseError, ValueError):
             ipInfo = {}
 
-        code, name = '--', 'Unknown'
-        city_name, region_code, region_name = ('Unknown',) * 3
-        if 'country' in ipInfo:
-            code = ipInfo['country']['iso_code']
-            name = ipInfo['country']['names']['en']
-        elif 'continent' in ipInfo:
-            code = ipInfo['continent']['code']
-            name = ipInfo['continent']['names']['en']
-        if 'city' in ipInfo:
-            city_name = ipInfo['city']['names']['en']
-        if 'subdivisions' in ipInfo:
-            region_code = ipInfo['subdivisions'][0]['iso_code']
-            region_name = ipInfo['subdivisions'][0]['names']['en']
+        code, name = "--", "Unknown"
+        city_name, region_code, region_name = ("Unknown",) * 3
+        if "country" in ipInfo:
+            code = ipInfo["country"]["iso_code"]
+            name = ipInfo["country"]["names"]["en"]
+        elif "continent" in ipInfo:
+            code = ipInfo["continent"]["code"]
+            name = ipInfo["continent"]["names"]["en"]
+        if "city" in ipInfo:
+            city_name = ipInfo["city"]["names"]["en"]
+        if "subdivisions" in ipInfo:
+            region_code = ipInfo["subdivisions"][0]["iso_code"]
+            region_name = ipInfo["subdivisions"][0]["names"]["en"]
         return GeoData(code, name, region_code, region_name, city_name)
 
     def _pop_random_ip_host(self):
@@ -105,22 +104,23 @@ class Resolver:
         while self._temp_host:
             try:
                 timeout = aiohttp.ClientTimeout(total=self._timeout)
-                async with aiohttp.ClientSession(
-                    timeout=timeout
-                ) as session, session.get(self._pop_random_ip_host()) as resp:
+                async with (
+                    aiohttp.ClientSession(timeout=timeout) as session,
+                    session.get(self._pop_random_ip_host()) as resp,
+                ):
                     ip = await resp.text()
             except asyncio.TimeoutError:
                 pass
             else:
                 ip = ip.strip()
                 if self.host_is_ip(ip):
-                    log.debug('Real external IP: %s', ip)
+                    log.debug("Real external IP: %s", ip)
                     break
         else:
-            raise RuntimeError('Could not get the external IP')
+            raise RuntimeError("Could not get the external IP")
         return ip
 
-    async def resolve(self, host, port=80, family=None, qtype='A', logging=True):
+    async def resolve(self, host, port=80, family=None, qtype="A", logging=True):
         """Return resolving IP address(es) from host name."""
         if self.host_is_ip(host):
             return host
@@ -134,24 +134,24 @@ class Resolver:
         if resp:
             hosts = [
                 {
-                    'hostname': host,
-                    'host': r.host,
-                    'port': port,
-                    'family': family,
-                    'proto': socket.IPPROTO_IP,
-                    'flags': socket.AI_NUMERICHOST,
+                    "hostname": host,
+                    "host": r.host,
+                    "port": port,
+                    "family": family,
+                    "proto": socket.IPPROTO_IP,
+                    "flags": socket.AI_NUMERICHOST,
                 }
                 for r in resp
             ]
             if family:
                 self._cached_hosts[host] = hosts
             else:
-                self._cached_hosts[host] = hosts[0]['host']
+                self._cached_hosts[host] = hosts[0]["host"]
             if logging:
-                log.debug('%s: Host resolved: %s' % (host, self._cached_hosts[host]))
+                log.debug("%s: Host resolved: %s" % (host, self._cached_hosts[host]))
         else:
             if logging:
-                log.warning('%s: Could not resolve host' % host)
+                log.warning("%s: Could not resolve host" % host)
         return self._cached_hosts.get(host)
 
     async def _resolve(self, host, qtype):

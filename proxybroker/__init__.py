@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-__title__ = 'ProxyBroker'
-__package__ = 'proxybroker'
-__version__ = '0.4.0'
-__short_description__ = '[Finder/Checker/Server] Finds public proxies from multiple sources and concurrently checks them. Supports HTTP(S) and SOCKS4/5.'  # noqa
-__author__ = 'Constverum'
-__author_email__ = 'constverum@gmail.com'
-__url__ = 'https://github.com/constverum/ProxyBroker'
-__license__ = 'Apache License, Version 2.0'
-__copyright__ = 'Copyright 2015-2018 Constverum'
+__title__ = "ProxyBroker"
+__package__ = "proxybroker"
+__version__ = "0.4.0"
+__short_description__ = "[Finder/Checker/Server] Finds public proxies from multiple sources and concurrently checks them. Supports HTTP(S) and SOCKS4/5."  # noqa
+__author__ = "Constverum"
+__author_email__ = "constverum@gmail.com"
+__url__ = "https://github.com/constverum/ProxyBroker"
+__license__ = "Apache License, Version 2.0"
+__copyright__ = "Copyright 2015-2018 Constverum"
 
 
 import logging  # noqa
@@ -35,11 +35,11 @@ from .providers import Provider  # noqa
 from .proxy import Proxy  # noqa
 from .server import ProxyPool, Server  # noqa
 
-logger = logging.getLogger('asyncio')
-logger.addFilter(logging.Filter('has no effect when using ssl'))
+logger = logging.getLogger("asyncio")
+logger.addFilter(logging.Filter("has no effect when using ssl"))
 
-warnings.simplefilter('always', UserWarning)
-warnings.simplefilter('once', DeprecationWarning)
+warnings.simplefilter("always", UserWarning)
+warnings.simplefilter("once", DeprecationWarning)
 
 
 __all__ = (Proxy, Judge, Provider, Checker, Server, ProxyPool, Broker)
