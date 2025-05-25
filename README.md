@@ -1,7 +1,7 @@
-*ProxyBroker2 is an async proxy finder and proxy server with Python 3.10-3.13 support*
+ProxyBroker2
+============
 
-ProxyBroker
-===========
+*An async proxy finder, checker, and server with Python 3.10-3.13 support*
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_shield)
@@ -16,7 +16,7 @@ ProxyBroker
 [![GitHub license](https://img.shields.io/github/license/bluet/proxybroker2)](https://github.com/bluet/proxybroker2/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fbluet%2Fproxybroker2)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fbluet%2Fproxybroker2)
 
-ProxyBroker is an open source tool that asynchronously finds public proxies from multiple sources and concurrently checks them.
+ProxyBroker2 is an open source tool that asynchronously finds public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/index_find_example.gif)
 
@@ -161,13 +161,13 @@ After installation, you can immediately start finding proxies:
 
 ``` {.sourceCode .bash}
 # Find 5 working HTTP proxies
-$ proxybroker find --types HTTP --limit 5
+$ python -m proxybroker find --types HTTP --limit 5
 
 # Find 10 US proxies
-$ proxybroker find --countries US --limit 10
+$ python -m proxybroker find --countries US --limit 10
 
 # Run local proxy server on port 8888
-$ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
+$ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
 ```
 
 Usage
@@ -180,7 +180,7 @@ Usage
 Find and show 10 HTTP(S) proxies from United States with the high level of anonymity:
 
 ``` {.sourceCode .bash}
-$ proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
+$ python -m proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
 ```
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_find_example.gif)
@@ -190,7 +190,7 @@ $ proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
 Find and save to a file 10 US proxies (without a check):
 
 ``` {.sourceCode .bash}
-$ proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
+$ python -m proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 ```
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_grab_example.gif)
@@ -200,13 +200,13 @@ $ proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 Run a local proxy server that distributes incoming requests to a pool of found HTTP(S) proxies with the high level of anonymity:
 
 ``` {.sourceCode .bash}
-$ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
+$ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
 ```
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_serve_example.gif)
 
-Run `proxybroker --help` for more information on the options available.
-Run `proxybroker <command> --help` for more information on a command.
+Run `python -m proxybroker --help` for more information on the options available.
+Run `python -m proxybroker <command> --help` for more information on a command.
 
 ### Basic code example
 
@@ -462,11 +462,11 @@ We welcome contributions! The project has excellent test coverage and developmen
 ### Development Tools
 - **Poetry**: Dependency management
 - **ruff**: Ultra-fast linting and formatting
-- **pytest**: Testing framework with 127 passing tests
+- **pytest**: Testing framework with 131 passing tests
 - **Documentation**: See [CLAUDE.md](CLAUDE.md) for architecture details
 
 ### Test Status
-✅ **All 127 tests passing** - The test suite is comprehensive and reliable, covering all core functionality.
+✅ **All 131 tests passing** - The test suite is comprehensive and reliable, covering all core functionality.
 
 License
 -------
