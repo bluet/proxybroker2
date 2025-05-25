@@ -200,7 +200,7 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 
 # Autosummary settings
-autosummary_generate = True
+autosummary_generate = False
 
 
 # -- Options for HTML output ----------------------------------------------

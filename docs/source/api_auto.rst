@@ -8,14 +8,6 @@ This is the complete technical reference auto-generated from docstrings. For a u
 Core Classes
 ------------
 
-.. autosummary::
-   :toctree: _autosummary
-   :recursive:
-
-   Broker
-   Proxy
-   Provider
-
 Broker
 ------
 
@@ -23,6 +15,7 @@ Broker
    :members:
    :inherited-members:
    :show-inheritance:
+   :exclude-members: __init__
    :noindex:
 
 Proxy
@@ -32,6 +25,7 @@ Proxy
    :members:
    :inherited-members:
    :show-inheritance:
+   :exclude-members: __init__
    :noindex:
 
 Provider
@@ -40,6 +34,7 @@ Provider
 .. autoclass:: Provider
    :members:
    :show-inheritance:
+   :exclude-members: __init__
    :noindex:
 
 Errors
@@ -48,6 +43,7 @@ Errors
 .. automodule:: proxybroker.errors
    :members:
    :show-inheritance:
+   :noindex:
 
 Utilities
 ---------
@@ -55,3 +51,4 @@ Utilities
 .. automodule:: proxybroker.utils
    :members:
    :exclude-members: log
+   :noindex:
