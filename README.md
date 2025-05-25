@@ -238,7 +238,7 @@ if __name__ == '__main__':
     asyncio.run(main())
 ```
 
-[More examples](https://proxybroker.readthedocs.io/en/latest/examples.html).
+[More examples](https://proxybroker2.readthedocs.io/en/latest/examples.html).
 
 ### 🔬 **Testing Philosophy**
 
@@ -473,7 +473,7 @@ asyncio.run(main())  # Modern async pattern
 Documentation
 -------------
 
-**📚 Complete Documentation**: <https://proxybroker.readthedocs.io/>
+**📚 Complete Documentation**: <https://proxybroker2.readthedocs.io/>
 
 Our documentation uses a modern approach:
 - **Auto-generated API reference** - Always current with source code
