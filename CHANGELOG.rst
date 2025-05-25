@@ -3,7 +3,7 @@ In compliance with the `APACHE-2.0 <https://opensource.org/licenses/Apache-2.0>`
 Change Log
 ==========
 
-`2.0.0-alpha6`_ (2025-01)
+`2.0.0-alpha8`_ (2025-05)
 -------------------------
 Author(s): BlueT - Matthew Lien - 練喆明 with Claude Code assistance
 

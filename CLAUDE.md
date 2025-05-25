@@ -131,7 +131,7 @@ Tests follow contract-based approach - test user-visible behavior, not implement
 - ❌ Don't test exact bytes in protocol handshakes
 - ❌ Don't test internal algorithm details
 
-## Recent Improvements (v2.0.0-alpha6)
+## Recent Improvements (v2.0.0-alpha8)
 
 ### Critical Bug Fixes ✅
 - **Signal handler memory leak**: Fixed with proper cleanup in `Broker.stop()`
