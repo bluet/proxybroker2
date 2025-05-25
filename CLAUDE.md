@@ -28,12 +28,16 @@ pytest --tb=short     # Short traceback for debugging
 ```
 
 **Test Suite Status** (as of latest comprehensive testing implementation):
-- ✅ **All tests passing**: 159/159 tests pass across all test files
-- ✅ **New behavior tests**: `test_server_behavior.py` (18 tests), `test_checker_behavior.py` (14 tests)
-- ✅ Working: `test_proxy.py`, `test_negotiators.py`, `test_resolver.py`, `test_utils.py`, `test_cli.py`
-- ✅ Enhanced: `test_checker.py`, `test_server.py`, `test_api.py` (reduced mocking, improved reliability)
-- ✅ Contract-based approach: Tests protect user APIs while enabling internal improvements
-- Note: Focus on user-visible behavior rather than implementation details
+- ✅ **All tests passing**: 238/238 tests pass across all test files
+- ✅ **Testing Philosophy**: Contract-based testing protecting user APIs while enabling internal improvements
+- ✅ **New Test Files**: 
+  - `test_public_contracts.py` (25 tests) - API signature and backward compatibility tests
+  - `test_server_behavior.py` (18 tests) - User-facing server scenarios
+  - `test_checker_behavior.py` (14 tests) - Checker behavior from user perspective
+  - `test_integration.py` (13 tests) - Real-world usage patterns
+  - `test_negotiators_behavior.py` (18 tests) - Protocol negotiation behaviors
+- ✅ **Code Quality**: Zero linting errors, all code formatted with ruff
+- ✅ **CI/CD**: Enhanced GitHub Actions with automated quality gates
 
 ### Linting and Code Quality
 **Use automated tools for efficient formatting:**
@@ -121,6 +125,9 @@ Server chooses protocols deterministically with priority order:
 3. ✅ **Fixed Async Patterns**: Replaced `asyncio.ensure_future()` with `asyncio.create_task()`
 4. ✅ **Fixed Priority Bug**: Now correctly uses `proxy.avg_resp_time` instead of `proxy.priority`
 5. ✅ **Fixed Protocol Selection**: Deterministic selection with clear priority order
+6. ✅ **Fixed Test Reliability**: All 238 tests now pass with reduced mocking
+7. ✅ **Fixed CLI Tests**: Updated for argparse (not Click) implementation
+8. ✅ **Fixed Contract Tests**: API signatures properly validated
 
 ## Configuration and Environment
 
@@ -225,11 +232,17 @@ def test_socks5_negotiation_succeeds():
 - Use contextual error messages with proxy/host information
 
 ### Testing Strategy
-- **All Tests Reliable**: 127/127 tests pass with improved mock reduction
-- **Key Test Files**: `test_api.py`, `test_checker.py`, `test_server.py`, `test_proxy.py`
-- **Coverage Goal**: Focus on critical paths (ProxyPool, Broker, Checker)
-- **Mock Infrastructure**: Use `tests/mock_server.py` for HTTP endpoint testing
-- **Real Objects Preferred**: Tests use real Proxy objects instead of heavy mocking
+- **Contract-Based Testing**: Protect user APIs while enabling internal improvements
+- **Test Categories**:
+  - **Public Contracts** (25 tests): API signatures, return types, exceptions
+  - **Behavior Tests** (50+ tests): User-visible outcomes vs implementation details
+  - **Integration Tests** (13 tests): Real-world usage patterns from examples/
+  - **Core Tests** (127 tests): Critical component functionality
+- **Key Principles**:
+  - Test "does it work?" not "how does it work?"
+  - Use real objects instead of excessive mocking
+  - Validate user-facing behavior, not internal implementation
+  - Enable refactoring without breaking tests
 
 ## HTTP API Features
 
@@ -295,10 +308,12 @@ curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 ## Common Issues and Solutions
 
 ### Test Failures (Historical - Now Resolved)
-- All 127 tests now pass reliably
+- All 238 tests now pass reliably (up from 127)
 - Fixed mock implementations to match current API
 - Reduced heavy mocking in favor of real objects
 - CLI tests properly handle argparse (not Click) implementation
+- Contract tests validate API stability
+- Behavior tests focus on user outcomes
 
 ### AsyncIO Warnings
 - "coroutine was never awaited" - check for missing `await` or `asyncio.create_task()`

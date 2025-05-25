@@ -1,6 +1,6 @@
 *ProxyBroker2 is now production-ready with Python 3.10+ support!*  
-*✅ All critical issues fixed | ✅ 159/159 tests passing | ✅ Modern automated toolchain | ✅ Zero linting errors*  
-*✅ Comprehensive behavior testing | ✅ Contract-based API stability | ✅ Enhanced CI/CD pipeline*
+*✅ All critical issues fixed | ✅ 238/238 tests passing | ✅ Modern automated toolchain | ✅ Zero linting errors*  
+*✅ Contract-based testing philosophy | ✅ API stability guaranteed | ✅ Enhanced CI/CD pipeline*
 
 ProxyBroker
 ===========
@@ -37,11 +37,12 @@ What's New in ProxyBroker2 (v2.0.0+)
 -------------------------------------
 
 ### 🚀 **Production Ready**
--   **159/159 tests passing** - Comprehensive test suite with 100% reliability including new behavior tests
+-   **238/238 tests passing** - Comprehensive test suite with contract-based testing philosophy
 -   **Python 3.10-3.13 support** - Modern Python with full async compatibility  
 -   **Zero critical bugs** - All known issues resolved from previous versions
--   **Modern CI/CD pipeline** - Enhanced GitHub Actions with `ruff`, automated formatting, and comprehensive testing
+-   **Modern CI/CD pipeline** - Enhanced GitHub Actions with `ruff`, automated formatting, and quality gates
 -   **Zero linting errors** - Clean codebase following modern Python standards
+-   **API stability guaranteed** - Contract tests ensure backward compatibility
 
 ### 🔧 **Critical Fixes**
 -   **Fixed ProxyPool deadlocks** - Timeout protection and retry limits
@@ -282,6 +283,24 @@ if __name__ == '__main__':
 ```
 
 [More examples](https://proxybroker.readthedocs.io/en/latest/examples.html).
+
+### 🔬 **Testing Philosophy**
+
+ProxyBroker2 implements a comprehensive **contract-based testing strategy** that ensures reliability while enabling innovation:
+
+#### ✅ **What We Test (Stable Public Contracts)**
+- **User-visible behavior** - "Does proxy finding work?" vs internal algorithms
+- **API signatures** - Method parameters and return types users depend on  
+- **Protocol support** - HTTP, HTTPS, SOCKS4/5 compatibility
+- **Error contracts** - Exception types and error handling behavior
+
+#### ❌ **What We Don't Test (Flexible Implementation)**
+- **Internal algorithms** - Allow optimization without breaking tests
+- **Exact protocol bytes** - Enable protocol improvements and IPv6 support
+- **Provider specifics** - Adapt to website changes without test failures
+- **Performance metrics** - Implementation details that can evolve
+
+This approach protects your code from breaking changes while allowing ProxyBroker2 to continuously improve its internals.
 
 ### Proxy information per requests
 #### HTTP

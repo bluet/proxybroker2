@@ -745,26 +745,26 @@ PROVIDERS = [
         url="http://pubproxy.com/api/proxy?limit=20&format=txt",
         proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25"),
     ),  # 20
-    Proxy_list_org(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 140
-    Xseo_in(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 240
-    Spys_ru(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 660
-    Proxylistplus_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 450
-    Proxylist_me(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 2872
-    Foxtools_ru(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25"), max_conn=1),  # noqa; 500
-    Gatherproxy_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 3212
-    Nntime_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 1050
-    Blogspot_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 24800
-    Gatherproxy_com_socks(proto=("SOCKS4", "SOCKS5")),  # noqa; 30
-    Blogspot_com_socks(proto=("SOCKS4", "SOCKS5")),  # noqa; 1486
-    Tools_rosinstrument_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa; 4000
-    Tools_rosinstrument_com_socks(proto=("SOCKS4", "SOCKS5")),  # noqa; 1800
-    My_proxy_com(max_conn=2),  # noqa; 1000
-    Checkerproxy_net(),  # noqa; 60000
-    Aliveproxy_com(),  # noqa; 210
-    Freeproxylists_com(),  # noqa; 1338
-    Webanetlabs_net(),  # noqa; 5000
-    Maxiproxies_com(),  # noqa; 430
-    Proxylist_download(),  # noqa; 35590
+    Proxy_list_org(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Xseo_in(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Spys_ru(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Proxylistplus_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Proxylist_me(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Foxtools_ru(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25"), max_conn=1),  # noqa: E501
+    Gatherproxy_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Nntime_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Blogspot_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Gatherproxy_com_socks(proto=("SOCKS4", "SOCKS5")),  # noqa: E501
+    Blogspot_com_socks(proto=("SOCKS4", "SOCKS5")),  # noqa: E501
+    Tools_rosinstrument_com(proto=("HTTP", "CONNECT:80", "HTTPS", "CONNECT:25")),  # noqa: E501
+    Tools_rosinstrument_com_socks(proto=("SOCKS4", "SOCKS5")),  # noqa: E501
+    My_proxy_com(max_conn=2),  # noqa: E501
+    Checkerproxy_net(),  # noqa: E501
+    Aliveproxy_com(),  # noqa: E501
+    Freeproxylists_com(),  # noqa: E501
+    Webanetlabs_net(),  # noqa: E501
+    Maxiproxies_com(),  # noqa: E501
+    Proxylist_download(),  # noqa: E501
     # # Bad...
     # http://www.proxylist.ro/
     # Provider(url='http://proxydb.net/',

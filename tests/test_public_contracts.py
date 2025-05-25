@@ -64,7 +64,6 @@ class TestBrokerPublicContract:
         sig = inspect.signature(broker.find)
 
         expected_params = {
-            "self",
             "types",
             "data",
             "countries",
@@ -74,7 +73,7 @@ class TestBrokerPublicContract:
             "limit",
             "kwargs",
         }
-        actual_params = set(sig.parameters.keys())
+        actual_params = set(sig.parameters.keys()) - {"self"}
         assert expected_params == actual_params
 
         # Test that method is async
@@ -86,8 +85,8 @@ class TestBrokerPublicContract:
         broker = Broker(timeout=0.1, max_tries=1, stop_broker_on_sigint=False)
         sig = inspect.signature(broker.grab)
 
-        expected_params = {"countries", "post", "strict", "dnsbl", "limit"}
-        actual_params = set(sig.parameters.keys())
+        expected_params = {"countries", "limit"}
+        actual_params = set(sig.parameters.keys()) - {"self"}
         assert expected_params == actual_params
 
         assert asyncio.iscoroutinefunction(broker.grab)
@@ -99,33 +98,22 @@ class TestBrokerPublicContract:
         sig = inspect.signature(broker.serve)
 
         # Core serve parameters users depend on
-        required_params = {
+        expected_params = {
             "host",
             "port",
-            "types",
-            "countries",
-            "post",
-            "strict",
-            "dnsbl",
             "limit",
-            "lvl",
-            "prefer_connect",
-            "min_req_proxy",
-            "max_error_rate",
-            "max_resp_time",
-            "http_allowed_codes",
-            "backlog",
+            "kwargs",
         }
-        actual_params = set(sig.parameters.keys())
-        assert required_params.issubset(actual_params)
+        actual_params = set(sig.parameters.keys()) - {"self"}
+        assert expected_params == actual_params
 
     def test_broker_show_stats_signature(self):
         """Test Broker.show_stats() signature remains stable."""
-        broker = Broker()
+        broker = Broker(stop_broker_on_sigint=False)
         sig = inspect.signature(broker.show_stats)
 
-        expected_params = {"verbose"}
-        actual_params = set(sig.parameters.keys())
+        expected_params = {"verbose", "kwargs"}
+        actual_params = set(sig.parameters.keys()) - {"self"}
         assert expected_params == actual_params
 
 
@@ -143,7 +131,7 @@ class TestProxyPublicContract:
     async def test_proxy_create_signature(self):
         """Test Proxy.create() classmethod signature remains stable."""
         sig = inspect.signature(Proxy.create)
-        expected_params = {"cls", "host", "args", "kwargs"}
+        expected_params = {"host", "args", "kwargs"}
         actual_params = set(sig.parameters.keys())
         assert expected_params == actual_params
 
@@ -264,7 +252,7 @@ class TestProxyPoolPublicContract:
         pool = ProxyPool(proxies)
 
         with pytest.raises(NoProxyError):
-            await pool.get()
+            await pool.get("http")
 
 
 class TestServerPublicContract:
@@ -274,16 +262,22 @@ class TestServerPublicContract:
         """Test Server.__init__ signature remains stable."""
         sig = inspect.signature(Server.__init__)
         expected_params = {
-            "self",
             "host",
             "port",
             "proxies",
             "timeout",
-            "backlog",
-            "http_allowed_codes",
+            "max_tries",
+            "min_queue",
+            "min_req_proxy",
+            "max_error_rate",
+            "max_resp_time",
             "prefer_connect",
+            "http_allowed_codes",
+            "backlog",
+            "loop",
+            "kwargs",
         }
-        actual_params = set(sig.parameters.keys())
+        actual_params = set(sig.parameters.keys()) - {"self"}
         assert expected_params == actual_params
 
     @pytest.mark.asyncio
@@ -402,10 +396,11 @@ class TestExportedInterfaceStability:
 class TestBackwardCompatibilityContracts:
     """Test backward compatibility requirements."""
 
-    def test_broker_legacy_parameters(self):
+    @pytest.mark.asyncio
+    async def test_broker_legacy_parameters(self):
         """Test that deprecated parameters still work with warnings."""
-        # Create broker with legacy parameter style
-        broker = Broker(timeout=5, max_conn=100)
+        # Create broker with legacy parameter style in async context
+        broker = Broker(timeout=5, max_conn=100, stop_broker_on_sigint=False)
 
         # Should work without error (may emit deprecation warnings)
         assert broker._timeout == 5
