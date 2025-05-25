@@ -143,6 +143,69 @@ Server chooses protocols deterministically with priority order:
 - **Version**: Currently v2.0.0-alpha6 (production-ready despite alpha tag)
 - **Python Support**: 3.10-3.13 officially tested and supported
 
+## Testing Strategy & Philosophy
+
+### Contract-Based Testing Approach
+
+**Core Principle**: Test user-visible behavior, not implementation details.
+
+#### ✅ What TO Test (Stable Public Contracts)
+```python
+# Public API signatures and behavior
+broker = Broker(timeout=8, max_conn=200)
+await broker.find(types=['HTTP'], limit=10)
+proxy.as_json()  # JSON structure consistency
+proxy.as_text()  # "host:port\n" format
+```
+
+#### ❌ What NOT to Test (Flexible Implementation)
+```python
+# Internal protocol details that should evolve
+assert proxy.send.call_args_list == [call(b"\x05\x01\x00")]  # SOCKS bytes
+# Internal algorithms and metrics calculations  
+# Provider scraping specifics (need to adapt to site changes)
+```
+
+### Test File Strategy
+
+- **`test_api_contracts.py`**: Critical API stability (never break users)
+- **`test_integration.py`**: User workflows from `examples/` directory
+- **`test_negotiators_behavior.py`**: Protocol behavior vs exact bytes
+- **Core tests**: Focus on functionality users depend on
+
+### Testing Guidelines
+
+1. **Test Behavior, Not Implementation**
+   - ✅ "Does SOCKS negotiation succeed?" 
+   - ❌ "Are exact handshake bytes correct?"
+
+2. **Protect User Contracts**
+   - ✅ API signatures, return formats, error types
+   - ❌ Internal algorithms, performance metrics
+
+3. **Enable Innovation**
+   - ✅ Allow protocol improvements, IPv6 support
+   - ❌ Lock in current implementation details
+
+4. **Real User Scenarios**
+   - ✅ Test workflows from `examples/` directory
+   - ❌ Test hypothetical edge cases
+
+### Example: Good vs Bad Testing
+
+```python
+# ❌ BAD: Tests implementation details
+def test_socks5_exact_bytes():
+    assert proxy.send.called_with(b"\x05\x01\x00")
+
+# ✅ GOOD: Tests user-visible behavior  
+def test_socks5_negotiation_succeeds():
+    # Mock successful SOCKS5 response
+    proxy.recv.side_effect = [b"\x05\x00", b"\x05\x00\x00\x01..."]
+    await proxy.ngtr.negotiate(ip="127.0.0.1", port=80)
+    # Negotiation should complete without error
+```
+
 ## Development Guidelines
 
 ### Working with ProxyPool
