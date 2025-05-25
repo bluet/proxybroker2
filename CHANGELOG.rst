@@ -9,6 +9,11 @@ Author(s): BlueT - Matthew Lien - 練喆明 with Claude Code assistance
 
 **🚀 Production-Ready Release - All Critical Bugs Fixed**
 
+**🚨 BREAKING CHANGES:**
+* **Python 3.10+ Required** - Dropped support for Python 3.5-3.9 to enable modern async patterns
+* **Installation Method Changed** - PyPI package 'proxybroker' is outdated; install from GitHub instead
+* **Package Name** - Project renamed to ProxyBroker2 to distinguish from original unmaintained version
+
 **Critical Bug Fixes:**
 * Fixed signal handler memory leak in Broker.stop() - proper cleanup prevents resource leaks
 * Fixed ProxyPool deadlocks with timeout protection and retry limits  
