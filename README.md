@@ -510,7 +510,13 @@ We welcome contributions! The project has excellent test coverage and developmen
    # Run tests to ensure everything works
    pytest tests/ -v
    ```
-5. **Commit your changes**: `git commit -am 'Add some feature'`
+5. **Commit with conventional format**: 
+   ```bash
+   # Use conventional commit format for better automation
+   git commit -m "feat: add SOCKS5 authentication support"
+   git commit -m "fix: resolve memory leak in proxy pool"
+   git commit -m "docs: update installation instructions"
+   ```
 6. **Push to the branch**: `git push origin my-new-feature`
 7. **Submit a pull request**!
 

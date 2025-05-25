@@ -161,7 +161,7 @@ Contents:
 
    api
    examples
-   changelog
+   changelog.md
 
 
 Indices and tables

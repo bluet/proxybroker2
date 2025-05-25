@@ -145,4 +145,6 @@ Single source of truth in `pyproject.toml`, auto-detected in development mode
 ### Documentation
 - **Updated Sphinx docs** - Correct GitHub references and modern examples
 - **ReadTheDocs ready** - Modern v2 configuration
+- **Modern changelog** - Converted to CHANGELOG.md following Keep a Changelog standard
 - **Comprehensive CLAUDE.md** - Architecture insights for AI assistance
+- **Conventional commits** - Template for structured commit messages

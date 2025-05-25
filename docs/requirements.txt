@@ -3,3 +3,4 @@ alabaster
 aiohttp>=3.8.0
 aiodns>=3.0.0
 maxminddb>=2.0.0
+myst-parser>=0.18.0
