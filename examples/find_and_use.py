@@ -16,14 +16,15 @@ from proxybroker.errors import NoProxyError
 async def fetch(url, proxy_pool, timeout, loop):
     resp, proxy = None, None
     try:
-        print('Waiting a proxy...')
+        print("Waiting a proxy...")
         proxy = await proxy_pool.get(scheme=urlparse(url).scheme)
-        print('Found proxy:', proxy)
-        proxy_url = 'http://%s:%d' % (proxy.host, proxy.port)
+        print("Found proxy:", proxy)
+        proxy_url = "http://%s:%d" % (proxy.host, proxy.port)
         _timeout = aiohttp.ClientTimeout(total=timeout)
-        async with aiohttp.ClientSession(
-            timeout=_timeout, loop=loop
-        ) as session, session.get(url, proxy=proxy_url) as response:
+        async with (
+            aiohttp.ClientSession(timeout=_timeout, loop=loop) as session,
+            session.get(url, proxy=proxy_url) as response,
+        ):
             resp = await response.text()
     except (
         aiohttp.errors.ClientOSError,
@@ -32,7 +33,7 @@ async def fetch(url, proxy_pool, timeout, loop):
         asyncio.TimeoutError,
         NoProxyError,
     ) as e:
-        print('Error!\nURL: %s;\nError: %r\n', url, e)
+        print("Error!\nURL: %s;\nError: %r\n", url, e)
     finally:
         if proxy:
             proxy_pool.put(proxy)
@@ -43,7 +44,7 @@ async def get_pages(urls, proxy_pool, timeout=10, loop=None):
     tasks = [fetch(url, proxy_pool, timeout, loop) for url in urls]
     for task in asyncio.as_completed(tasks):
         url, content = await task
-        print('%s\nDone!\nURL: %s;\nContent: %s' % ('-' * 20, url, content))
+        print("%s\nDone!\nURL: %s;\nContent: %s" % ("-" * 20, url, content))
 
 
 def main():
@@ -53,14 +54,14 @@ def main():
     proxy_pool = ProxyPool(proxies)
 
     judges = [
-        'http://httpbin.org/get?show_env',
-        'https://httpbin.org/get?show_env',
+        "http://httpbin.org/get?show_env",
+        "https://httpbin.org/get?show_env",
     ]
 
     providers = [
-        'http://www.proxylists.net/',
-        'http://ipaddress.com/proxy-list/',
-        'https://www.sslproxies.org/',
+        "http://www.proxylists.net/",
+        "http://ipaddress.com/proxy-list/",
+        "https://www.sslproxies.org/",
     ]
 
     broker = Broker(
@@ -74,14 +75,14 @@ def main():
         loop=loop,
     )
 
-    types = [('HTTP', ('Anonymous', 'High'))]
-    countries = ['US', 'UK', 'DE', 'FR']
+    types = [("HTTP", ("Anonymous", "High"))]
+    countries = ["US", "UK", "DE", "FR"]
 
     urls = [
-        'http://httpbin.org/get',
-        'http://httpbin.org/redirect/1',
-        'http://httpbin.org/anything',
-        'http://httpbin.org/status/404',
+        "http://httpbin.org/get",
+        "http://httpbin.org/redirect/1",
+        "http://httpbin.org/anything",
+        "http://httpbin.org/status/404",
     ]
 
     tasks = asyncio.gather(
@@ -93,5 +94,5 @@ def main():
     # broker.show_stats(verbose=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

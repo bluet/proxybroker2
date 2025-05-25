@@ -293,16 +293,16 @@ class TestServer:
         original_handle = server._handle
         handle_called = False
         handle_args = None
-        
+
         async def mock_handle_func(*args):
             nonlocal handle_called, handle_args
             handle_called = True
             handle_args = args
             return None
-        
+
         # Replace the method directly
         server._handle = mock_handle_func
-        
+
         try:
             # Call _accept
             server._accept(mock_reader, mock_writer)
@@ -315,7 +315,9 @@ class TestServer:
 
             # Check that _handle was called
             assert handle_called, "_handle method should have been called"
-            assert handle_args == (mock_reader, mock_writer), "Should be called with correct args"
+            assert handle_args == (mock_reader, mock_writer), (
+                "Should be called with correct args"
+            )
         finally:
             # Restore original method
             server._handle = original_handle
