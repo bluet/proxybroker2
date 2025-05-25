@@ -65,15 +65,39 @@ ruff check . --fix && ruff format .
 - **`flake8`**: Linter (included in ruff)
 - **`autopep8`**: PEP8 formatter (use ruff instead)
 
-### Building
+### Building and Packaging
 ```bash
+# Build wheel/source distributions
+poetry build
+
+# Install locally for development
+pip install -e .
+
+# Create standalone executable (Windows/Mac/Linux)
 pip install pyinstaller && pip install . && mkdir -p build && cd build && pyinstaller --onefile --name proxybroker --add-data "../proxybroker/data:data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py && rm -rf tmp *.spec
+# Note: Creates .exe on Windows, binary executable on Mac/Linux
+# Requires data files bundled with --add-data
 ```
 
 ### Docker
 ```bash
 docker build -t proxybroker2 .
 docker run --rm proxybroker2 --help
+```
+
+### Debugging Commands
+```bash
+# Run with debug logging
+proxybroker --log debug find --types HTTP --limit 5
+
+# Test specific provider
+python -c "from proxybroker.providers import Proxy_list_org; import asyncio; asyncio.run(Proxy_list_org().find())"
+
+# Profile performance
+python -m cProfile -o profile.stats -m proxybroker find --types HTTP --limit 10
+
+# Debug asyncio issues
+PYTHONASYNCIODEBUG=1 python -m proxybroker find --types HTTP --limit 5
 ```
 
 ## Architecture Overview
@@ -89,6 +113,29 @@ docker run --rm proxybroker2 --help
 **Checker** (`checker.py`): Validates proxy functionality through judge servers. Implements anonymity level detection by analyzing HTTP headers and IP address leakage. Supports multiple protocol testing (HTTP/HTTPS/SOCKS/SMTP).
 
 **Negotiators** (`negotiators.py`): Protocol-specific connection handlers for HTTP CONNECT, SOCKS4, and SOCKS5. Each negotiator implements the specific handshake protocol.
+
+### Provider System Architecture
+
+**Provider Base** (`providers.py`): Abstract base class for all proxy providers. Key methods:
+- `get()/get_proxies()`: Fetches proxy data from source
+- `find()`: Main discovery method that yields proxies
+- URL patterns and extraction logic specific to each provider
+
+**Provider Registry**: ~50 provider implementations in PROVIDERS list, each handling:
+- Static lists (e.g., `Provider` with direct URL)
+- Dynamic scrapers (e.g., `Blogspot_com`, `Spys_ru`)
+- API-based providers (e.g., `Pubproxy_com`)
+
+**Concurrency Control**: `MAX_CONCURRENT_PROVIDERS=3` limits simultaneous provider requests to avoid overwhelming sources.
+
+### Judge System Architecture
+
+**Judges** (`checker.py`): External servers used to validate proxy functionality:
+- HTTP judges return client info (IP, headers) to detect anonymity
+- HTTPS judges validate SSL/TLS support
+- Default judges include httpbin.org, azenv.net variants
+- Round-robin selection for load distribution
+- Fallback mechanism when judges fail
 
 ### Critical Async Patterns
 
@@ -118,16 +165,14 @@ Server chooses protocols deterministically with priority order:
 - **HTTPS**: `HTTPS` > `SOCKS5` > `SOCKS4`
 - Uses `_prefer_connect` flag to prioritize CONNECT method when available
 
-### Recently Fixed Critical Issues (Previously in BUG_REPORT.md)
+### Key Recent Improvements
 
-1. ✅ **Fixed Heap Corruption**: `ProxyPool.remove()` now uses heap-safe removal
-2. ✅ **Fixed Deadlock**: `ProxyPool._import()` has timeout and retry limits
-3. ✅ **Fixed Async Patterns**: Replaced `asyncio.ensure_future()` with `asyncio.create_task()`
-4. ✅ **Fixed Priority Bug**: Now correctly uses `proxy.avg_resp_time` instead of `proxy.priority`
-5. ✅ **Fixed Protocol Selection**: Deterministic selection with clear priority order
-6. ✅ **Fixed Test Reliability**: All 238 tests now pass with reduced mocking
-7. ✅ **Fixed CLI Tests**: Updated for argparse (not Click) implementation
-8. ✅ **Fixed Contract Tests**: API signatures properly validated
+1. ✅ **Heap-safe operations**: `ProxyPool.remove()` preserves heap invariant
+2. ✅ **Deadlock prevention**: Timeouts and retry limits in critical paths
+3. ✅ **Modern async patterns**: Uses `asyncio.create_task()` throughout
+4. ✅ **Correct priority logic**: Uses `proxy.avg_resp_time` for selection
+5. ✅ **Deterministic protocol selection**: Clear priority order
+6. ✅ **Comprehensive test coverage**: 238 tests with contract-based approach
 
 ## Configuration and Environment
 
@@ -148,7 +193,7 @@ Server chooses protocols deterministically with priority order:
 - **Package Managers**: Poetry (preferred) + setuptools (legacy compatibility)
 - **GeoIP Database**: Embedded MaxMind GeoLite2 in `proxybroker/data/`
 - **CLI Architecture**: argparse-based with subcommands (find/grab/serve) - NOT Click!
-- **Version**: Currently v2.0.0-alpha6 (production-ready despite alpha tag)
+- **Version**: Currently v2.0.0-alpha6 (stable and production-ready)
 - **Python Support**: 3.10-3.13 officially tested and supported
 
 ## Testing Strategy & Philosophy
@@ -231,18 +276,6 @@ def test_socks5_negotiation_succeeds():
 - Log errors before re-raising or handling
 - Use contextual error messages with proxy/host information
 
-### Testing Strategy
-- **Contract-Based Testing**: Protect user APIs while enabling internal improvements
-- **Test Categories**:
-  - **Public Contracts** (25 tests): API signatures, return types, exceptions
-  - **Behavior Tests** (50+ tests): User-visible outcomes vs implementation details
-  - **Integration Tests** (13 tests): Real-world usage patterns from examples/
-  - **Core Tests** (127 tests): Critical component functionality
-- **Key Principles**:
-  - Test "does it work?" not "how does it work?"
-  - Use real objects instead of excessive mocking
-  - Validate user-facing behavior, not internal implementation
-  - Enable refactoring without breaking tests
 
 ## HTTP API Features
 
@@ -285,6 +318,25 @@ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP --limit 10 &
 curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 ```
 
+## Common Development Workflows
+
+### Adding a New Provider
+1. Create class inheriting from `Provider` in `providers.py`
+2. Implement `get_proxies()` method for extraction logic
+3. Add to `PROVIDERS` list
+4. Test with direct instantiation before full integration
+
+### Modifying Proxy Selection Algorithm
+1. Review `ProxyPool._pool` heap operations
+2. Maintain heap invariant with `heapq` operations
+3. Test with `test_server_behavior.py` scenarios
+
+### Adding New Protocol Support
+1. Create negotiator class in `negotiators.py`
+2. Update `PROTOCOLS` mapping in `checker.py`
+3. Add protocol-specific judges if needed
+4. Update CLI argument choices
+
 ## Code Quality Maintenance
 
 ### Before Making Changes
@@ -307,14 +359,6 @@ curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 
 ## Common Issues and Solutions
 
-### Test Failures (Historical - Now Resolved)
-- All 238 tests now pass reliably (up from 127)
-- Fixed mock implementations to match current API
-- Reduced heavy mocking in favor of real objects
-- CLI tests properly handle argparse (not Click) implementation
-- Contract tests validate API stability
-- Behavior tests focus on user outcomes
-
 ### AsyncIO Warnings
 - "coroutine was never awaited" - check for missing `await` or `asyncio.create_task()`
 - Event loop issues - ensure proper loop handling for Python 3.10+
@@ -324,3 +368,11 @@ curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 - Some components try to get event loop at import time
 - Use `asyncio.get_running_loop()` with try/except for compatibility
 - Lazy initialization patterns help avoid import-time errors
+
+## Performance Considerations
+
+- **Provider Timeout**: Default 5s per provider, adjust for slow sources
+- **Checker Concurrency**: `max_conn=200` simultaneous proxy checks
+- **Memory Usage**: ~50-100MB base + ~1KB per proxy in pool
+- **Database**: GeoLite2 loaded once, shared across instances
+- **Async Limits**: ~10k concurrent connections practical maximum
