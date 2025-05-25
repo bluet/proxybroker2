@@ -128,7 +128,7 @@ class TestCLI:
 
         try:
             # Run grab with small limit
-            result = self.run_cli(
+            self.run_cli(
                 ["grab", "--countries", "US", "--limit", "1", "--outfile", temp_file], timeout=5
             )
             # File should exist regardless of completion
