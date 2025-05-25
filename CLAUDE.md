@@ -360,7 +360,25 @@ curl -x http://127.0.0.1:8888 http://httpbin.org/ip
 1. Review `BUG_REPORT.md` for known issues in affected areas
 2. Run tests to establish baseline: `pytest tests/ -v`
 3. Use virtual environment to avoid system pollution
-4. **Always run formatting**: `ruff check . --fix && ruff format .`
+
+### Pre-Commit Checklist
+**ALWAYS run these checks before committing:**
+```bash
+# 1. Run ruff checks and auto-fix
+ruff check . --fix
+
+# 2. Run ruff formatting
+ruff format .
+
+# 3. Verify everything passes
+ruff check . && ruff format --check .
+
+# 4. Run tests for changed files
+pytest tests/test_affected_file.py -v
+
+# Optional but recommended: Run full test suite
+pytest tests/ -v
+```
 
 ### Critical Areas Requiring Careful Changes
 - **ProxyPool heap operations** (heap invariant preservation)
