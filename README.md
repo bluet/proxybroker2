@@ -1,6 +1,4 @@
-*ProxyBroker2 is now production-ready with Python 3.10+ support!*  
-*✅ All critical bugs fixed | ✅ 131/131 tests passing (100%) | ✅ Modern version management | ✅ Zero linting errors*  
-*✅ Modern testing principles | ✅ Async context manager support | ✅ Enhanced CI/CD pipeline*
+*ProxyBroker2 is an async proxy finder and proxy server with Python 3.10-3.13 support*
 
 ProxyBroker
 ===========
@@ -36,75 +34,18 @@ Features
 What's New in ProxyBroker2 (v2.0.0+)
 -------------------------------------
 
-### 🚀 **Production Ready**
--   **121/129 tests passing (94%)** - High-quality test suite focused on user behavior
--   **Python 3.10-3.13 support** - Modern Python with full async compatibility  
--   **All critical bugs fixed** - Memory leaks, deadlocks, and race conditions resolved
--   **Modern version management** - Single source of truth in `pyproject.toml`
--   **Zero linting errors** - Clean codebase following modern Python standards
--   **Async context managers** - Full Python 3.11+ compatibility
+## Key Features
 
-### 🔧 **Critical Fixes**
--   **Fixed signal handler memory leak** - Proper cleanup in `Broker.stop()`
--   **Fixed ProxyPool deadlocks** - Timeout protection and retry limits  
--   **Fixed heap corruption** - Heap-safe proxy removal with proper priority handling
--   **Fixed race conditions** - Modern `asyncio.create_task()` usage
--   **Fixed version inconsistencies** - Centralized version management
--   **Fixed protocol selection** - Deterministic selection with clear priority order
--   **Fixed priority logic** - Now correctly uses `proxy.avg_resp_time` instead of `proxy.priority`
+-   **Asynchronous** - Built on asyncio for high-performance concurrent operations
+-   **Protocol Support** - HTTP, HTTPS, SOCKS4, SOCKS5, CONNECT:80, CONNECT:25
+-   **Anonymity Detection** - Transparent, Anonymous, and High anonymity levels
+-   **50+ Proxy Sources** - Automatically discovers proxies from multiple providers
+-   **Proxy Server Mode** - Run your own rotating proxy server
+-   **Flexible Filtering** - Filter by country, protocol, anonymity level
+-   **Python 3.10-3.13** - Full support for modern Python versions
 
-### 🧪 **Modern Testing Philosophy**
--   **Behavior-focused tests** - Test user-visible outcomes, not implementation details
--   **Contract-based testing** - Protect public APIs while enabling refactoring
--   **Removed bad practices** - Eliminated complex mock-heavy integration tests
--   **Simple and maintainable** - Clean test code that serves as behavior documentation
--   **Edge case handling** - Proper timeout and error condition testing
--   **100% test success** - All 131 tests passing with better reliability
 
-### 📦 **Modern Development Standards**
--   **Single source of truth versioning** - `pyproject.toml` as authoritative version source
--   **Development/production detection** - Automatic version reading based on environment
--   **Python packaging compliance** - Follows PEP 621 and 2024 best practices
--   **Comprehensive documentation** - Updated CLAUDE.md with architecture insights
--   **Contract-based testing** - Protects public APIs while enabling internal improvements
--   **Behavior-focused tests** - Tests "does it work" rather than implementation details
--   **User scenario coverage** - 32 new tests covering real workflows from examples/ directory
--   **Server & checker testing** - Comprehensive coverage of proxy server and validation behavior
--   **Integration testing** - Real user workflows validated with minimal mocking
--   **API stability guarantees** - Backward compatibility testing for major version confidence
 
-### 🛠️ **Developer Experience**
--   **Ultra-fast toolchain** - `ruff` (10x faster than flake8), automated formatting
--   **Comprehensive documentation** - Updated CLAUDE.md with architecture insights
--   **Smart test design** - Flexible internals + stable user interfaces
--   **Clean codebase** - Modern development workflow with quality gates
--   **Automated CI/CD** - GitHub Actions with matrix testing across Python 3.10-3.13 and Poetry versions
--   **Quality assurance** - Automated formatting, linting, and comprehensive test coverage
-
-### 🔬 **Testing Philosophy**
-
-ProxyBroker2 implements a comprehensive **contract-based testing strategy** that ensures reliability while enabling innovation:
-
-#### ✅ **What We Test (Stable Public Contracts)**
-- **User-visible behavior** - "Does proxy finding work?" vs internal algorithms
-- **API signatures** - Method parameters and return types users depend on  
-- **Protocol support** - HTTP, HTTPS, SOCKS4/5 compatibility
-- **Configuration options** - All user-configurable parameters
-- **Error handling** - Predictable behavior under failure conditions
-
-#### ❌ **What We Don't Test (Flexible Implementation)**
-- **Internal algorithms** - Allows optimization without breaking tests
-- **Private method calls** - Enables refactoring and improvements  
-- **Implementation details** - Focus on "what" not "how"
-- **Mock-heavy scenarios** - Prefer real objects for better coverage
-
-#### 🎯 **Test Categories**
-- **Core functionality tests** (127 tests) - Essential features and stability
-- **Behavior scenario tests** (32 tests) - Real user workflows from examples/
-- **API contract tests** - Backward compatibility guarantees
-- **Integration tests** - End-to-end workflows with minimal mocking
-
-This approach provides **confidence in stability** while maintaining **freedom to innovate** internally.
 
 Docker
 ------
@@ -176,11 +117,9 @@ $ pip install -U git+https://github.com/bluet/proxybroker2.git
 ```
 
 **Why install from GitHub?**
-- ✅ **Latest fixes**: All critical bugs resolved
-- ✅ **Python 3.10-3.13**: Full compatibility with modern Python
-- ✅ **131/131 tests passing**: Production-ready reliability (100%)
-- ✅ **Modern testing**: Behavior-focused, contract-based test suite
-- ✅ **Active maintenance**: Regular updates and improvements
+- **Latest version**: Most recent updates and bug fixes
+- **Python 3.10-3.13**: Full compatibility with modern Python versions
+- **Active maintenance**: Regular updates and community contributions
 
 ### Use pre-built Docker image
 

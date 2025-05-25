@@ -26,7 +26,7 @@ pip install -e .
 
 ### Running Tests
 ```bash
-# Run all tests
+# Run all tests (131 tests, should all pass)
 pytest
 
 # Run specific test file
@@ -35,8 +35,11 @@ pytest tests/test_proxy.py
 # Run single test with output
 pytest -xvs tests/test_cli.py::TestCLI::test_cli_help
 
-# Run with coverage
+# Run with coverage (should show ~60%+ coverage)
 pytest --cov=proxybroker --cov-report=term-missing
+
+# Run tests like CI/CD does
+pytest tests/ -v --cov=proxybroker --cov-report=term-missing --cov-fail-under=60
 
 # Test across Python versions (if conda environments are available)
 conda run -n py311-proxybroker pytest
@@ -163,6 +166,7 @@ Tests follow modern behavior-focused approach - test user-visible behavior, not 
 - Remember to run `ruff` before committing
 - Always specify repo for GitHub CLI: `gh pr view 123 --repo bluet/proxybroker2`
 - All tests now passing (100% success rate)
+- CI/CD pipeline tests across Python 3.10-3.13 with multiple Poetry versions
 
 ## Development Workflows
 
