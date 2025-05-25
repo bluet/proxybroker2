@@ -13,7 +13,7 @@ from proxybroker import Broker, ProxyPool
 from proxybroker.errors import NoProxyError
 
 
-async def fetch(url, proxy_pool, timeout, loop):
+async def fetch(url, proxy_pool, timeout=10):
     resp, proxy = None, None
     try:
         print("Waiting a proxy...")
@@ -22,14 +22,14 @@ async def fetch(url, proxy_pool, timeout, loop):
         proxy_url = "http://%s:%d" % (proxy.host, proxy.port)
         _timeout = aiohttp.ClientTimeout(total=timeout)
         async with (
-            aiohttp.ClientSession(timeout=_timeout, loop=loop) as session,
+            aiohttp.ClientSession(timeout=_timeout) as session,
             session.get(url, proxy=proxy_url) as response,
         ):
             resp = await response.text()
     except (
-        aiohttp.errors.ClientOSError,
-        aiohttp.errors.ClientResponseError,
-        aiohttp.errors.ServerDisconnectedError,
+        aiohttp.ClientOSError,
+        aiohttp.ClientResponseError,
+        aiohttp.ServerDisconnectedError,
         asyncio.TimeoutError,
         NoProxyError,
     ) as e:
@@ -40,16 +40,14 @@ async def fetch(url, proxy_pool, timeout, loop):
         return (url, resp)
 
 
-async def get_pages(urls, proxy_pool, timeout=10, loop=None):
-    tasks = [fetch(url, proxy_pool, timeout, loop) for url in urls]
+async def get_pages(urls, proxy_pool, timeout=10):
+    tasks = [fetch(url, proxy_pool, timeout) for url in urls]
     for task in asyncio.as_completed(tasks):
         url, content = await task
         print("%s\nDone!\nURL: %s;\nContent: %s" % ("-" * 20, url, content))
 
 
-def main():
-    loop = asyncio.get_event_loop()
-
+async def main():
     proxies = asyncio.Queue()
     proxy_pool = ProxyPool(proxies)
 
@@ -72,7 +70,6 @@ def main():
         verify_ssl=False,
         judges=judges,
         providers=providers,
-        loop=loop,
     )
 
     types = [("HTTP", ("Anonymous", "High"))]
@@ -85,14 +82,13 @@ def main():
         "http://httpbin.org/status/404",
     ]
 
-    tasks = asyncio.gather(
+    await asyncio.gather(
         broker.find(types=types, countries=countries, strict=True, limit=10),
-        get_pages(urls, proxy_pool, loop=loop),
+        get_pages(urls, proxy_pool),
     )
-    loop.run_until_complete(tasks)
 
     # broker.show_stats(verbose=True)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

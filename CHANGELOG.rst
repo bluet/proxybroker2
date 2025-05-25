@@ -39,6 +39,14 @@ Author(s): BlueT - Matthew Lien - 練喆明 with Claude Code assistance
 * Fixed CI/CD workflow to properly run modernized test suite
 * Comprehensive documentation updates reflecting 100% test coverage
 
+**Documentation Updates:**
+* Updated Sphinx documentation for proxybroker2 with correct GitHub references
+* Modernized examples to use asyncio.run() instead of deprecated event loop patterns
+* Updated ReadTheDocs configuration to v2 format with Python 3.10+ support
+* Fixed package name references throughout documentation (proxybroker → proxybroker2)
+* Updated installation instructions and CLI examples to reflect current usage
+* Documentation builds successfully with minimal warnings
+
 `Unreleased`_ (2020-07)
 -----------------------
 Author(s): BlueT - Matthew Lien - 練喆明, afunTW  

@@ -16,16 +16,14 @@ async def save(proxies, filename):
             f.write("%s:%d\n" % (proxy.host, proxy.port))
 
 
-def main():
+async def main():
     proxies = asyncio.Queue()
     broker = Broker(proxies)
-    tasks = asyncio.gather(
+    await asyncio.gather(
         broker.grab(countries=["US", "GB"], limit=10),
         save(proxies, filename="proxies.txt"),
     )
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(tasks)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -13,9 +13,11 @@ async def show(proxies):
         print("Found proxy: %s" % proxy)
 
 
-proxies = asyncio.Queue()
-broker = Broker(proxies)
-tasks = asyncio.gather(broker.find(types=["HTTP", "HTTPS"], limit=10), show(proxies))
+async def main():
+    proxies = asyncio.Queue()
+    broker = Broker(proxies)
+    await asyncio.gather(broker.find(types=["HTTP", "HTTPS"], limit=10), show(proxies))
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(tasks)
+
+if __name__ == "__main__":
+    asyncio.run(main())
