@@ -43,7 +43,6 @@ class TestServerAPI:
     def test_server_can_be_created(self, mock_proxy_queue):
         """Test that Server can be instantiated with basic parameters."""
         server = Server(host="127.0.0.1", port=8888, proxies=mock_proxy_queue)
-        assert server is not None
         assert server.host == "127.0.0.1"
         assert server.port == 8888
 
@@ -87,7 +86,6 @@ class TestServerAPI:
             prefer_connect=True,
         )
 
-        assert server is not None
         assert server.host == "0.0.0.0"
         assert server.port == 9999
 
@@ -222,8 +220,6 @@ class TestServerAPI:
             max_resp_time=8,
             backlog=100,
         )
-
-        assert server is not None
 
     # Cleanup and Resource Management Tests
 
