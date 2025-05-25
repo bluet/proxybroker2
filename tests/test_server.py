@@ -485,25 +485,75 @@ class TestServer:
         assert CONNECTED == b"HTTP/1.1 200 Connection established\r\n\r\n"
 
     @pytest.mark.asyncio
-    async def test_server_context_manager_not_implemented(self, server):
-        """Test that Server currently doesn't implement async context manager protocol.
+    async def test_server_async_context_manager(self, server):
+        """Test Server async context manager functionality.
 
-        Note: This is not a requirement, just documenting current behavior.
-        Supporting async context manager would be a nice enhancement for cleaner API:
+        The Server now supports async context manager protocol for cleaner API:
 
         async with Server(...) as server:
             # server started automatically
             pass
-        # server stopped automatically
+        # server closed automatically (without stopping event loop)
         """
-        # Server doesn't implement async context manager protocol
-        # Python 3.10: AttributeError('__aenter__')
-        # Python 3.11+: TypeError('Server' object does not support the asynchronous context manager protocol)
-        # This change was introduced in Python 3.11 (bpo-12022, bpo-44471)
-        # to provide clearer error messages for protocol violations
-        with pytest.raises((AttributeError, TypeError)):
+        # Mock the start and aclose methods
+        server.start = AsyncMock()
+        server.aclose = AsyncMock()
+
+        # Test async context manager
+        async with server as srv:
+            # Verify __aenter__ returns the server instance
+            assert srv is server
+            # Verify start was called
+            server.start.assert_called_once()
+
+        # Verify aclose was called on exit
+        server.aclose.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_server_async_context_manager_exception(self, server):
+        """Test Server async context manager handles exceptions properly."""
+        # Mock the start and aclose methods
+        server.start = AsyncMock()
+        server.aclose = AsyncMock()
+
+        # Test that aclose is called even when exception occurs
+        with pytest.raises(ValueError):
             async with server:
-                pass
+                server.start.assert_called_once()
+                raise ValueError("Test exception")
+
+        # Verify aclose was still called
+        server.aclose.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_server_aclose(self, server):
+        """Test Server.aclose() method."""
+        # Mock the server's _server attribute
+        mock_tcp_server = AsyncMock()
+        mock_tcp_server.close = MagicMock()
+        mock_tcp_server.wait_closed = AsyncMock()
+        server._server = mock_tcp_server
+
+        # Add some mock connections
+        mock_conn1 = MagicMock()
+        mock_conn1.done.return_value = False
+        mock_conn2 = MagicMock()
+        mock_conn2.done.return_value = True  # Already done
+        server._connections = {
+            mock_conn1: ("reader1", "writer1"),
+            mock_conn2: ("reader2", "writer2"),
+        }
+
+        # Call aclose
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            await server.aclose()
+
+        # Verify behavior
+        mock_conn1.cancel.assert_called_once()
+        mock_conn2.cancel.assert_not_called()  # Already done
+        mock_tcp_server.close.assert_called_once()
+        mock_tcp_server.wait_closed.assert_called_once()
+        assert server._server is None
 
     def test_server_relay_data(self):
         """Test data relay functionality constants."""

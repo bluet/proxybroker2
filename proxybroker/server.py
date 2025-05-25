@@ -155,7 +155,24 @@ class ProxyPool:
 
 
 class Server:
-    """Server distributes incoming requests to a pool of found proxies."""
+    """Server distributes incoming requests to a pool of found proxies.
+
+    The Server can be used as an async context manager for automatic lifecycle management:
+
+        async with Server('127.0.0.1', 8888, proxies) as server:
+            # Server is automatically started
+            # ... do work ...
+        # Server is automatically closed (without stopping the event loop)
+
+    Or managed manually:
+
+        server = Server('127.0.0.1', 8888, proxies)
+        await server.start()
+        # ... do work ...
+        await server.aclose()  # Async-safe cleanup
+        # or
+        server.stop()  # Synchronous cleanup (stops event loop)
+    """
 
     def __init__(
         self,
@@ -218,6 +235,40 @@ class Server:
         self._server = None
         self._loop.stop()
         log.info("Server is stopped")
+
+    async def aclose(self):
+        """Async-safe method to close the server without stopping the event loop.
+
+        This method can be safely used in async contexts, including async context managers,
+        without affecting other running tasks in the event loop.
+        """
+        if not self._server:
+            return
+
+        # Cancel all active connections
+        for conn in self._connections:
+            if not conn.done():
+                conn.cancel()
+
+        # Close the server
+        self._server.close()
+        await self._server.wait_closed()
+
+        # Allow time for connections to close
+        await asyncio.sleep(0.5)
+
+        self._server = None
+        log.info("Server is closed (async)")
+
+    async def __aenter__(self):
+        """Enter the async context manager, starting the server."""
+        await self.start()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Exit the async context manager, closing the server."""
+        await self.aclose()
+        return False
 
     def _accept(self, client_reader, client_writer):
         def _on_completion(f):
