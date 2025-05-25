@@ -38,6 +38,8 @@ class ProxyPool:
         max_resp_time=8,
         min_queue=5,
         strategy="best",
+        import_timeout=5.0,
+        max_import_retries=100,
     ):
         self._proxies = proxies
         self._pool = []
@@ -48,6 +50,8 @@ class ProxyPool:
         self._max_error_rate = max_error_rate
         self._max_resp_time = max_resp_time
         self._min_queue = min_queue
+        self._import_timeout = import_timeout
+        self._max_import_retries = max_import_retries
 
         if strategy != "best":
             raise ValueError("`strategy` only support `best` for now.")
@@ -82,12 +86,13 @@ class ProxyPool:
         return chosen
 
     async def _import(self, expected_scheme):
-        max_retries = 100  # Prevent infinite loops
         retry_count = 0
 
-        while retry_count < max_retries:
+        while retry_count < self._max_import_retries:
             try:
-                proxy = await asyncio.wait_for(self._proxies.get(), timeout=5.0)
+                proxy = await asyncio.wait_for(
+                    self._proxies.get(), timeout=self._import_timeout
+                )
                 self._proxies.task_done()
 
                 if not proxy:
@@ -104,7 +109,7 @@ class ProxyPool:
                 )
 
         raise NoProxyError(
-            f"Exceeded max retries ({max_retries}) finding proxy with scheme {expected_scheme}"
+            f"Exceeded max retries ({self._max_import_retries}) finding proxy with scheme {expected_scheme}"
         )
 
     def put(self, proxy):
@@ -132,6 +137,9 @@ class ProxyPool:
                 return chosen
 
         # Check established pool - use heap-safe removal
+        # Note: This is O(N log N) complexity to maintain heap invariant.
+        # We prioritize correctness over performance here since removals
+        # are relatively infrequent compared to get operations.
         temp_items = []
         chosen = None
 
@@ -206,7 +214,13 @@ class Server:
         self._server = None
         self._connections = {}
         self._proxy_pool = ProxyPool(
-            proxies, min_req_proxy, max_error_rate, max_resp_time, min_queue
+            proxies,
+            min_req_proxy,
+            max_error_rate,
+            max_resp_time,
+            min_queue,
+            import_timeout=kwargs.get("import_timeout", 5.0),
+            max_import_retries=kwargs.get("max_import_retries", 100),
         )
         self._resolver = Resolver(loop=self._loop)
         self._http_allowed_codes = http_allowed_codes or []
