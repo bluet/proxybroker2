@@ -108,7 +108,7 @@ class Broker:
             p if isinstance(p, Provider) else Provider(p)
             for p in (providers or PROVIDERS)
         ]
-        if stop_broker_on_sigint:
+        if stop_broker_on_sigint and self._loop:
             try:
                 self._loop.add_signal_handler(signal.SIGINT, self.stop)
                 # add_signal_handler() is not implemented on Win
