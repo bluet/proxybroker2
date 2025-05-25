@@ -33,23 +33,20 @@ with codecs.open("README.md", mode="r", encoding="utf-8") as f:
     INFO["long_description"] = f.read()
 
 REQUIRES = [
-    "aiohttp>=3.5.4",
-    "aiodns>=2.0.0",
-    "attrs==19.3.0",
-    "maxminddb>=1.4.1",
-    "cachetools==4.1.0",
+    "aiohttp>=3.12.0",
+    "aiodns>=3.4.0",
+    "attrs>=25.3.0",
+    "maxminddb>=2.7.0",
+    "cachetools>=5.5.2",
+    "click>=8.2.1",
 ]
-SETUP_REQUIRES = ["pytest-runner>=4.4"]
+SETUP_REQUIRES = ["pytest-runner>=6.0.1"]
 TEST_REQUIRES = [
-    # 'black>=18.9-beta.0',
-    "flake8>=3.7",
-    "isort>=4.3",
-    "pytest>=4.3",
-    "pytest-asyncio>=0.10",
-    "pytest-runner>=4.4",
-    "pytest-isort>=0.3",
-    "pytest-flake8>=1.0",
-    "pytest-mock>=1.10.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "pytest-runner>=6.0.1",
+    "pytest-mock>=3.14.0",
+    "pytest-cov>=6.1.1",
 ]
 PACKAGES = ["proxybroker", "proxybroker.data"]
 PACKAGE_DATA = {"": ["LICENSE"], INFO["package"]: ["data/*.mmdb"]}
