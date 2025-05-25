@@ -127,7 +127,7 @@ class TestCriticalAPIContracts:
         # With custom parameters
         pool2 = ProxyPool(proxies, min_req_proxy=3, max_error_rate=0.3)
         assert pool2._min_req_proxy == 3
-        assert pool2._max_error_rate == 0.3
+        assert pool2._max_error_rate == pytest.approx(0.3)
 
     @pytest.mark.asyncio
     async def test_proxy_pool_get_put_cycle(self):

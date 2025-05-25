@@ -95,7 +95,7 @@ class TestChecker:
             judges=["http://judge1.com", "http://judge2.com"], timeout=10, max_tries=3
         )
         # Checker stores judges internally, not timeout/max_tries as attributes
-        assert len(checker._judges) >= 0  # Can be 0 if judges aren't loaded yet
+        assert len(checker._judges) == 0  # Can be 0 if judges aren't loaded yet
         assert checker._max_tries == 3
         # timeout is passed to judges, not stored on checker
 

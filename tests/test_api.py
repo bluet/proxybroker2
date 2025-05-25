@@ -160,7 +160,7 @@ async def test_broker_serve_basic(mocker):
     call_args = mock_server_class.call_args
     assert call_args.kwargs["host"] == "127.0.0.1"
     assert call_args.kwargs["port"] == 8888
-    assert call_args.kwargs["timeout"] == 0.1
+    assert call_args.kwargs["timeout"] == pytest.approx(0.1)
     assert call_args.kwargs["max_tries"] == 5
 
     # Verify server was stored

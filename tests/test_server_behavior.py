@@ -111,7 +111,7 @@ class TestServerUserScenarios:
 
         # Verify proxy pool got user settings
         assert server._proxy_pool._min_req_proxy == 5
-        assert server._proxy_pool._max_error_rate == 0.5
+        assert server._proxy_pool._max_error_rate == pytest.approx(0.5)
         assert server._proxy_pool._max_resp_time == 8
         assert server._proxy_pool._min_queue == 5
 
@@ -531,7 +531,7 @@ class TestProxyPoolUserBehavior:
         Users configure pool behavior through constructor parameters.
         """
         assert user_pool._min_req_proxy == 5
-        assert user_pool._max_error_rate == 0.5
+        assert user_pool._max_error_rate == pytest.approx(0.5)
         assert user_pool._max_resp_time == 8
         assert user_pool._min_queue == 2
         assert user_pool._strategy == "best"
@@ -577,5 +577,5 @@ class TestProxyPoolUserBehavior:
 
         # Pool should have the quality thresholds set
         assert user_pool._max_resp_time == 8
-        assert user_pool._max_error_rate == 0.5
+        assert user_pool._max_error_rate == pytest.approx(0.5)
         assert user_pool._min_req_proxy == 5

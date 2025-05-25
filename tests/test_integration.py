@@ -255,7 +255,7 @@ class TestPublicAPIStability:
         )
 
         assert pool._min_req_proxy == 5
-        assert pool._max_error_rate == 0.5
+        assert pool._max_error_rate == pytest.approx(0.5)
         assert pool._max_resp_time == 8
 
     def test_exported_classes(self):

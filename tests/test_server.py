@@ -84,7 +84,7 @@ class TestProxyPool:
         )
         assert pool._proxies is queue
         assert pool._min_req_proxy == 5
-        assert pool._max_error_rate == 0.5
+        assert pool._max_error_rate == pytest.approx(0.5)
         assert pool._max_resp_time == 8
         assert pool._min_queue == 5
         assert pool._strategy == "best"
