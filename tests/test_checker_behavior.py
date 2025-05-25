@@ -118,7 +118,7 @@ class TestCheckerBehavior:
 
         # The checker should initialize even with invalid judges
         assert checker is not None
-        assert len(checker._judges) >= 0  # May have judges but not validated yet
+        assert len(checker._judges) == 1  # Should have 1 Judge object (not validated yet)
 
         # Checker should have proper protocol requirements
         assert checker._req_http_proto in [True, False]  # Boolean value
