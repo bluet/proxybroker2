@@ -160,6 +160,7 @@ Contents:
 .. toctree::
 
    api
+   api_auto
    examples
    changelog.md
 
