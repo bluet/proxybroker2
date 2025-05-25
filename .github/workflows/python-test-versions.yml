@@ -46,13 +46,5 @@ jobs:
           poetry run ruff format --check .
       - name: Test with pytest
         run: |
-          # Run core test suite with coverage
-          poetry run pytest tests/test_api.py tests/test_checker.py tests/test_cli.py tests/test_negotiators.py tests/test_proxy.py tests/test_resolver.py tests/test_server.py tests/test_utils.py -v --cov=proxybroker --cov-report=term-missing --cov-fail-under=60
-      - name: Test behavior scenarios (user workflows)
-        run: |
-          # Test user-facing behavior and integration scenarios
-          poetry run pytest tests/test_server_behavior.py tests/test_checker_behavior.py tests/test_integration.py -v
-      - name: Test API contracts (backward compatibility)
-        run: |
-          # Ensure public APIs remain stable
-          poetry run pytest tests/test_api_contracts.py -v
+          # Run full test suite with coverage
+          poetry run pytest tests/ -v --cov=proxybroker --cov-report=term-missing --cov-fail-under=60
