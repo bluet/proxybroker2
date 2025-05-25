@@ -6,6 +6,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ProxyBroker2 is an async proxy finder, checker, and server that discovers and validates public proxies from multiple sources. It supports HTTP(S), SOCKS4/5 protocols and can operate as a proxy server with automatic rotation.
 
+**Repository**: `bluet/proxybroker2` (GitHub)
+
+## GitHub CLI Commands
+
+When using `gh` (GitHub CLI), always specify the repository as `bluet/proxybroker2`:
+```bash
+# View PR
+gh pr view 185 --repo bluet/proxybroker2
+
+# Get PR comments
+gh api repos/bluet/proxybroker2/pulls/185/comments
+
+# List PRs
+gh pr list --repo bluet/proxybroker2
+
+# Create PR
+gh pr create --repo bluet/proxybroker2
+```
+
 ## Development Commands
 
 ### Dependencies
