@@ -91,38 +91,54 @@ class TestCheckerAPI:
     def test_checker_anonymity_level_detection_contract(self):
         """Test that anonymity level detection functions exist and work."""
         from proxybroker.checker import _get_anonymity_lvl
+        from unittest.mock import Mock
 
         # Test function exists and handles basic cases
         real_ip = "1.2.3.4"
 
+        # Create mock objects with required attributes
+        mock_proxy = Mock()
+        mock_proxy.log = Mock()
+        mock_judge = Mock()
+        mock_judge.marks = {"via": 0, "proxy": 0}
+
         # Transparent proxy case
         transparent_content = '{"ip": "1.2.3.4", "headers": {}}'
-        lvl = _get_anonymity_lvl(real_ip, None, None, transparent_content)
+        lvl = _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, transparent_content)
         assert lvl == "Transparent"
 
-        # Anonymous proxy case
+        # Anonymous proxy case (contains 'via' or 'proxy')
         anonymous_content = '{"ip": "8.8.8.8", "via": "1.1 proxy"}'
-        lvl = _get_anonymity_lvl(real_ip, None, None, anonymous_content)
+        lvl = _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, anonymous_content)
         assert lvl == "Anonymous"
 
-        # High anonymous proxy case
+        # High anonymous proxy case (different IP, no via/proxy headers)
         high_anon_content = '{"ip": "8.8.8.8"}'
-        lvl = _get_anonymity_lvl(real_ip, None, None, high_anon_content)
+        lvl = _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, high_anon_content)
         assert lvl == "High"
 
     def test_checker_response_validation_contract(self):
         """Test that response validation functions exist and work."""
         from proxybroker.checker import _check_test_response
-        from proxybroker.utils import get_headers
+        from proxybroker.utils import get_headers, parse_headers
+        from unittest.mock import Mock
 
         # Get real verification values
         real_headers, real_rv = get_headers(rv=True)
 
+        # Create mock proxy
+        mock_proxy = Mock()
+        mock_proxy.log = Mock()
+
+        # Parse headers from response
+        response = b"HTTP/1.1 200 OK\r\n\r\n"
+        headers = parse_headers(response)
+
         # Valid response should return True
         valid_content = f"Your code: {real_rv} Your IP: 8.8.8.8 Referer: {real_headers['Referer']} Cookie: {real_headers['Cookie']}"
         result = _check_test_response(
-            mock_proxy=None,
-            response=b"HTTP/1.1 200 OK\r\n\r\n",
+            proxy=mock_proxy,
+            headers=headers,
             content=valid_content,
             rv=real_rv,
         )
@@ -131,8 +147,8 @@ class TestCheckerAPI:
         # Invalid response should return False
         invalid_content = "Your code: wrong_code Your IP: 8.8.8.8"
         result = _check_test_response(
-            mock_proxy=None,
-            response=b"HTTP/1.1 200 OK\r\n\r\n",
+            proxy=mock_proxy,
+            headers=headers,
             content=invalid_content,
             rv=real_rv,
         )

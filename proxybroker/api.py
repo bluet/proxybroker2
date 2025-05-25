@@ -107,7 +107,7 @@ class Broker:
         self._judges = judges
         self._providers = [
             p if isinstance(p, Provider) else Provider(p)
-            for p in (providers or PROVIDERS)
+            for p in (PROVIDERS if providers is None else providers)
         ]
         if stop_broker_on_sigint and self._loop:
             try:

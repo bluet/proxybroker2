@@ -82,7 +82,7 @@ class TestBrokerAPI:
         # Test that find() can be called without errors
         # With very small limit to minimize test time
         try:
-            await asyncio.wait_for(broker.find(limit=1), timeout=3.0)
+            await asyncio.wait_for(broker.find(types=["HTTP"], limit=1), timeout=3.0)
         except asyncio.TimeoutError:
             # Timeout is acceptable - we're testing the API contract
             pass
