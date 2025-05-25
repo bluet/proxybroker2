@@ -69,6 +69,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
     "alabaster",
     "myst_parser",
 ]
@@ -147,6 +148,29 @@ highlight_language = "python3"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+# -- MyST Parser configuration ------------------------------------------------
+
+# MyST-Parser settings for enhanced Markdown support
+myst_enable_extensions = [
+    "colon_fence",  # ::: directive fences
+    "deflist",  # Definition lists
+    "tasklist",  # Task list checkboxes
+    "linkify",  # Auto-link URLs
+    "strikethrough",  # ~~text~~ support
+    "substitution",  # Variable substitution
+]
+
+# MyST configuration
+myst_title_to_header = True
+myst_heading_anchors = 3
+myst_fence_as_directive = ["mermaid"]
+
+# Intersphinx mapping
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "aiohttp": ("https://docs.aiohttp.org/en/stable/", None),
+}
 
 
 # -- Options for HTML output ----------------------------------------------
