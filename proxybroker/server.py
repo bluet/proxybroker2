@@ -106,7 +106,7 @@ class ProxyPool:
             except asyncio.TimeoutError:
                 raise NoProxyError(
                     f"Timeout waiting for proxy with scheme {expected_scheme}"
-                )
+                ) from None
 
         raise NoProxyError(
             f"Exceeded max retries ({self._max_import_retries}) finding proxy with scheme {expected_scheme}"
