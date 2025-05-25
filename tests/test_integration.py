@@ -24,7 +24,7 @@ class TestUserWorkflows:
         """
         proxies = asyncio.Queue()
         broker = Broker(
-            proxies, timeout=0.1, max_conn=5, max_tries=1, stop_broker_on_sigint=False
+            proxies, timeout=2, max_conn=5, max_tries=1, stop_broker_on_sigint=False
         )
 
         # Mock the core components that interact with external services
@@ -105,9 +105,7 @@ class TestUserWorkflows:
         This is the main server interface from examples/proxy_server.py.
         """
         # Test that serve method accepts the expected parameters without errors
-        broker = Broker(
-            timeout=0.1, max_conn=5, max_tries=1, stop_broker_on_sigint=False
-        )
+        broker = Broker(timeout=2, max_conn=5, max_tries=1, stop_broker_on_sigint=False)
 
         # Test with invalid limit (should raise ValueError)
         with pytest.raises(ValueError, match="cannot be less than or equal to zero"):
@@ -154,9 +152,7 @@ class TestUserWorkflows:
 
         This is used when users want fast proxy discovery.
         """
-        broker = Broker(
-            timeout=0.1, max_conn=5, max_tries=1, stop_broker_on_sigint=False
-        )
+        broker = Broker(timeout=2, max_conn=5, max_tries=1, stop_broker_on_sigint=False)
 
         with patch.object(
             broker._resolver, "get_real_ext_ip", return_value="127.0.0.1"

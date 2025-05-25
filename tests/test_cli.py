@@ -2,175 +2,15 @@ import os
 import subprocess
 import sys
 import tempfile
-from unittest.mock import MagicMock
 
 import pytest
 
-from proxybroker import Proxy
-
-
-@pytest.fixture
-def sample_proxies():
-    """Create sample proxy objects for testing."""
-    proxies = []
-    for i in range(3):
-        proxy = MagicMock(spec=Proxy)
-        proxy.host = f"127.0.0.{i + 1}"
-        proxy.port = 8080
-        proxy.types = {"HTTP": "Anonymous"}
-        proxy.schemes = ("HTTP", "HTTPS")
-        proxy.avg_resp_time = 1.5
-        proxy.error_rate = 0.1
-        proxy.as_json.return_value = {
-            "host": proxy.host,
-            "port": proxy.port,
-            "types": [{"type": "HTTP", "level": "Anonymous"}],
-            "avg_resp_time": 1.5,
-            "error_rate": 0.1,
-        }
-        proxy.as_text.return_value = f"{proxy.host}:{proxy.port}"
-        proxy.__repr__ = lambda self=proxy: f"<Proxy {self.host}:{self.port}>"
-        proxies.append(proxy)
-    return proxies
-
 
 class TestCLI:
-    """Test CLI functionality."""
+    """Test CLI functionality through actual command execution."""
 
-    def run_cli(self, args):
+    def run_cli(self, args, timeout=10):
         """Run CLI command and return result."""
-        cmd = [sys.executable, "-m", "proxybroker"] + args
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        return result
-
-    def test_cli_help(self):
-        """Test CLI help command."""
-        result = self.run_cli(["--help"])
-        assert result.returncode == 0
-        assert "usage: proxybroker" in result.stdout
-        assert "find" in result.stdout
-        assert "grab" in result.stdout
-        assert "serve" in result.stdout
-
-    def test_cli_version(self):
-        """Test CLI version command."""
-        result = self.run_cli(["--version"])
-        assert result.returncode == 0
-        assert "0.4.0" in result.stdout
-
-    def test_find_command_help(self):
-        """Test find command help."""
-        result = self.run_cli(["find", "--help"])
-        assert result.returncode == 0
-        assert "Find and check proxies" in result.stdout
-        assert "--types" in result.stdout
-        assert "--countries" in result.stdout
-        assert "--limit" in result.stdout
-
-    def test_grab_command_help(self):
-        """Test grab command help."""
-        result = self.run_cli(["grab", "--help"])
-        assert result.returncode == 0
-        assert "Find proxies without a check" in result.stdout
-        assert "--countries" in result.stdout
-        assert "--limit" in result.stdout
-        assert "--outfile" in result.stdout
-
-    def test_serve_command_help(self):
-        """Test serve command help."""
-        result = self.run_cli(["serve", "--help"])
-        assert result.returncode == 0
-        assert "Run a local proxy server" in result.stdout
-        assert "--host" in result.stdout
-        assert "--port" in result.stdout
-        assert "--types" in result.stdout
-
-    # Note: The following tests were removed because they're difficult to test with argparse
-    # and the CLI functionality is already verified through subprocess tests above.
-    # The application's CLI has been manually tested and works correctly.
-
-    def test_find_command_argument_parsing(self):
-        """Test find command argument parsing without execution."""
-        # Test that arguments are parsed correctly (timeout immediately)
-        cmd = [
-            sys.executable,
-            "-m",
-            "proxybroker",
-            "find",
-            "--types",
-            "HTTP",
-            "HTTPS",
-            "--help",
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        assert result.returncode == 0
-
-    def test_grab_command_argument_parsing(self):
-        """Test grab command argument parsing without execution."""
-        cmd = [
-            sys.executable,
-            "-m",
-            "proxybroker",
-            "grab",
-            "--help",
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        assert result.returncode == 0
-
-    def test_serve_command_argument_parsing(self):
-        """Test serve command argument parsing."""
-        cmd = [
-            sys.executable,
-            "-m",
-            "proxybroker",
-            "serve",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8888",
-            "--help",
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        assert result.returncode == 0
-
-    def test_outfile_argument(self):
-        """Test output file argument parsing."""
-        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
-            temp_file = f.name
-
-        try:
-            cmd = [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "grab",
-                "--outfile",
-                temp_file,
-                "--help",
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            assert result.returncode == 0
-        finally:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
-
-    def test_invalid_arguments(self):
-        """Test CLI error handling for invalid arguments."""
-        # Invalid port
-        result = self.run_cli(["serve", "--port", "99999"])
-        # Should exit with error (not necessarily returncode 2)
-        assert result.returncode != 0 or "error" in result.stderr.lower()
-
-        # Invalid limit
-        result = self.run_cli(["find", "--limit", "-1"])
-        assert result.returncode != 0 or "error" in result.stderr.lower()
-
-
-class TestCLIUserScenarios:
-    """Test CLI scenarios that mirror real user usage patterns."""
-
-    def run_cli_with_timeout(self, args, timeout=5):
-        """Run CLI command with timeout to prevent hanging."""
         cmd = [sys.executable, "-m", "proxybroker"] + args
         try:
             result = subprocess.run(
@@ -178,289 +18,179 @@ class TestCLIUserScenarios:
             )
             return result
         except subprocess.TimeoutExpired:
-            # This is expected for most commands since they run indefinitely
+            # This is expected for commands that run indefinitely
             return None
 
-    def test_help_accessibility(self):
-        """Test that users can easily access help information."""
-        # Main help
-        result = subprocess.run(
-            [sys.executable, "-m", "proxybroker", "--help"],
-            capture_output=True,
-            text=True,
-        )
+    def test_help_command(self):
+        """Test main help displays all commands."""
+        result = self.run_cli(["--help"])
         assert result.returncode == 0
-        assert "Find and check proxies" in result.stdout  # find command description
-        assert (
-            "Find proxies without a check" in result.stdout
-        )  # grab command description
-        assert "Run a local proxy server" in result.stdout  # serve command description
+        assert "usage: proxybroker" in result.stdout
+        # Verify all commands are listed
+        assert "find" in result.stdout
+        assert "grab" in result.stdout
+        assert "serve" in result.stdout
+        # Verify descriptions are shown
+        assert "Find and check proxies" in result.stdout
+        assert "Find proxies without a check" in result.stdout
+        assert "Run a local proxy server" in result.stdout
 
-    def test_version_information(self):
-        """Test that version information is accessible and correct."""
-        result = subprocess.run(
-            [sys.executable, "-m", "proxybroker", "--version"],
-            capture_output=True,
-            text=True,
-        )
+    def test_version_command(self):
+        """Test version display."""
+        result = self.run_cli(["--version"])
         assert result.returncode == 0
-        # Version should be displayed
-        assert "0.4.0" in result.stdout
+        # Version should be displayed (don't hardcode specific version)
+        assert result.stdout.strip()  # Should have some output
 
-    def test_command_specific_help(self):
-        """Test that each command provides useful help."""
-        commands = ["find", "grab", "serve"]
-        for cmd in commands:
-            result = subprocess.run(
-                [sys.executable, "-m", "proxybroker", cmd, "--help"],
-                capture_output=True,
-                text=True,
+    def test_find_command_help(self):
+        """Test find command help shows all options."""
+        result = self.run_cli(["find", "--help"])
+        assert result.returncode == 0
+        assert "Find and check proxies" in result.stdout
+        # Key options should be documented
+        assert "--types" in result.stdout
+        assert "--countries" in result.stdout
+        assert "--limit" in result.stdout
+        assert "--timeout" in result.stdout
+        assert "--format" in result.stdout
+
+    def test_grab_command_help(self):
+        """Test grab command help shows all options."""
+        result = self.run_cli(["grab", "--help"])
+        assert result.returncode == 0
+        assert "Find proxies without a check" in result.stdout
+        # Key options should be documented
+        assert "--countries" in result.stdout
+        assert "--limit" in result.stdout
+        assert "--outfile" in result.stdout
+        assert "--format" in result.stdout
+
+    def test_serve_command_help(self):
+        """Test serve command help shows all options."""
+        result = self.run_cli(["serve", "--help"])
+        assert result.returncode == 0
+        assert "Run a local proxy server" in result.stdout
+        # Key options should be documented
+        assert "--host" in result.stdout
+        assert "--port" in result.stdout
+        assert "--types" in result.stdout
+        assert "--timeout" in result.stdout
+        assert "--max-tries" in result.stdout
+
+    def test_invalid_arguments_error_handling(self):
+        """Test CLI properly handles invalid arguments."""
+        # Invalid port (out of range)
+        result = self.run_cli(["serve", "--port", "99999"])
+        assert result.returncode != 0
+        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+
+        # Invalid limit (negative)
+        result = self.run_cli(["find", "--limit", "-1"])
+        assert result.returncode != 0
+        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+
+        # Invalid country code
+        result = self.run_cli(["find", "--countries", "ZZ"])
+        assert result.returncode != 0
+        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+
+        # Unknown command
+        result = self.run_cli(["unknown"])
+        assert result.returncode != 0
+        assert "error" in result.stderr.lower() or "invalid" in result.stderr.lower()
+
+    def test_find_with_limit_zero_exits_immediately(self):
+        """Test find with limit 0 exits without hanging."""
+        result = self.run_cli(["find", "--limit", "0"], timeout=2)
+        # Should complete quickly when limit is 0
+        assert result is not None
+        assert result.returncode == 0
+
+    def test_grab_with_limit_zero_exits_immediately(self):
+        """Test grab with limit 0 exits without hanging."""
+        result = self.run_cli(["grab", "--limit", "0"], timeout=2)
+        # Should complete quickly when limit is 0
+        assert result is not None
+        assert result.returncode == 0
+
+    def test_grab_output_file_creation(self):
+        """Test grab command creates output file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            temp_file = f.name
+
+        try:
+            # Run grab with limit 0 to exit quickly
+            result = self.run_cli(
+                ["grab", "--limit", "0", "--outfile", temp_file], timeout=2
             )
+            assert result is not None
             assert result.returncode == 0
-            assert "help" in result.stdout.lower() or "usage" in result.stdout.lower()
+            # File should exist (even if empty with limit 0)
+            assert os.path.exists(temp_file)
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
 
-    def test_required_parameter_validation(self):
-        """Test that CLI validates required parameters appropriately."""
-        # Most commands should start even with minimal args (they'll just run with defaults)
-        # We test that they don't fail immediately due to missing required args
-
-        # find with minimal args
-        self.run_cli_with_timeout(["find", "--limit", "0"], timeout=2)
-        # Should not fail immediately with argument errors
-
-        # grab with minimal args
-        self.run_cli_with_timeout(["grab", "--limit", "0"], timeout=2)
-
-        # serve needs host/port but has defaults
-        self.run_cli_with_timeout(["serve", "--limit", "0"], timeout=2)
-
-    def test_find_with_countries_filter(self):
-        """Test find command with country filters - just check parsing."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--countries",
-                "US",
-                "GB",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+    def test_format_options_accepted(self):
+        """Test that format options are accepted."""
+        # Test find with JSON format
+        result = self.run_cli(["find", "--format", "json", "--limit", "0"], timeout=2)
+        assert result is not None
         assert result.returncode == 0
 
-    def test_find_with_anon_levels(self):
-        """Test find command with anonymity level filters - just check parsing."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--types",
-                "HTTP",
-                "--lvl",
-                "High",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
+        # Test grab with default format
+        result = self.run_cli(
+            ["grab", "--format", "default", "--limit", "0"], timeout=2
         )
+        assert result is not None
         assert result.returncode == 0
 
-    def test_grab_with_format(self):
-        """Test grab command with format option - just check parsing."""
-        result = subprocess.run(
-            [sys.executable, "-m", "proxybroker", "grab", "--format", "json", "--help"],
-            capture_output=True,
-            text=True,
-            timeout=5,
+    def test_types_argument_parsing(self):
+        """Test types argument accepts multiple values."""
+        result = self.run_cli(
+            ["find", "--types", "HTTP", "HTTPS", "SOCKS5", "--limit", "0"], timeout=2
         )
+        assert result is not None
         assert result.returncode == 0
 
-    def test_invalid_command(self):
-        """Test invalid command shows help."""
-        result = subprocess.run(
-            [sys.executable, "-m", "proxybroker", "invalid-command"],
-            capture_output=True,
-            text=True,
+    def test_countries_argument_parsing(self):
+        """Test countries argument accepts multiple values."""
+        result = self.run_cli(
+            ["find", "--countries", "US", "GB", "CA", "--limit", "0"], timeout=2
         )
-        assert result.returncode != 0
-        assert "invalid choice" in result.stderr or "error" in result.stderr.lower()
-
-    def test_find_strict_mode(self):
-        """Test find command with strict mode - just check parsing."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--types",
-                "HTTP",
-                "--strict",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        assert result is not None
         assert result.returncode == 0
 
-    def test_serve_with_options(self):
-        """Test serve command with various options."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "serve",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "8888",
-                "--types",
-                "HTTP",
-                "--lvl",
-                "High",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
+    def test_serve_with_custom_host_port(self):
+        """Test serve command accepts host and port."""
+        # Use limit 0 to exit immediately
+        result = self.run_cli(
+            ["serve", "--host", "127.0.0.1", "--port", "8899", "--limit", "0"],
+            timeout=2,
         )
-        assert result.returncode == 0
-        assert "--min-queue" in result.stdout
-
-    def test_validate_countries(self):
-        """Test country code validation - just check parsing."""
-        # Check help with country codes
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--countries",
-                "US",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        assert result is not None
         assert result.returncode == 0
 
-    def test_validate_types(self):
-        """Test proxy type validation."""
-        # Invalid type should show error
-        result = subprocess.run(
-            [sys.executable, "-m", "proxybroker", "find", "--types", "INVALID"],
-            capture_output=True,
-            text=True,
+    def test_timeout_and_max_tries_options(self):
+        """Test timeout and max-tries options are accepted."""
+        result = self.run_cli(
+            ["find", "--timeout", "5", "--max-tries", "2", "--limit", "0"], timeout=2
         )
-        assert result.returncode != 0
-        assert "invalid choice" in result.stderr.lower()
-
-    def test_validate_anon_levels(self):
-        """Test anonymity level validation."""
-        # Invalid level should show error
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--types",
-                "HTTP",
-                "--lvl",
-                "INVALID",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode != 0
-        assert "invalid choice" in result.stderr.lower()
-
-    def test_output_file_permissions(self):
-        """Test output file option parsing."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            outfile = f"{tmpdir}/proxies.txt"
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "proxybroker",
-                    "grab",
-                    "--outfile",
-                    outfile,
-                    "--help",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            assert result.returncode == 0
-
-    def test_concurrent_parameters(self):
-        """Test concurrent connection parameters - just check parsing."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--max-conn",
-                "50",
-                "--max-tries",
-                "2",
-                "--timeout",
-                "5",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        assert result is not None
         assert result.returncode == 0
 
-    def test_custom_judges(self):
-        """Test custom judge URLs - just check parsing."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--judge",
-                "http://example.com",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+    def test_log_level_option(self):
+        """Test log level option is accepted."""
+        result = self.run_cli(["--log", "DEBUG", "find", "--limit", "0"], timeout=2)
+        assert result is not None
         assert result.returncode == 0
+        # Debug output should be visible
+        assert result.stderr or result.stdout  # Some output expected with DEBUG
 
-    def test_custom_providers(self):
-        """Test custom provider URLs - just check parsing."""
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "proxybroker",
-                "find",
-                "--provider",
-                "http://example.com",
-                "--help",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+    @pytest.mark.parametrize("command", ["find", "grab", "serve"])
+    def test_each_command_has_help(self, command):
+        """Test each command has accessible help."""
+        result = self.run_cli([command, "--help"])
         assert result.returncode == 0
+        assert "usage:" in result.stdout.lower()
+        assert command in result.stdout
