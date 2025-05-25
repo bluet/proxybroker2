@@ -1,5 +1,5 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+# Enhanced with modern ruff toolchain while preserving original matrix testing approach
 
 name: build & test
 
@@ -32,11 +32,23 @@ jobs:
           cache: 'poetry'
       - name: Install library
         run: poetry install --no-interaction
-      - name: Lint with flake8
+      - name: Lint with ruff (modern replacement for flake8)
         run: |
-          # stop the build if there are Python syntax errors or undefined names
-          poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude .venv
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude .venv
+          # Install ruff for fast, comprehensive linting
+          poetry run pip install ruff
+          # stop the build if there are Python syntax errors or undefined names  
+          poetry run ruff check . --select=E9,F63,F7,F82 --output-format=github
+          # comprehensive linting with GitHub integration
+          poetry run ruff check . --output-format=github
+      - name: Check code formatting with ruff
+        run: |
+          # Verify code is properly formatted (replaces black/isort)
+          poetry run ruff format --check .
       - name: Test with pytest
-        run: poetry run pytest -v --cov
+        run: |
+          # Run core test suite with coverage
+          poetry run pytest tests/test_api.py tests/test_checker.py tests/test_cli.py tests/test_negotiators.py tests/test_proxy.py tests/test_resolver.py tests/test_server.py tests/test_utils.py -v --cov=proxybroker --cov-report=term-missing --cov-fail-under=60
+      - name: Test API contracts (backward compatibility)
+        run: |
+          # Ensure public APIs remain stable
+          poetry run pytest tests/test_api_contracts.py -v
