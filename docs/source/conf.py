@@ -105,7 +105,7 @@ release = _INFO["version"]
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -160,12 +160,11 @@ html_theme = "alabaster"
 # documentation.
 html_theme_options = {
     "logo": "anonymous-128-icon.png",
-    "description": "Proxy: find>check>serve",
-    "github_user": "constverum",
-    "github_repo": "ProxyBroker",
+    "description": "Async proxy finder, checker, and server",
+    "github_user": "bluet",
+    "github_repo": "proxybroker2",
     "github_button": True,
     "github_banner": True,
-    "analytics_id": "UA-78523784-1",
 }
 
 # Add any paths that contain custom themes here, relative to this directory.

@@ -1,4 +1,21 @@
-conda:
-    file: environment.yml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+# Set the OS, Python version and other tools you might need
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.10"
+
+# Build documentation in the docs/ directory with Sphinx
+sphinx:
+  configuration: docs/source/conf.py
+
+# Optionally declare the Python requirements required to build your docs
 python:
-   setup_py_install: true
+  install:
+    - method: pip
+      path: .
+    - requirements: docs/requirements.txt
