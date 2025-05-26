@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from proxybroker import Proxy
+from proxybroker.errors import NoProxyError
 from proxybroker.server import ProxyPool, Server
 
 
@@ -117,7 +118,7 @@ class TestServerAPI:
         pool = ProxyPool(queue)
 
         # Should timeout gracefully when no proxies available
-        with pytest.raises(Exception):  # Could be TimeoutError or NoProxyError
+        with pytest.raises((asyncio.TimeoutError, NoProxyError)):
             await asyncio.wait_for(pool.get("HTTP"), timeout=0.5)
 
     @pytest.mark.asyncio
@@ -220,6 +221,10 @@ class TestServerAPI:
             max_resp_time=8,
             backlog=100,
         )
+
+        # Verify the server was created with the expected configuration
+        assert server.host == "127.0.0.1"
+        assert server.port == 8888
 
     # Cleanup and Resource Management Tests
 
