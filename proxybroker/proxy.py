@@ -141,6 +141,8 @@ class Proxy:
         :param dict new_types: Dictionary of types and anonymity levels
         """
         self._types = new_types if new_types is not None else {}
+        # Reset cached schemes so they get recalculated based on new types
+        self._schemes = ()
 
     @property
     def is_working(self):
