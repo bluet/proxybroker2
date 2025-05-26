@@ -134,6 +134,14 @@ class Proxy:
         """
         return self._types
 
+    @types.setter
+    def types(self, new_types):
+        """Set the types (protocols) supported by the proxy.
+
+        :param dict new_types: Dictionary of types and anonymity levels
+        """
+        self._types = new_types if new_types is not None else {}
+
     @property
     def is_working(self):
         """True if the proxy is working, False otherwise.
