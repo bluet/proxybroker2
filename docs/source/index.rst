@@ -3,23 +3,21 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-ProxyBroker
-===========
+ProxyBroker2
+============
 
 [Finder | Checker | Server]
 
-.. image:: https://img.shields.io/pypi/v/proxybroker.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/proxybroker/
-.. image:: https://img.shields.io/travis/constverum/ProxyBroker.svg?style=flat-square
-    :target: https://travis-ci.org/constverum/ProxyBroker
-.. image:: https://img.shields.io/pypi/wheel/proxybroker.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/proxybroker/
-.. image:: https://img.shields.io/pypi/pyversions/proxybroker.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/proxybroker/
-.. image:: https://img.shields.io/pypi/l/proxybroker.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/proxybroker/
+.. image:: https://img.shields.io/github/v/release/bluet/proxybroker2.svg?style=flat-square
+    :target: https://github.com/bluet/proxybroker2/releases
+.. image:: https://img.shields.io/github/actions/workflow/status/bluet/proxybroker2/python-test-versions.yml?style=flat-square
+    :target: https://github.com/bluet/proxybroker2/actions
+.. image:: https://img.shields.io/badge/python-3.10--3.13-blue.svg?style=flat-square
+    :target: https://github.com/bluet/proxybroker2
+.. image:: https://img.shields.io/github/license/bluet/proxybroker2.svg?style=flat-square
+    :target: https://github.com/bluet/proxybroker2/blob/master/LICENSE
 
-ProxyBroker is an open source tool that asynchronously finds public proxies from multiple sources and concurrently checks them.
+ProxyBroker2 is an async proxy finder, checker, and server that discovers public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
 .. image:: _static/index_find_example.gif
 
@@ -32,7 +30,6 @@ Features
 * Proxies may be filtered by type, anonymity level, response time, country and status in DNSBL.
 * Work as a proxy server that distributes incoming requests to external proxies. With automatic proxy rotation.
 * All proxies are checked to support Cookies and Referer (and POST requests if required).
-.. * Save found proxies to a file in custom format.
 * Automatically removes duplicate proxies.
 * Is asynchronous.
 
@@ -40,26 +37,28 @@ Features
 Requirements
 ------------
 
-* Python **3.5** or higher
-* `aiohttp <https://pypi.python.org/pypi/aiohttp>`_
-* `aiodns <https://pypi.python.org/pypi/aiodns>`_
-* `maxminddb <https://pypi.python.org/pypi/maxminddb>`_
+* Python **3.10** or higher
+* `aiohttp <https://pypi.python.org/pypi/aiohttp>`_ >= 3.8.0
+* `aiodns <https://pypi.python.org/pypi/aiodns>`_ >= 3.0.0
+* `maxminddb <https://pypi.python.org/pypi/maxminddb>`_ >= 2.0.0
 
 
 Installation
 ------------
 
-To install last stable release from pypi:
+Install from GitHub (recommended for latest features):
 
 .. code-block:: bash
 
-    $ pip install proxybroker
+    $ pip install git+https://github.com/bluet/proxybroker2.git
 
-The latest development version can be installed directly from GitHub:
+Or clone and install locally:
 
 .. code-block:: bash
 
-    $ pip install -U git+https://github.com/constverum/ProxyBroker.git
+    $ git clone https://github.com/bluet/proxybroker2.git
+    $ cd proxybroker2
+    $ pip install -e .
 
 
 Usage
@@ -77,7 +76,7 @@ Find and show 10 HTTP(S) proxies from United States with the high level of anony
 
 .. code-block:: bash
 
-    $ proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
+    $ python -m proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
 
 .. image:: _static/cli_find_example.gif
 
@@ -89,7 +88,7 @@ Find and save to a file 10 US proxies (without a check):
 
 .. code-block:: bash
 
-    $ proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
+    $ python -m proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 
 .. image:: _static/cli_grab_example.gif
 
@@ -102,16 +101,16 @@ of found HTTP(S) proxies with the high level of anonymity:
 
 .. code-block:: bash
 
-    $ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High
+    $ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High
 
 
 .. image:: _static/cli_serve_example.gif
 
 .. note::
 
-    Run ``proxybroker --help`` for more information on the options available.
+    Run ``python -m proxybroker --help`` for more information on the options available.
 
-    Run ``proxybroker <command> --help`` for more information on a command.
+    Run ``python -m proxybroker <command> --help`` for more information on a command.
 
 
 Basic code example
@@ -140,7 +139,7 @@ TODO
 Contributing
 ------------
 
-* Fork it: https://github.com/constverum/ProxyBroker/fork
+* Fork it: https://github.com/bluet/proxybroker2/fork
 * Create your feature branch: git checkout -b my-new-feature
 * Commit your changes: git commit -am 'Add some feature'
 * Push to the branch: git push origin my-new-feature
@@ -161,8 +160,9 @@ Contents:
 .. toctree::
 
    api
+   api_auto
    examples
-   changelog
+   changelog.md
 
 
 Indices and tables

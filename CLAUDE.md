@@ -4,92 +4,212 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ProxyBroker2 is an async proxy finder, checker, and server that discovers and validates public proxies from multiple sources. It supports HTTP(S), SOCKS4/5 protocols and can operate as a proxy server with automatic rotation.
+ProxyBroker2 is an async proxy finder, checker, and server. It discovers public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
-## Development Commands
+**Repository**: `bluet/proxybroker2` (GitHub)
+**Python**: 3.10-3.13
+**Key Dependencies**: aiohttp 3.12.0+, aiodns 3.4.0+, attrs 25.3.0+, asyncio
 
-### Dependencies
-Uses Poetry for dependency management:
+## Common Development Commands
+
+### Setup
 ```bash
-poetry install         # Install dependencies
-poetry shell          # Activate virtual environment
+# Poetry (recommended)
+poetry install
+poetry shell
+
+# Standard pip
+pip install -e .
 ```
 
 ### Testing
 ```bash
-pytest                 # Run all tests
-pytest tests/test_proxy.py  # Run specific test file
-pytest -v             # Verbose output
-pytest --flake8       # Run with linting
-pytest --isort        # Run with import sorting
-pytest --cov          # Run with coverage reporting
+# Run all tests
+pytest
+
+# Single test with output
+pytest -xvs tests/test_api.py::TestBrokerAPI::test_broker_creation_without_queue
+
+# With coverage
+pytest --cov=proxybroker --cov-report=term-missing
 ```
 
-### Linting and Code Quality
+### Code Quality
 ```bash
-flake8                # Check code style
-isort .               # Sort imports
+# Format and fix issues
+ruff check . --fix && ruff format .
 ```
 
-### Building
+### Documentation
 ```bash
-pip install pyinstaller && pip install . && mkdir -p build && cd build && pyinstaller --onefile --name proxybroker --add-data "../proxybroker/data:data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py && rm -rf tmp *.spec
+# Build documentation locally
+cd docs && make html
+
+# Clean build
+cd docs && make clean && make html
+
+# Docstring coverage check
+python -c "import ast; import os; ..." # See script in README for details
 ```
 
-### Docker
+### CLI Usage
 ```bash
-docker build -t proxybroker2 .
-docker run --rm proxybroker2 --help
+# Find proxies
+python -m proxybroker find --types HTTP HTTPS --limit 10
+
+# Run as proxy server
+python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
+
+# Grab without validation
+python -m proxybroker grab --countries US --limit 10 --outfile proxies.txt
 ```
 
-## Architecture Overview
+## Architecture
 
 ### Core Components
 
-**Broker** (`api.py`): Central orchestrator that manages the entire proxy discovery and checking pipeline. Coordinates providers, checkers, and servers.
+**Broker** (`api.py`)
+- Orchestrates the entire pipeline
+- Methods: `find()`, `grab()`, `serve()`
+- Manages provider tasks and checker coordination
 
-**ProxyPool** (`server.py`): Manages proxy selection strategies and health tracking. Maintains separate pools for newcomers and established proxies with error rate monitoring.
+**ProxyPool** (`api.py`)
+- Min-heap priority queue based on `proxy.avg_resp_time`
+- Two-stage pool: `_newcomers` → `_pool` after validation
+- Configurable retry limits and timeouts
 
-**Server** (`server.py`): HTTP/HTTPS proxy server that distributes incoming requests across the proxy pool with automatic rotation and failure handling.
+**Providers** (`providers.py`)
+- 50+ proxy sources inheriting from `Provider` base class
+- Concurrent fetching limited to `MAX_CONCURRENT_PROVIDERS = 3`
+- Each implements `get_proxies()` to extract proxy data
 
-**Checker** (`checker.py`): Validates proxy functionality by testing connectivity, anonymity levels, and protocol support through configurable judges.
+**Checker** (`checker.py`)
+- Validates proxies against judge servers (httpbin.org, azenv.net)
+- Detects anonymity levels by checking IP leakage
+- Supports multiple protocols with protocol-specific negotiators
 
-**Provider** (`providers.py`): Web scrapers that extract proxy lists from various public sources (~50 different websites).
+**Server** (`server.py`)
+- Proxy server mode using validated proxies
+- Automatic rotation and failure handling
+- Supports HTTP(S) and SOCKS protocols
 
-**Negotiators** (`negotiators.py`): Protocol-specific handlers for HTTP CONNECT, SOCKS4, and SOCKS5 proxy connections.
+### Key Patterns
 
-### Key Data Flow
+**Async Safety**
+```python
+try:
+    self._loop = loop or asyncio.get_running_loop()
+except RuntimeError:
+    self._loop = loop
+```
 
-1. **Discovery**: Providers scrape proxy sources concurrently (max 3 at once, configurable via MAX_CONCURRENT_PROVIDERS)
-2. **Validation**: Checker tests each proxy against judge servers for connectivity and anonymity
-3. **Pooling**: Valid proxies enter ProxyPool with health tracking and rotation strategies
-4. **Serving**: Server distributes client requests across healthy proxies with automatic failover
+**Heap Invariant**
+```python
+# Always use heapq operations
+heapq.heappush(self._pool, (proxy.avg_resp_time, proxy))
+```
 
-### Important Implementation Details
+**Empty Provider List Handling**
+```python
+# Respect explicit empty list vs None
+PROVIDERS if providers is None else providers
+```
 
-**Async Architecture**: Entire codebase is built on asyncio with careful resource management for connections and timeouts.
+## Important Implementation Details
 
-**Error Handling**: Comprehensive exception hierarchy in `errors.py` for different failure modes (connection, timeout, protocol-specific errors).
+### Protocol Priority
+Deterministic order: SOCKS5 → SOCKS4 → CONNECT:80 → CONNECT:25 → HTTPS → HTTP
 
-**Geolocation**: Uses MaxMind GeoLite2 database (`data/GeoLite2-Country.mmdb`) for country-based proxy filtering.
+### Signal Handler Cleanup
+`Broker.stop()` properly removes signal handlers to prevent memory leaks
 
-**Configuration**: CLI interface (`cli.py`) with extensive options for timeouts, concurrency limits, filtering criteria, and output formats.
+### Version Management
+Single source of truth in `pyproject.toml`, auto-detected in development mode
 
-### Project Structure Quirks
+### Testing Philosophy
+- Test behavior, not implementation
+- Focus on user-visible outcomes
+- Don't test internal method calls or private attributes
+- Don't write complex mock-heavy tests
+- Don't overfit tests to current implementation
+- Simple tests that serve as documentation
 
-- `py2exe_entrypoint.py`: Special entry point for PyInstaller builds
-- Two package managers: Poetry (preferred) and setuptools (legacy)
-- GeoIP database included in package data (`proxybroker/data/GeoLite2-Country.mmdb`)
-- Docker support with multi-stage builds
-- Python 3.10-3.13 support (updated for modern asyncio patterns)
-- CLI entry point defined via Poetry scripts: `proxybroker = "proxybroker.cli:cli"`
+### Warning Management
+- **Function over form** - Keep warnings that preserve functionality (e.g., event_loop fixture for working tests)
+- **Fix fixable warnings** - Address RST syntax errors, deprecated configurations, resource leaks
+- **External dependency warnings** - Accept pycares/aiodns DNS resolver cleanup warnings (unfixable)
+- **Documentation warnings** - Reduce from 42 to 34 using proper architecture, maintain full content
+- **Avoid anti-patterns** - No broad warning suppressions or `:noindex:` misuse
 
-### Python Version Support
+## Documentation Guidelines
 
-The project supports Python 3.10-3.13. All asyncio compatibility issues for Python 3.13 have been resolved, including:
-- Replaced deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` with fallback handling
-- Removed deprecated `loop` parameters from aiohttp calls  
-- Updated `asyncio.ensure_future()` to `asyncio.create_task()`
-- Fixed event loop initialization in classes
+### Auto-Generated vs Hand-Written Strategy
+- **Auto-generate**: API reference, function signatures, class hierarchies
+- **Hand-write**: Getting started, tutorials, architecture explanations, migration guides
+- **Leverage existing**: 44/224 (19.6%) functions have high-quality docstrings
 
-Development dependencies include pytest plugins for async testing, linting (flake8), import sorting (isort), and code coverage.
+### Sphinx Configuration (docs/source/conf.py)
+```python
+extensions = [
+    "sphinx.ext.autodoc",      # Auto-generate from docstrings
+    "sphinx.ext.autosummary",  # Create overview tables
+    "sphinx.ext.napoleon",     # Google/NumPy style docstrings
+    "myst_parser",            # Modern Markdown support
+]
+```
+
+### MyST-Parser Features Enabled
+- `colon_fence` - ::: directive fences
+- `deflist` - Definition lists
+- `tasklist` - GitHub-style checkboxes
+- `linkify` - Auto-link URLs
+- `strikethrough` - ~~text~~ support
+
+### Documentation Structure
+```
+docs/source/
+├── api.rst          # Curated API guide
+├── api_auto.rst     # Auto-generated complete reference
+├── examples.rst     # Hand-written tutorials
+├── changelog.md     # Auto-included from root CHANGELOG.md
+└── index.rst        # Main documentation page
+```
+
+## Known Quirks
+
+- Uses both Poetry and setuptools for compatibility
+- GeoIP database bundled in `proxybroker/data/`
+- Entry points: `__main__.py` (module), `py2exe_entrypoint.py` (executable)
+- ProxyPool.remove() is O(N log N) - acceptable for correctness
+
+## Recent Major Improvements (v2.0.0+)
+
+### Production-Ready Status
+- **Zero critical bugs** - Fixed all signal handler leaks, deadlocks, heap corruption
+- **Modern async patterns** - Updated from deprecated asyncio patterns
+- **Python 3.10-3.13 support** - Full compatibility with latest Python versions
+- **Modern dependencies** - Updated to latest stable versions (May 2025)
+
+### Testing & Quality
+- **Behavior-focused tests** - Contract-based testing protects APIs during refactoring
+- **Eliminated brittle tests** - Removed implementation-detail testing
+- **Comprehensive coverage** - Tests protect user-visible functionality
+- **CI/CD matrix testing** - Verified across Python 3.10-3.13
+- **Modern toolchain** - ruff for linting/formatting, pytest 8.3.5+
+
+### Dependency Updates (May 2025)
+- **aiohttp** 3.10.11 → 3.12.0 (asyncio deprecation fixes)
+- **aiodns** 3.1.1 → 3.4.0 (DNS resolution improvements)
+- **attrs** 22.1.0 → 25.3.0 (Python 3.10+ optimizations)
+- **pytest** 7.1.2 → 8.3.5 (modern testing framework)
+- **Removed redundant tools** - flake8/isort replaced by ruff
+- **Clean warning profile** - Fixed asyncio SSL deprecations, minimal remaining warnings
+
+### Documentation Strategy
+- **80% Auto-generated** - API reference from docstrings (19.6% coverage, high quality)
+- **20% Hand-written** - Guides, tutorials, architecture explanations
+- **Sphinx 8.1.3 + MyST-Parser 4.0.1** - Latest stable versions (Feb 2025)
+- **Enhanced autodoc** - Napoleon, autosummary, inheritance display
+- **Modern changelog** - CHANGELOG.md following Keep a Changelog standard
+- **ReadTheDocs hosting** - Multiple formats (HTML, PDF, htmlzip)
+- **Conventional commits** - Structured format for release automation

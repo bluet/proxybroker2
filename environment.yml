@@ -1,12 +1,16 @@
-name: py36
+name: proxybroker2-docs
 dependencies:
-- pip=9.0.1=py36_1
-- python=3.6.2=0
-- setuptools=27.2=py36_0
-- wheel=0.29.0=py36_0
+- python>=3.10
+- pip
+- setuptools
+- wheel
 - pip:
-  - sphinx
-  - alabaster
-  - aiohttp
-  - aiodns
-  - maxminddb
+  - sphinx>=8.0
+  - myst-parser>=4.0
+  - alabaster>=1.0.0
+  - aiohttp>=3.12.0
+  - aiodns>=3.4.0
+  - maxminddb>=2.7.0
+  - attrs>=25.3.0
+  - cachetools>=5.5.2
+  - click>=8.2.1

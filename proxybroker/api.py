@@ -78,25 +78,28 @@ class Broker:
         self._all_tasks = []
         self._checker = None
         self._server = None
+        self._signal_handler_registered = False
         self._limit = 0  # not limited
         self._countries = None
 
-        max_concurrent_conn = kwargs.get('max_concurrent_conn')
+        max_concurrent_conn = kwargs.get("max_concurrent_conn")
         if max_concurrent_conn:
             warnings.warn(
-                '`max_concurrent_conn` is deprecated, use `max_conn` instead',
+                "`max_concurrent_conn` is deprecated, use `max_conn` instead",
                 DeprecationWarning,
+                stacklevel=2,
             )
             if isinstance(max_concurrent_conn, asyncio.Semaphore):
                 max_conn = max_concurrent_conn._value
             else:
                 max_conn = max_concurrent_conn
 
-        attempts_conn = kwargs.get('attempts_conn')
+        attempts_conn = kwargs.get("attempts_conn")
         if attempts_conn:
             warnings.warn(
-                '`attempts_conn` is deprecated, use `max_tries` instead',
+                "`attempts_conn` is deprecated, use `max_tries` instead",
                 DeprecationWarning,
+                stacklevel=2,
             )
             max_tries = attempts_conn
 
@@ -106,11 +109,12 @@ class Broker:
         self._judges = judges
         self._providers = [
             p if isinstance(p, Provider) else Provider(p)
-            for p in (providers or PROVIDERS)
+            for p in (PROVIDERS if providers is None else providers)
         ]
-        if stop_broker_on_sigint:
+        if stop_broker_on_sigint and self._loop:
             try:
                 self._loop.add_signal_handler(signal.SIGINT, self.stop)
+                self._signal_handler_registered = True
                 # add_signal_handler() is not implemented on Win
                 # https://docs.python.org/3.5/library/asyncio-eventloops.html#windows
             except NotImplementedError:
@@ -181,7 +185,7 @@ class Broker:
         types = _update_types(types)
 
         if not types:
-            raise ValueError('`types` is required')
+            raise ValueError("`types` is required")
 
         self._checker = Checker(
             judges=self._judges,
@@ -206,7 +210,7 @@ class Broker:
         tasks.append(task)
         self._all_tasks.extend(tasks)
 
-    def serve(self, host='127.0.0.1', port=8888, limit=100, **kwargs):
+    def serve(self, host="127.0.0.1", port=8888, limit=100, **kwargs):
         """Start a local proxy server.
 
         The server distributes incoming requests to a pool of found proxies.
@@ -282,9 +286,9 @@ class Broker:
 
         if limit <= 0:
             raise ValueError(
-                'In serve mode value of the limit cannot be less than or '
-                'equal to zero. Otherwise, a parsing of providers will be '
-                'endless'
+                "In serve mode value of the limit cannot be less than or "
+                "equal to zero. Otherwise, a parsing of providers will be "
+                "endless"
             )
 
         self._server = Server(
@@ -292,7 +296,7 @@ class Broker:
             port=port,
             proxies=self._proxies,
             timeout=self._timeout,
-            max_tries=kwargs.pop('max_tries', self._max_tries),
+            max_tries=kwargs.pop("max_tries", self._max_tries),
             loop=self._loop,
             **kwargs,
         )
@@ -309,7 +313,7 @@ class Broker:
         Transform the passed data from [raw string | file-like object | list]
         to set {(host, port), ...}: {('192.168.0.1', '80'), }
         """
-        log.debug('Load proxies from the raw data')
+        log.debug("Load proxies from the raw data")
         if isinstance(data, io.TextIOWrapper):
             data = data.read()
         if isinstance(data, str):
@@ -328,25 +332,23 @@ class Broker:
                 if not types or not pr.proto or bool(pr.proto & types.keys())
             ]
             while providers:
-                tasks = [
-                    asyncio.ensure_future(pr.get_proxies()) for pr in providers[:by]
-                ]
+                tasks = [asyncio.create_task(pr.get_proxies()) for pr in providers[:by]]
                 del providers[:by]
                 self._all_tasks.extend(tasks)
                 yield tasks
 
-        log.debug('Start grabbing proxies')
+        log.debug("Start grabbing proxies")
         while True:
             for tasks in _get_tasks():
                 for task in asyncio.as_completed(tasks):
                     proxies = await task
                     for proxy in proxies:
                         await self._handle(proxy, check=check)
-            log.debug('Grab cycle is complete')
+            log.debug("Grab cycle is complete")
             if self._server:
-                log.debug('fall asleep for %d seconds' % GRAB_PAUSE)
+                log.debug("fall asleep for %d seconds" % GRAB_PAUSE)
                 await asyncio.sleep(GRAB_PAUSE)
-                log.debug('awaked')
+                log.debug("awaked")
             else:
                 break
         await self._on_check.join()
@@ -381,7 +383,7 @@ class Broker:
 
     def _geo_passed(self, proxy):
         if self._countries and (proxy.geo.code not in self._countries):
-            proxy.log('Location of proxy is outside the given countries list')
+            proxy.log("Location of proxy is outside the given countries list")
             return False
         else:
             return True
@@ -400,10 +402,10 @@ class Broker:
 
         if self._server and not self._proxies.empty() and self._limit <= 0:
             log.debug(
-                'pause. proxies: %s; limit: %s' % (self._proxies.qsize(), self._limit)
+                "pause. proxies: %s; limit: %s" % (self._proxies.qsize(), self._limit)
             )
             await self._proxies.join()
-            log.debug('unpause. proxies: %s' % self._proxies.qsize())
+            log.debug("unpause. proxies: %s" % self._proxies.qsize())
 
         await self._on_check.put(None)
         task = asyncio.create_task(self._checker.check(proxy))
@@ -411,7 +413,7 @@ class Broker:
         self._all_tasks.append(task)
 
     def _push_to_result(self, proxy):
-        log.debug('push to result: %r' % proxy)
+        log.debug("push to result: %r" % proxy)
         self._proxies.put_nowait(proxy)
         self._update_limit()
 
@@ -426,16 +428,24 @@ class Broker:
         if self._server:
             self._server.stop()
             self._server = None
-        log.info('Stop!')
+        # Clean up signal handler to prevent memory leak
+        if self._signal_handler_registered and self._loop:
+            try:
+                self._loop.remove_signal_handler(signal.SIGINT)
+                self._signal_handler_registered = False
+            except (NotImplementedError, ValueError):
+                # NotImplementedError on Windows, ValueError if handler wasn't set
+                pass
+        log.info("Stop!")
 
     def _done(self):
-        log.debug('called done')
+        log.debug("called done")
         while self._all_tasks:
             task = self._all_tasks.pop()
             if not task.done():
                 task.cancel()
         self._push_to_result(None)
-        log.info('Done! Total found proxies: %d' % len(self.unique_proxies))
+        log.info("Done! Total found proxies: %d" % len(self.unique_proxies))
 
     def show_stats(self, verbose=False, **kwargs):
         """Show statistics on the found proxies.
@@ -450,49 +460,50 @@ class Broker:
         if kwargs:
             verbose = True
             warnings.warn(
-                '`full` in `show_stats` is deprecated, ' 'use `verbose` instead.',
+                "`full` in `show_stats` is deprecated, use `verbose` instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
 
         found_proxies = self.unique_proxies.values()
         num_working_proxies = len([p for p in found_proxies if p.is_working])
 
         if not found_proxies:
-            print('Proxy not found')
+            print("Proxy not found")
             return
 
         errors = Counter()
         for p in found_proxies:
-            errors.update(p.stat['errors'])
+            errors.update(p.stat["errors"])
 
         proxies_by_type = {
-            'SOCKS5': [],
-            'SOCKS4': [],
-            'HTTPS': [],
-            'HTTP': [],
-            'CONNECT:80': [],
-            'CONNECT:25': [],
+            "SOCKS5": [],
+            "SOCKS4": [],
+            "HTTPS": [],
+            "HTTP": [],
+            "CONNECT:80": [],
+            "CONNECT:25": [],
         }
 
         stat = {
-            'Wrong country': [],
-            'Wrong protocol/anonymity lvl': [],
-            'Connection success': [],
-            'Connection timeout': [],
-            'Connection failed': [],
+            "Wrong country": [],
+            "Wrong protocol/anonymity lvl": [],
+            "Connection success": [],
+            "Connection timeout": [],
+            "Connection failed": [],
         }
 
         for p in found_proxies:
-            msgs = ' '.join([x[1] for x in p.get_log()])
+            msgs = " ".join([x[1] for x in p.get_log()])
             full_log = [p]
             for proto in p.types:
                 proxies_by_type[proto].append(p)
-            if 'Location of proxy' in msgs:
-                stat['Wrong country'].append(p)
-            elif 'Connection: success' in msgs:
-                if 'Protocol or the level' in msgs:
-                    stat['Wrong protocol/anonymity lvl'].append(p)
-                stat['Connection success'].append(p)
+            if "Location of proxy" in msgs:
+                stat["Wrong country"].append(p)
+            elif "Connection: success" in msgs:
+                if "Protocol or the level" in msgs:
+                    stat["Wrong protocol/anonymity lvl"].append(p)
+                stat["Connection success"].append(p)
                 if not verbose:
                     continue
                 events_by_ngtr = defaultdict(list)
@@ -501,28 +512,26 @@ class Broker:
                 for ngtr, events in sorted(
                     events_by_ngtr.items(), key=lambda item: item[0]
                 ):
-                    full_log.append('\t%s' % ngtr)
+                    full_log.append("\t%s" % ngtr)
                     for event, runtime in events:
-                        if event.startswith('Initial connection'):
-                            full_log.append('\t\t-------------------')
+                        if event.startswith("Initial connection"):
+                            full_log.append("\t\t-------------------")
                         else:
-                            full_log.append(
-                                '\t\t{:<66} Runtime: {:.2f}'.format(event, runtime)
-                            )
+                            full_log.append(f"\t\t{event:<66} Runtime: {runtime:.2f}")
                 for row in full_log:
                     print(row)
-            elif 'Connection: failed' in msgs:
-                stat['Connection failed'].append(p)
+            elif "Connection: failed" in msgs:
+                stat["Connection failed"].append(p)
             else:
-                stat['Connection timeout'].append(p)
+                stat["Connection timeout"].append(p)
         if verbose:
-            print('Stats:')
+            print("Stats:")
             pprint(stat)
 
-        print('The number of working proxies: %d' % num_working_proxies)
+        print("The number of working proxies: %d" % num_working_proxies)
         for proto, proxies in proxies_by_type.items():
-            print('%s (%s): %s' % (proto, len(proxies), proxies))
-        print('Errors:', errors)
+            print("%s (%s): %s" % (proto, len(proxies), proxies))
+        print("Errors:", errors)
 
 
 def _update_types(types):

@@ -1,8 +1,7 @@
-*Porting to Python3.10+ is painful and the progress is moving slowly.*  
-*We need more volunteers to join. PRs welcome! :joy:*
+ProxyBroker2
+============
 
-ProxyBroker
-===========
+*An async proxy finder, checker, and server with Python 3.10-3.13 support*
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_shield)
@@ -17,7 +16,7 @@ ProxyBroker
 [![GitHub license](https://img.shields.io/github/license/bluet/proxybroker2)](https://github.com/bluet/proxybroker2/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fbluet%2Fproxybroker2)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fbluet%2Fproxybroker2)
 
-ProxyBroker is an open source tool that asynchronously finds public proxies from multiple sources and concurrently checks them.
+ProxyBroker2 is an open source tool that asynchronously finds public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/index_find_example.gif)
 
@@ -31,6 +30,22 @@ Features
 -   All proxies are checked to support Cookies and Referer (and POST requests if required).
 -   Automatically removes duplicate proxies.
 -   Is asynchronous.
+
+What's New in ProxyBroker2 (v2.0.0+)
+-------------------------------------
+
+## Key Features
+
+-   **Asynchronous** - Built on asyncio for high-performance concurrent operations
+-   **Protocol Support** - HTTP, HTTPS, SOCKS4, SOCKS5, CONNECT:80, CONNECT:25
+-   **Anonymity Detection** - Transparent, Anonymous, and High anonymity levels
+-   **50+ Proxy Sources** - Automatically discovers proxies from multiple providers
+-   **Proxy Server Mode** - Run your own rotating proxy server
+-   **Flexible Filtering** - Filter by country, protocol, anonymity level
+-   **Python 3.10-3.13** - Full support for modern Python versions
+
+
+
 
 Docker
 ------
@@ -83,29 +98,34 @@ $ docker run --rm bluet/proxybroker2 --help
 Requirements
 ------------
 
--   Python 3.8+
--   [aiohttp](https://pypi.python.org/pypi/aiohttp)
--   [aiodns](https://pypi.python.org/pypi/aiodns)
--   [maxminddb](https://pypi.python.org/pypi/maxminddb)
+-   **Python 3.10-3.13** (latest stable versions supported)
+-   **Core Dependencies** (automatically installed):
+    -   [aiohttp](https://pypi.python.org/pypi/aiohttp) 3.12.0+ (modern asyncio HTTP client/server)
+    -   [aiodns](https://pypi.python.org/pypi/aiodns) 3.4.0+ (fast async DNS resolution)
+    -   [maxminddb](https://pypi.python.org/pypi/maxminddb) 2.7.0+ (GeoIP database reader)
+    -   [attrs](https://pypi.python.org/pypi/attrs) 25.3.0+ (modern data classes)
+    -   [cachetools](https://pypi.python.org/pypi/cachetools) 5.5.2+ (caching utilities)
+    -   [click](https://pypi.python.org/pypi/click) 8.2.1+ (CLI framework)
 
 Installation
 ------------
 
-### Install locally
+### Install Latest Version (Recommended)
 
-To install last stable release from pypi:
-> NOT RECOMMEND. It will install the out-dated original proxybroker package, which is no longer maintained by original maintainer. [https://github.com/constverum/ProxyBroker](https://github.com/constverum/ProxyBroker/issues/195)
-> We will upload the up-to-date package under new name (proxybroker2) when the support for 3.10 is ready. [https://github.com/bluet/proxybroker2/issues/89](https://github.com/bluet/proxybroker2/issues/89)
+> ⚠️ **BREAKING CHANGES in v2.0.0+**: See [Migration Guide](#migration-from-proxybroker-v032) below for upgrading from the original ProxyBroker v0.3.2.
 
-``` {.sourceCode .bash}
-$ pip install proxybroker
-```
+> ⚠️ **WARNING**: The PyPI package `proxybroker` is outdated and no longer maintained. Use the GitHub installation method below for ProxyBroker2 with full Python 3.10+ support and all bug fixes.
 
-To install the latest development version from GitHub:
+Install the latest production-ready version from GitHub:
 
 ``` {.sourceCode .bash}
 $ pip install -U git+https://github.com/bluet/proxybroker2.git
 ```
+
+**Why install from GitHub?**
+- **Latest version**: Most recent updates and bug fixes
+- **Python 3.10-3.13**: Full compatibility with modern Python versions
+- **Active maintenance**: Regular updates and community contributions
 
 ### Use pre-built Docker image
 
@@ -140,6 +160,22 @@ pip install pyinstaller \
 
 The executable is now in the build directory
 
+Quick Start
+-----------
+
+After installation, you can immediately start finding proxies:
+
+``` {.sourceCode .bash}
+# Find 5 working HTTP proxies
+$ python -m proxybroker find --types HTTP --limit 5
+
+# Find 10 US HTTP proxies
+$ python -m proxybroker find --types HTTP --countries US --limit 10
+
+# Run local proxy server on port 8888
+$ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
+```
+
 Usage
 -----
 
@@ -150,7 +186,7 @@ Usage
 Find and show 10 HTTP(S) proxies from United States with the high level of anonymity:
 
 ``` {.sourceCode .bash}
-$ proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
+$ python -m proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
 ```
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_find_example.gif)
@@ -160,7 +196,7 @@ $ proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
 Find and save to a file 10 US proxies (without a check):
 
 ``` {.sourceCode .bash}
-$ proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
+$ python -m proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 ```
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_grab_example.gif)
@@ -170,13 +206,13 @@ $ proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 Run a local proxy server that distributes incoming requests to a pool of found HTTP(S) proxies with the high level of anonymity:
 
 ``` {.sourceCode .bash}
-$ proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
+$ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
 ```
 
 ![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_serve_example.gif)
 
-Run `proxybroker --help` for more information on the options available.
-Run `proxybroker <command> --help` for more information on a command.
+Run `python -m proxybroker --help` for more information on the options available.
+Run `python -m proxybroker <command> --help` for more information on a command.
 
 ### Basic code example
 
@@ -189,20 +225,41 @@ from proxybroker import Broker
 async def show(proxies):
     while True:
         proxy = await proxies.get()
-        if proxy is None: break
-        print('Found proxy: %s' % proxy)
+        if proxy is None:
+            break
+        print("Found proxy: %s" % proxy)
 
-proxies = asyncio.Queue()
-broker = Broker(proxies)
-tasks = asyncio.gather(
-    broker.find(types=['HTTP', 'HTTPS'], limit=10),
-    show(proxies))
+async def main():
+    proxies = asyncio.Queue()
+    broker = Broker(proxies)
+    await asyncio.gather(
+        broker.find(types=["HTTP", "HTTPS"], limit=10),
+        show(proxies)
+    )
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(tasks)
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-[More examples](https://proxybroker.readthedocs.io/en/latest/examples.html).
+[More examples](https://proxybroker2.readthedocs.io/en/latest/examples.html).
+
+### 🔬 **Testing Philosophy**
+
+ProxyBroker2 implements a comprehensive **contract-based testing strategy** that ensures reliability while enabling innovation:
+
+#### ✅ **What We Test (Stable Public Contracts)**
+- **User-visible behavior** - "Does proxy finding work?" vs internal algorithms
+- **API signatures** - Method parameters and return types users depend on
+- **Protocol support** - HTTP, HTTPS, SOCKS4/5 compatibility
+- **Error contracts** - Exception types and error handling behavior
+
+#### ❌ **What We Don't Test (Flexible Implementation)**
+- **Internal algorithms** - Allow optimization without breaking tests
+- **Exact protocol bytes** - Enable protocol improvements and IPv6 support
+- **Provider specifics** - Adapt to website changes without test failures
+- **Performance metrics** - Implementation details that can evolve
+
+This approach protects your code from breaking changes while allowing ProxyBroker2 to continuously improve its internals.
 
 ### Proxy information per requests
 #### HTTP
@@ -363,10 +420,74 @@ $ http_proxy=http://127.0.0.1:8888 https_proxy=http://127.0.0.1:8888 curl -v htt
 * Connection #0 to host 127.0.0.1 left intact
 ```
 
+Migration from ProxyBroker v0.3.2
+------------------------------------
+
+If you're upgrading from the original ProxyBroker v0.3.2, here are the key changes:
+
+### 🚨 Breaking Changes
+
+**Python Version**
+```bash
+# v0.3.2: Python 3.5.3+ supported
+# v2.0.0+: Python 3.10+ required
+python --version  # Must be 3.10+
+```
+
+**Installation**
+```bash
+# v0.3.2: pip install proxybroker
+# v2.0.0+: Install from GitHub (original is abandoned)
+pip uninstall proxybroker  # Remove old version if installed
+pip install git+https://github.com/bluet/proxybroker2.git
+```
+
+**CLI Usage**
+```bash
+# v0.3.2: proxybroker find --types HTTP --limit 10
+# v2.0.0+: python -m proxybroker find --types HTTP --limit 10
+```
+
+### ✅ API Compatibility
+
+The Python API remains **100% compatible**:
+```python
+# This code works in both versions
+import asyncio
+from proxybroker import Broker
+
+async def main():
+    proxies = asyncio.Queue()
+    broker = Broker(proxies)
+    await broker.find(types=['HTTP'], limit=10)
+
+asyncio.run(main())  # Modern async pattern
+```
+
+### ✅ What's Improved vs v0.3.2
+
+- **Zero critical bugs** - Fixed deadlocks, memory leaks, and race conditions that existed in v0.3.2
+- **Active maintenance** - Regular updates vs abandoned original project
+- **Better performance** - Modern async patterns and optimizations
+- **Python 3.10-3.13 support** - Latest Python features and compatibility
+- **Comprehensive testing** - Reliable test suite vs limited testing in v0.3.2
+- **Better documentation** - Updated examples and comprehensive guides
+
 Documentation
 -------------
 
-<https://proxybroker.readthedocs.io/>
+**📚 Complete Documentation**: <https://proxybroker2.readthedocs.io/>
+
+Our documentation uses a modern approach:
+- **Auto-generated API reference** - Always current with source code
+- **Hand-written guides** - Installation, tutorials, architecture
+- **Enhanced Sphinx setup** - MyST-Parser, auto-linking, cross-references
+
+### Documentation Features
+- **Live API docs** - Generated from docstrings (19.6% coverage, high quality)
+- **Multiple formats** - HTML, PDF, downloadable archives
+- **Modern Markdown** - Enhanced syntax with MyST-Parser
+- **Cross-references** - Links to Python and aiohttp documentation
 
 TODO
 ----
@@ -382,13 +503,48 @@ TODO
 Contributing
 ------------
 
--   Fork it: <https://github.com/bluet/proxybroker2/fork>
--   Create your feature branch: `git checkout -b my-new-feature`
--   We use [Poetry](https://python-poetry.org/) to manage dependencies. If need, install dependencies: `poetry install`
--   Commit your changes: `git commit -am 'Add some feature'`
--   Push to the branch: `git push origin my-new-feature`
--   Submit a pull request!
--   [Contributor workflow](https://github.com/bluet/proxybroker2/issues/93)
+We welcome contributions! The project has excellent test coverage and development tooling.
+
+### Development Setup
+1. **Fork it**: <https://github.com/bluet/proxybroker2/fork>
+2. **Clone and setup**:
+   ```bash
+   git clone https://github.com/yourusername/proxybroker2.git
+   cd proxybroker2
+   poetry install  # Install dependencies
+   ```
+
+### Development Workflow
+3. **Create your feature branch**: `git checkout -b my-new-feature`
+4. **Make changes and format**:
+   ```bash
+   # Auto-format code (required before commit)
+   ruff check . --fix && ruff format .
+
+   # Run tests to ensure everything works
+   pytest tests/ -v
+   ```
+5. **Commit with conventional format**:
+   ```bash
+   # Use conventional commit format for better automation
+   git commit -m "feat: add SOCKS5 authentication support"
+   git commit -m "fix: resolve memory leak in proxy pool"
+   git commit -m "docs: update installation instructions"
+   ```
+6. **Push to the branch**: `git push origin my-new-feature`
+7. **Submit a pull request**!
+
+### Development Tools
+- **Poetry 2.1.3+**: Modern dependency management and virtual environments
+- **ruff**: Ultra-fast linting and formatting (replaces flake8/isort)
+- **pytest 8.3.5+**: Modern testing framework with async support
+- **pytest-asyncio 0.26.0+**: Enhanced async testing capabilities
+- **pytest-cov 6.1.1+**: Comprehensive coverage reporting
+- **Sphinx 8.0+ + MyST-Parser 4.0+**: Modern documentation with auto-generation
+- **ReadTheDocs**: Professional documentation hosting
+- **Conventional commits**: Structured commit format for automation
+- **Architecture guide**: See [CLAUDE.md](CLAUDE.md) for detailed insights
+
 
 License
 -------

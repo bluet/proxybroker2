@@ -1,15 +1,15 @@
 
 [tool.poetry]
-name = "proxybroker"
-version = "2.0.0-alpha6"
+name = "proxybroker2"
+version = "2.0.0b1"
 description = "The New (auto rotate) Proxy [Finder | Checker | Server]. HTTP(S) & SOCKS."
 authors = ["BlueT - Matthew Lien - 練喆明 <bluet@bluet.org>", "Denis Constverum <constverum@gmail.com>"]
 repository = "https://github.com/bluet/proxybroker2"
-homepage = "http://proxybroker.readthedocs.io/"
-documentation = "http://proxybroker.readthedocs.io/"
+homepage = "https://proxybroker2.readthedocs.io/"
+documentation = "https://proxybroker2.readthedocs.io/"
 license = "Apache-2.0"
 readme = "README.md"
-packages = []
+packages = [{include = "proxybroker"}]
 include = ["proxybroker/data/*.mmdb"]
 classifiers = [
     'Development Status :: 5 - Production/Stable',
@@ -31,27 +31,23 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-aiohttp = "3.10.11"
-aiodns = "3.1.1"
-attrs = "^22.1.0"
-maxminddb = "^2.2.0"
-cachetools = "^5.2.0"
-click = "^8.1.3"
+aiohttp = "^3.12.0"
+aiodns = "^3.4.0"
+attrs = "^25.3.0"
+maxminddb = "^2.7.0"
+cachetools = "^5.5.2"
+click = "^8.2.1"
 
 [tool.poetry.dev-dependencies]
-flake8 = "^5.0.4"
-isort = "^5.10.1"
-pytest = "^7.1.2"
-pytest-asyncio = "^0.19.0"
-pytest-runner = "^6.0.0"
-alabaster = "^0.7.12"
-pytest-isort = "^3.0.0"
-pytest-flake8 = "^1.1.1"
-pytest-mock = "^3.8.2"
-pytest-cov = "^3.0.0"
+pytest = "^8.3.5"
+pytest-asyncio = "^0.26.0"
+pytest-runner = "^6.0.1"
+alabaster = "^1.0.0"
+pytest-mock = "^3.14.0"
+pytest-cov = "^6.1.1"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.1.3"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
@@ -74,8 +70,9 @@ exclude = '''
 )
 '''
 
+[tool.ruff]
+exclude = ["CRITICAL_FIXES.py"]
+
 [tool.pytest.ini_options]
-flake8-ignore = ['*.py']
-isort_ignore = ['*.py']
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
