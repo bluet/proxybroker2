@@ -573,7 +573,8 @@ Licensed under the Apache License, Version 2.0
 Refs
 ----
 
--   <https://github.com/bluet/proxybroker2/pull/161>
+-   <https://github.com/constverum/ProxyBroker/pull/161>
+
 
 ## Contributors ✨
 
