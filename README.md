@@ -20,7 +20,7 @@ ProxyBroker2
 
 ProxyBroker2 is an open source tool that asynchronously finds public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
-![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/index_find_example.gif)
+![image](https://raw.githubusercontent.com/bluet/proxybroker2/master/docs/source/_static/index_find_example.gif)
 
 Features
 --------
@@ -206,7 +206,7 @@ Find and show 10 HTTP(S) proxies from United States with the high level of anony
 $ python -m proxybroker find --types HTTP HTTPS --lvl High --countries US --strict -l 10
 ```
 
-![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_find_example.gif)
+![image](https://raw.githubusercontent.com/bluet/proxybroker2/master/docs/source/_static/cli_find_example.gif)
 
 #### Grab
 
@@ -216,7 +216,7 @@ Find and save to a file 10 US proxies (without a check):
 $ python -m proxybroker grab --countries US --limit 10 --outfile ./proxies.txt
 ```
 
-![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_grab_example.gif)
+![image](https://raw.githubusercontent.com/bluet/proxybroker2/master/docs/source/_static/cli_grab_example.gif)
 
 #### Serve
 
@@ -226,7 +226,7 @@ Run a local proxy server that distributes incoming requests to a pool of found H
 $ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS --lvl High --min-queue 5
 ```
 
-![image](https://raw.githubusercontent.com/constverum/ProxyBroker/master/docs/source/_static/cli_serve_example.gif)
+![image](https://raw.githubusercontent.com/bluet/proxybroker2/master/docs/source/_static/cli_serve_example.gif)
 
 Run `python -m proxybroker --help` for more information on the options available.
 Run `python -m proxybroker <command> --help` for more information on a command.
@@ -573,7 +573,7 @@ Licensed under the Apache License, Version 2.0
 Refs
 ----
 
--   <https://github.com/constverum/ProxyBroker/pull/161>
+-   <https://github.com/bluet/proxybroker2/pull/161>
 
 ## Contributors ✨
 

@@ -25,6 +25,7 @@ FROM base AS builder
 
 WORKDIR /app
 COPY poetry.lock pyproject.toml README.md ./
+COPY proxybroker proxybroker
 
 RUN apt-get update && \
     apt-get upgrade -y &&\
@@ -34,8 +35,6 @@ RUN apt-get update && \
 
 RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --without dev
-
-COPY proxybroker proxybroker
 EXPOSE 8888
 
 ENTRYPOINT ["python", "-m", "proxybroker" ]

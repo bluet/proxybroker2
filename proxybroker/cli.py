@@ -23,7 +23,7 @@ def create_parser():
         epilog="""Run '%(prog)s <command> --help'
                   for more information on a command.
                   Suggestions and bug reports are greatly appreciated:
-                  https://github.com/constverum/ProxyBroker/issues""",
+                  https://github.com/bluet/proxybroker2/issues""",
     )
 
     subparsers = parser.add_subparsers(
