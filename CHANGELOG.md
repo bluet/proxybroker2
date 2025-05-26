@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Signal handler memory leak in Broker.stop() - proper cleanup prevents resource leaks
-- ProxyPool deadlocks with timeout protection and retry limits  
+- ProxyPool deadlocks with timeout protection and retry limits
 - Heap corruption in ProxyPool.remove() using heap-safe operations
 - Race conditions by replacing deprecated asyncio patterns
 - Undefined proxy.priority usage - now correctly uses proxy.avg_resp_time

@@ -90,8 +90,9 @@ class TestCheckerAPI:
 
     def test_checker_anonymity_level_detection_contract(self):
         """Test that anonymity level detection functions exist and work."""
-        from proxybroker.checker import _get_anonymity_lvl
         from unittest.mock import Mock
+
+        from proxybroker.checker import _get_anonymity_lvl
 
         # Test function exists and handles basic cases
         real_ip = "1.2.3.4"
@@ -119,9 +120,10 @@ class TestCheckerAPI:
 
     def test_checker_response_validation_contract(self):
         """Test that response validation functions exist and work."""
+        from unittest.mock import Mock
+
         from proxybroker.checker import _check_test_response
         from proxybroker.utils import get_headers, parse_headers
-        from unittest.mock import Mock
 
         # Get real verification values
         real_headers, real_rv = get_headers(rv=True)

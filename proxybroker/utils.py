@@ -76,8 +76,8 @@ def parse_status_line(line):
             version, status, *reason = line.split()
         else:  # GET / HTTP/1.1
             method, path, version = line.split()
-    except ValueError:
-        raise BadStatusLine(line)
+    except ValueError as e:
+        raise BadStatusLine(line) from e
 
     _headers["Version"] = version.upper()
     if is_response:

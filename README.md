@@ -249,7 +249,7 @@ ProxyBroker2 implements a comprehensive **contract-based testing strategy** that
 
 #### ✅ **What We Test (Stable Public Contracts)**
 - **User-visible behavior** - "Does proxy finding work?" vs internal algorithms
-- **API signatures** - Method parameters and return types users depend on  
+- **API signatures** - Method parameters and return types users depend on
 - **Protocol support** - HTTP, HTTPS, SOCKS4/5 compatibility
 - **Error contracts** - Exception types and error handling behavior
 
@@ -442,7 +442,7 @@ pip uninstall proxybroker  # Remove old version if installed
 pip install git+https://github.com/bluet/proxybroker2.git
 ```
 
-**CLI Usage** 
+**CLI Usage**
 ```bash
 # v0.3.2: proxybroker find --types HTTP --limit 10
 # v2.0.0+: python -m proxybroker find --types HTTP --limit 10
@@ -467,7 +467,7 @@ asyncio.run(main())  # Modern async pattern
 ### ✅ What's Improved vs v0.3.2
 
 - **Zero critical bugs** - Fixed deadlocks, memory leaks, and race conditions that existed in v0.3.2
-- **Active maintenance** - Regular updates vs abandoned original project  
+- **Active maintenance** - Regular updates vs abandoned original project
 - **Better performance** - Modern async patterns and optimizations
 - **Python 3.10-3.13 support** - Latest Python features and compatibility
 - **Comprehensive testing** - Reliable test suite vs limited testing in v0.3.2
@@ -520,11 +520,11 @@ We welcome contributions! The project has excellent test coverage and developmen
    ```bash
    # Auto-format code (required before commit)
    ruff check . --fix && ruff format .
-   
+
    # Run tests to ensure everything works
    pytest tests/ -v
    ```
-5. **Commit with conventional format**: 
+5. **Commit with conventional format**:
    ```bash
    # Use conventional commit format for better automation
    git commit -m "feat: add SOCKS5 authentication support"

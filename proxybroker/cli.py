@@ -157,7 +157,7 @@ def add_broker_args(group):
         "--version",
         "-v",
         action="version",
-        version="%(prog)s {v}".format(v=version),
+        version=f"%(prog)s {version}",
         help="Show program's version number and exit",
     )
 

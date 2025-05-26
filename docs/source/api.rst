@@ -16,7 +16,7 @@ Broker - Main Interface
 
 .. _proxybroker-api-proxy:
 
-Proxy - Proxy Objects  
+Proxy - Proxy Objects
 ---------------------
 
 .. autoclass:: proxybroker.proxy.Proxy

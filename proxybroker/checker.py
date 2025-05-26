@@ -97,11 +97,10 @@ class Checker:
 
         if nojudges:
             warnings.warn(
-                "Not found judges for the {nojudges} protocol.\n"
-                "Checking proxy on protocols {disp} is disabled.".format(
-                    nojudges=nojudges, disp=disable_protocols
-                ),
+                f"Not found judges for the {nojudges} protocol.\n"
+                f"Checking proxy on protocols {disable_protocols} is disabled.",
                 UserWarning,
+                stacklevel=2,
             )
         if self._judges:
             log.debug("Loaded: %d proxy judges" % len(set(self._judges)))
@@ -171,7 +170,7 @@ class Checker:
         judge = Judge.get_random(proto)
         proxy.log("Selected judge: %s" % judge)
         result = False
-        for attempt in range(self._max_tries):
+        for _ in range(self._max_tries):
             try:
                 proxy.ngtr = proto
                 await proxy.connect()
@@ -199,7 +198,7 @@ class Checker:
         judge = Judge.get_random(proto)
         proxy.log("Selected judge: %s" % judge)
         result = False
-        for attempt in range(self._max_tries):
+        for _ in range(self._max_tries):
             try:
                 proxy.ngtr = proto
                 await proxy.connect()
@@ -335,7 +334,7 @@ def _get_anonymity_lvl(real_ext_ip, proxy, judge, content):
         lvl = "Anonymous"
     else:
         lvl = "High"
-    proxy.log("A: {lvl}; {ip}; via(p): {via}".format(lvl=lvl[:4], ip=foundIP, via=via))
+    proxy.log(f"A: {lvl[:4]}; {foundIP}; via(p): {via}")
     return lvl
 
 
@@ -344,5 +343,6 @@ class ProxyChecker(Checker):
         warnings.warn(
             "`ProxyChecker` is deprecated, use `Checker` instead.",
             DeprecationWarning,
+            stacklevel=2,
         )
         super().__init__(*args, **kwargs)

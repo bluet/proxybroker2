@@ -27,7 +27,7 @@ if os.path.exists(_pyproject_path):
     # Development environment - prioritize pyproject.toml
     import re
 
-    with open(_pyproject_path, "r", encoding="utf-8") as _f:
+    with open(_pyproject_path, encoding="utf-8") as _f:
         _content = _f.read()
         _match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', _content)
         __version__ = _match.group(1) if _match else "unknown"

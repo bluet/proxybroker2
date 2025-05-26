@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # proxybroker documentation build configuration file, created by
 # sphinx-quickstart on Thu May 26 13:04:40 2016.

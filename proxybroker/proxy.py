@@ -204,6 +204,7 @@ class Proxy:
         warnings.warn(
             "`avgRespTime` property is deprecated, use `avg_resp_time` instead.",
             DeprecationWarning,
+            stacklevel=2,
         )
         return self.avg_resp_time
 
@@ -267,18 +268,14 @@ class Proxy:
 
         :rtype: str
         """
-        return "{}:{}\n".format(self.host, self.port)
+        return f"{self.host}:{self.port}\n"
 
     def log(self, msg, stime=0, err=None):
         ngtr = self.ngtr.name if self.ngtr else "INFO"
         runtime = time.time() - stime if stime else 0
-        log.debug(
-            "{h}:{p} [{n}]: {msg}; Runtime: {rt:.2f}".format(
-                h=self.host, p=self.port, n=ngtr, msg=msg, rt=runtime
-            )
-        )
+        log.debug(f"{self.host}:{self.port} [{ngtr}]: {msg}; Runtime: {runtime:.2f}")
         trunc = "..." if len(msg) > 58 else ""
-        msg = "{msg:.60s}{trunc}".format(msg=msg, trunc=trunc)
+        msg = f"{msg:.60s}{trunc}"
         self._log.append((ngtr, msg, runtime))
         if err:
             self.stat["errors"][err.errmsg] += 1
@@ -333,14 +330,14 @@ class Proxy:
                 self._reader[_type], self._writer[_type] = await asyncio.wait_for(
                     asyncio.open_connection(**params), timeout=self._timeout
                 )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
             msg += "Connection: timeout"
             err = ProxyTimeoutError(msg)
-            raise err
-        except (ConnectionRefusedError, OSError, _ssl.SSLError):
+            raise err from e
+        except (ConnectionRefusedError, OSError, _ssl.SSLError) as e:
             msg += "Connection: failed"
             err = ProxyConnError(msg)
-            raise err
+            raise err from e
         # except asyncio.CancelledError:
         #     log.debug('Cancelled in proxy.connect()')
         #     raise ProxyConnError()
@@ -396,14 +393,14 @@ class Proxy:
             resp = await asyncio.wait_for(
                 self._recv(length, head_only), timeout=self._timeout
             )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
             msg = "Received: timeout"
             err = ProxyTimeoutError(msg)
-            raise err
-        except (ConnectionResetError, OSError):
+            raise err from e
+        except (ConnectionResetError, OSError) as e:
             msg = "Received: failed"  # (connection is reset by the peer)
             err = ProxyRecvError(msg)
-            raise err
+            raise err from e
         else:
             msg = "Received: %s bytes" % len(resp)
             if not resp:

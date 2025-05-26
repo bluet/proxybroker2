@@ -6,7 +6,7 @@ This directory contains a comprehensive test suite for ProxyBroker2, providing c
 
 ### Core Test Files (Working)
 - **`test_negotiators.py`** - Protocol handlers (96% coverage) ✅
-- **`test_proxy.py`** - Proxy data structure (72% coverage) ✅  
+- **`test_proxy.py`** - Proxy data structure (72% coverage) ✅
 - **`test_resolver.py`** - DNS resolution (73% coverage) ✅
 - **`test_utils.py`** - Utility functions (74% coverage) ✅
 - **`test_core_functionality.py`** - Core component functionality ✅
@@ -31,7 +31,7 @@ This directory contains a comprehensive test suite for ProxyBroker2, providing c
 TOTAL: 37% coverage
 - api.py: 14% (Broker class barely tested)
 - checker.py: 11% (Validation logic untested)
-- server.py: 11% (ProxyPool and Server untested)  
+- server.py: 11% (ProxyPool and Server untested)
 - cli.py: 0% (No CLI testing)
 ```
 
@@ -51,7 +51,7 @@ TOTAL: 40%+ coverage (8% improvement)
 - **Data Structures**: Proxy objects, heap management, error tracking
 - **Utility Functions**: Header parsing, anonymity detection, IP validation
 
-### 2. Integration Tests  
+### 2. Integration Tests
 - **End-to-End Workflows**: Provider → Checker → Pool → Server
 - **Component Interaction**: Configuration propagation, error handling
 - **Concurrency**: Multiple brokers, async operations
@@ -77,7 +77,7 @@ TOTAL: 40%+ coverage (8% improvement)
 
 ✅ **Anonymity Detection**
 - Headers revealing proxy usage (`Via`, `X-Forwarded-For`) → Transparent
-- Clean headers without proxy indicators → Anonymous  
+- Clean headers without proxy indicators → Anonymous
 - Missing proxy headers + IP mismatch → High Anonymous
 
 ✅ **Error Handling**
@@ -146,7 +146,7 @@ poetry run pytest tests/test_core_functionality.py::TestErrorHandling -v
 
 ### Fixed Issues
 ✅ **Deprecated pytest configuration** - Removed `asyncio_default_fixture_loop_scope`
-✅ **Inefficient mocking patterns** - Fixed context manager usage  
+✅ **Inefficient mocking patterns** - Fixed context manager usage
 ✅ **Missing async handling** - Proper `@pytest.mark.asyncio` usage
 ✅ **Resource cleanup** - Proper mock teardown
 
@@ -160,7 +160,7 @@ poetry run pytest tests/test_core_functionality.py::TestErrorHandling -v
 
 ### Pending (Low Priority)
 - **Performance Tests**: Load testing for concurrent operations
-- **Property-Based Tests**: Using Hypothesis for edge cases  
+- **Property-Based Tests**: Using Hypothesis for edge cases
 - **Real Network Tests**: Optional integration with live services
 - **Stress Testing**: Resource exhaustion scenarios
 
@@ -173,7 +173,7 @@ poetry run pytest tests/test_core_functionality.py::TestErrorHandling -v
 
 Some tests may require adjustment for specific implementation details, but the framework provides:
 - ✅ Solid foundation for regression testing
-- ✅ Critical path coverage for core functionality  
+- ✅ Critical path coverage for core functionality
 - ✅ Error handling validation
 - ✅ Configuration and CLI testing
 - ✅ Mock infrastructure for realistic scenarios

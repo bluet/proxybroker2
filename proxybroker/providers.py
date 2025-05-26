@@ -671,6 +671,7 @@ class ProxyProvider(Provider):
         warnings.warn(
             "`ProxyProvider` is deprecated, use `Provider` instead.",
             DeprecationWarning,
+            stacklevel=2,
         )
         super().__init__(*args, **kwargs)
 

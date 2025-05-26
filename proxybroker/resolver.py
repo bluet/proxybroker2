@@ -159,7 +159,7 @@ class Resolver:
             resp = await asyncio.wait_for(
                 self._resolver.query(host, qtype), timeout=self._timeout
             )
-        except (aiodns.error.DNSError, asyncio.TimeoutError):
-            raise ResolveError
+        except (aiodns.error.DNSError, asyncio.TimeoutError) as e:
+            raise ResolveError from e
         else:
             return resp

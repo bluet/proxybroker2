@@ -87,6 +87,7 @@ class Broker:
             warnings.warn(
                 "`max_concurrent_conn` is deprecated, use `max_conn` instead",
                 DeprecationWarning,
+                stacklevel=2,
             )
             if isinstance(max_concurrent_conn, asyncio.Semaphore):
                 max_conn = max_concurrent_conn._value
@@ -98,6 +99,7 @@ class Broker:
             warnings.warn(
                 "`attempts_conn` is deprecated, use `max_tries` instead",
                 DeprecationWarning,
+                stacklevel=2,
             )
             max_tries = attempts_conn
 
@@ -460,6 +462,7 @@ class Broker:
             warnings.warn(
                 "`full` in `show_stats` is deprecated, use `verbose` instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
 
         found_proxies = self.unique_proxies.values()
@@ -514,9 +517,7 @@ class Broker:
                         if event.startswith("Initial connection"):
                             full_log.append("\t\t-------------------")
                         else:
-                            full_log.append(
-                                "\t\t{:<66} Runtime: {:.2f}".format(event, runtime)
-                            )
+                            full_log.append(f"\t\t{event:<66} Runtime: {runtime:.2f}")
                 for row in full_log:
                     print(row)
             elif "Connection: failed" in msgs:

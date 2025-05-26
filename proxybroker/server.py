@@ -231,9 +231,7 @@ class Server:
         )
         self._server = srv
 
-        log.info(
-            "Listening established on {0}".format(self._server.sockets[0].getsockname())
-        )
+        log.info(f"Listening established on {self._server.sockets[0].getsockname()}")
 
     def stop(self):
         if not self._server:
@@ -510,15 +508,15 @@ class Server:
             BadStatusError,
             BadResponseError,
         ) as e:
-            raise ErrorOnStream(e)
+            raise ErrorOnStream(e) from e
 
     def _check_response(self, data, scheme):
         if scheme == "HTTP" and self._http_allowed_codes:
             line = data.split(b"\r\n", 1)[0].decode()
             try:
                 header = parse_status_line(line)
-            except BadStatusLine:
-                raise BadResponseError
+            except BadStatusLine as e:
+                raise BadResponseError from e
             if header["Status"] not in self._http_allowed_codes:
                 raise BadStatusError(
                     "%r not in %r" % (header["Status"], self._http_allowed_codes)

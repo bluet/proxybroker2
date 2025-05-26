@@ -14,14 +14,14 @@ import pytest
 
 from proxybroker import Broker, Proxy, ProxyPool, Server
 from proxybroker.errors import (
-    ProxyError,
     NoProxyError,
-    ResolveError,
     ProxyConnError,
+    ProxyEmptyRecvError,
+    ProxyError,
     ProxyRecvError,
     ProxySendError,
     ProxyTimeoutError,
-    ProxyEmptyRecvError,
+    ResolveError,
 )
 
 
@@ -45,9 +45,9 @@ class TestBrokerPublicContract:
             "kwargs",
         }
         actual_params = set(sig.parameters.keys())
-        assert expected_params == actual_params, (
-            f"Missing params: {expected_params - actual_params}"
-        )
+        assert (
+            expected_params == actual_params
+        ), f"Missing params: {expected_params - actual_params}"
 
         # Test default values that users depend on
         params = sig.parameters

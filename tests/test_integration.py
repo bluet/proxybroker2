@@ -266,7 +266,7 @@ class TestPublicAPIStability:
 
     def test_exported_classes(self):
         """Test that all expected classes are properly exported."""
-        from proxybroker import Broker, Proxy, ProxyPool, Checker, Judge, Provider
+        from proxybroker import Broker, Checker, Judge, Provider, Proxy, ProxyPool
 
         # Verify all main classes are available to users
         assert Broker is not None

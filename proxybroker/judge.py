@@ -106,17 +106,9 @@ class Judge:
             log.debug("%s is verified" % self)
         else:
             log.debug(
-                (
-                    "{j} is failed. HTTP status code: {code}; "
-                    "Real IP on page: {ip}; Version: {word}; "
-                    "Response: {page}"
-                ).format(
-                    j=self,
-                    code=resp.status,
-                    page=page,
-                    ip=(real_ext_ip in page),
-                    word=(rv in page),
-                )
+                f"{self} is failed. HTTP status code: {resp.status}; "
+                f"Real IP on page: {real_ext_ip in page}; Version: {rv in page}; "
+                f"Response: {page}"
             )
 
 

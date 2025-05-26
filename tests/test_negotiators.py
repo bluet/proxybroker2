@@ -30,9 +30,9 @@ class TestNegotiatorContracts:
             assert protocol in NGTRS, f"Missing negotiator for {protocol}"
             negotiator_class = NGTRS[protocol]
             assert negotiator_class is not None
-            assert hasattr(negotiator_class, "negotiate"), (
-                f"{protocol} negotiator missing negotiate method"
-            )
+            assert hasattr(
+                negotiator_class, "negotiate"
+            ), f"{protocol} negotiator missing negotiate method"
 
     def test_negotiators_have_required_attributes(self):
         """Test that negotiators have the attributes users depend on."""
@@ -40,15 +40,15 @@ class TestNegotiatorContracts:
 
         for protocol, negotiator_class in NGTRS.items():
             # Test that each negotiator has the basic required attributes
-            assert hasattr(negotiator_class, "name"), (
-                f"{protocol} missing name attribute"
-            )
-            assert hasattr(negotiator_class, "check_anon_lvl"), (
-                f"{protocol} missing check_anon_lvl"
-            )
-            assert hasattr(negotiator_class, "use_full_path"), (
-                f"{protocol} missing use_full_path"
-            )
+            assert hasattr(
+                negotiator_class, "name"
+            ), f"{protocol} missing name attribute"
+            assert hasattr(
+                negotiator_class, "check_anon_lvl"
+            ), f"{protocol} missing check_anon_lvl"
+            assert hasattr(
+                negotiator_class, "use_full_path"
+            ), f"{protocol} missing use_full_path"
 
     @pytest.mark.parametrize(
         "protocol,check_anon_lvl,use_full_path",
@@ -63,8 +63,9 @@ class TestNegotiatorContracts:
     )
     def test_negotiator_attributes(self, protocol, check_anon_lvl, use_full_path):
         """Test that negotiators have correct protocol-specific attributes."""
-        from proxybroker.negotiators import NGTRS
         from unittest.mock import MagicMock
+
+        from proxybroker.negotiators import NGTRS
 
         # Create the appropriate negotiator instance
         negotiator_class = NGTRS[protocol]
@@ -77,8 +78,9 @@ class TestNegotiatorContracts:
 
     def test_negotiator_instantiation(self):
         """Test that all negotiators can be instantiated."""
-        from proxybroker.negotiators import NGTRS
         from unittest.mock import MagicMock
+
+        from proxybroker.negotiators import NGTRS
 
         mock_proxy = MagicMock()
 

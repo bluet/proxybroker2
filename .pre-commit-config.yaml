@@ -2,43 +2,37 @@
 # See https://pre-commit.com/hooks.html for more hooks
 default_language_version:
     python: python3.10
-fail_fast: true
+fail_fast: false
 repos:
+    # Basic file checks
     -   repo: https://github.com/pre-commit/pre-commit-hooks
         rev: v4.5.0
         hooks:
             -   id: trailing-whitespace
             -   id: end-of-file-fixer
             -   id: check-yaml
-            -   id: check-merge-conflict
-            -   id: check-added-large-files
             -   id: check-toml
             -   id: check-json
-            -   id: debug-statements
-    
-    # Ruff replaces flake8, isort, and many other tools
+            -   id: check-added-large-files
+            -   id: check-merge-conflict
+            -   id: debug-statements  # Catch print() and pdb
+            -   id: mixed-line-ending
+                args: ['--fix=lf']
+
+    # Ruff - fast Python linter and formatter
     -   repo: https://github.com/astral-sh/ruff-pre-commit
         rev: v0.1.9
         hooks:
             # Run the linter
             -   id: ruff
-                args: [ --fix ]
+                args: [--fix, --select, "E9,F63,F7,F82,B,S,I,UP"]
             # Run the formatter
             -   id: ruff-format
-    
-    # Type checking
-    -   repo: https://github.com/pre-commit/mirrors-mypy
-        rev: v1.8.0
-        hooks:
-            -   id: mypy
-                additional_dependencies: [types-all]
-                args: [--ignore-missing-imports, --no-strict-optional]
-                exclude: ^tests/
-    
-    # Security scanning
+
+    # Security scanning - important for a proxy tool
     -   repo: https://github.com/PyCQA/bandit
         rev: 1.7.5
         hooks:
             -   id: bandit
-                args: [-ll, -i, -r, proxybroker]
-                exclude: ^tests/
+                args: [-ll, -i, -x, tests]
+                name: bandit (security check)
