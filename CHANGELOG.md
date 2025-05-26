@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0b1] - 2025-01-27
+### Added
+- Type validation for Proxy.types setter with clear error messages
+- Comprehensive test coverage for type validation scenarios
+- Enhanced cache invalidation when proxy types are updated
+
+### Fixed
+- Resolver test exception handling with proper asyncio.TimeoutError usage
+- Broad exception handling in tests replaced with specific exception types
+- Code formatting consistency across all test files
+
+### Changed
+- Pre-commit configuration updated to ignore false positive security warnings for test files
+- Improved error messages for invalid type assignments to proxy.types
+
+## [2.0.0b1] - 2025-05-26
 
 🎯 **Production-Ready Beta - All Critical Bugs Fixed & Enhanced Documentation**
 

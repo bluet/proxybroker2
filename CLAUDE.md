@@ -182,7 +182,7 @@ docs/source/
 - Entry points: `__main__.py` (module), `py2exe_entrypoint.py` (executable)
 - ProxyPool.remove() is O(N log N) - acceptable for correctness
 
-## Recent Major Improvements (v2.0.0+)
+## Recent Major Improvements (v2.0.0b1 - Released May 26, 2025)
 
 ### Production-Ready Status
 - **Zero critical bugs** - Fixed all signal handler leaks, deadlocks, heap corruption
