@@ -1,3 +1,4 @@
+import asyncio
 import socket
 
 import pytest
@@ -72,6 +73,9 @@ async def test_resolve_family(mocker, resolver):
 
 @pytest.mark.asyncio
 async def test_resolve_cache(event_loop, mocker, resolver):
+    # Pre-populate cache to test cache hit behavior
+    resolver._cached_hosts["test.com"] = "127.0.0.1"
+
     mocker.spy(resolver, "_resolve")
     assert await resolver.resolve("test.com") == "127.0.0.1"
     assert resolver._resolve.call_count == 0
@@ -80,7 +84,6 @@ async def test_resolve_cache(event_loop, mocker, resolver):
     f = future_iter(
         [ResolveResult("127.0.0.1", 0)],
         [ResolveResult("127.0.0.2", 0)],
-        [Exception],
     )
     mocker.patch("aiodns.DNSResolver.query", side_effect=f)
     await resolver.resolve("test.com")
@@ -92,7 +95,11 @@ async def test_resolve_cache(event_loop, mocker, resolver):
     assert resp[0]["host"] == "127.0.0.2"
     assert resolver._resolve.call_count == 2
 
-    mocker.patch("aiodns.DNSResolver.query", side_effect=f)
+    # Mock an exception for test3.com
+    mocker.patch(
+        "aiodns.DNSResolver.query",
+        side_effect=asyncio.TimeoutError("DNS resolution failed"),
+    )
     with pytest.raises(ResolveError):
         await resolver.resolve("test3.com")
     assert resolver._resolve.call_count == 3
