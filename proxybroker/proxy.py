@@ -139,7 +139,13 @@ class Proxy:
         """Set the types (protocols) supported by the proxy.
 
         :param dict new_types: Dictionary of types and anonymity levels
+        :raises TypeError: If new_types is not a dictionary or None
         """
+        if new_types is not None and not isinstance(new_types, dict):
+            raise TypeError(
+                f"types must be a dict or None, got {type(new_types).__name__}"
+            )
+
         self._types = new_types if new_types is not None else {}
         # Reset cached schemes so they get recalculated based on new types
         self._schemes = ()

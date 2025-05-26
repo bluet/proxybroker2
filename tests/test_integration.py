@@ -106,6 +106,26 @@ class TestUserWorkflows:
             t["type"] == "HTTPS" and t["level"] == "" for t in json_data["types"]
         )
 
+    def test_proxy_types_setter_validation(self):
+        """Test that Proxy.types setter validates input types."""
+        proxy = Proxy("127.0.0.1", 8080)
+
+        # Valid assignments should work
+        proxy.types = {"HTTP": "Anonymous"}
+        assert proxy.types == {"HTTP": "Anonymous"}
+
+        proxy.types = None
+        assert proxy.types == {}
+
+        proxy.types = {}
+        assert proxy.types == {}
+
+        # Invalid assignments should raise TypeError
+        invalid_values = ["string", ["list"], ("tuple",), 123, set()]
+        for invalid_value in invalid_values:
+            with pytest.raises(TypeError, match="types must be a dict or None"):
+                proxy.types = invalid_value
+
     def test_broker_serve_api_contract(self):
         """Test Broker.serve() API that users depend on.
 
