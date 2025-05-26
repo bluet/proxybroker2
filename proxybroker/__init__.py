@@ -1,5 +1,7 @@
 """
-Copyright © 2015-2018 Constverum <constverum@gmail.com>. All rights reserved.
+Copyright © 2015-2018 Constverum <constverum@gmail.com>.
+Copyright © 2018-2025 BlueT - Matthew Lien - 練喆明 <bluet@bluet.org>.
+All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,11 +48,13 @@ else:
         except ImportError:
             __version__ = "unknown"
 __short_description__ = "[Finder/Checker/Server] Finds public proxies from multiple sources and concurrently checks them. Supports HTTP(S) and SOCKS4/5."  # noqa
-__author__ = "Constverum"
-__author_email__ = "constverum@gmail.com"
+__author__ = "BlueT - Matthew Lien - 練喆明"
+__author_email__ = "bluet@bluet.org"
 __url__ = "https://github.com/bluet/proxybroker2"
 __license__ = "Apache License, Version 2.0"
-__copyright__ = "Copyright 2015-2018 Constverum"
+__copyright__ = (
+    "Copyright 2015-2018 Constverum, 2018-2025 BlueT - Matthew Lien - 練喆明"
+)
 
 
 import logging  # noqa
