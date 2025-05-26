@@ -19,19 +19,21 @@ RUN apt-get update -y &&\
         rm -rf /var/lib/lists/*
 
 RUN \
-    pip install poetry==1.8.4
+    pip install poetry==2.1.3
 
 FROM base AS builder
 
 WORKDIR /app
-COPY poetry.lock pyproject.toml ./
+COPY poetry.lock pyproject.toml README.md ./
 
 RUN apt-get update && \
+    apt-get upgrade -y &&\
     apt-get install -y gcc libc-dev libffi-dev && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --no-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --without dev
 
 COPY proxybroker proxybroker
 EXPOSE 8888
