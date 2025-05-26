@@ -93,6 +93,6 @@ async def test_resolve_cache(event_loop, mocker, resolver):
     assert resolver._resolve.call_count == 2
 
     mocker.patch("aiodns.DNSResolver.query", side_effect=f)
-    with pytest.raises(Exception):
+    with pytest.raises(ResolveError):
         await resolver.resolve("test3.com")
     assert resolver._resolve.call_count == 3
