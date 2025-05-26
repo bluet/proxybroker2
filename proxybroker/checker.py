@@ -87,10 +87,8 @@ class Checker:
             # for coroutines, which is already waiting
             Judge.ev["HTTPS"].set()
         if len(Judge.available["SMTP"]) == 0:
-            # nojudges.append('SMTP')
             disable_protocols.append("SMTP")
             self._req_smtp_proto = False
-            # for coroutines, which is already waiting
             Judge.ev["SMTP"].set()
 
         for proto in disable_protocols:
@@ -270,9 +268,9 @@ async def _send_test_request(method, proxy, judge):
             err = BadStatusError
             raise err
         headers, content, *_ = resp.split(b"\r\n\r\n", maxsplit=1)
-    except ValueError:
+    except ValueError as e:
         err = BadResponseError
-        raise err
+        raise err from e
     finally:
         proxy.log("Get: %s" % ("success" if content else "failed"), err=err)
         log.debug(

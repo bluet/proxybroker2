@@ -110,7 +110,7 @@ class Resolver:
                 ):
                     ip = await resp.text()
             except asyncio.TimeoutError:
-                pass
+                log.debug("Timeout getting external IP from service, trying next...")
             else:
                 ip = ip.strip()
                 if self.host_is_ip(ip):
