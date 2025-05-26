@@ -1,47 +1,44 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 default_language_version:
-    python: python3.6
+    python: python3.10
 fail_fast: true
 repos:
     -   repo: https://github.com/pre-commit/pre-commit-hooks
-        rev: v2.4.0
+        rev: v4.5.0
         hooks:
             -   id: trailing-whitespace
             -   id: end-of-file-fixer
             -   id: check-yaml
-                args:
-                    -   environment.yml
-                    -   .pre-commit-config.yaml
-                    -   readthedocs.yml
-                    -   .travis.yml
             -   id: check-merge-conflict
-            -   id: flake8
-                args: [--config=setup.cfg, --ignore=E501]
-    -   repo: https://github.com/psf/black
-        rev: stable
+            -   id: check-added-large-files
+            -   id: check-toml
+            -   id: check-json
+            -   id: debug-statements
+    
+    # Ruff replaces flake8, isort, and many other tools
+    -   repo: https://github.com/astral-sh/ruff-pre-commit
+        rev: v0.1.9
         hooks:
-            -   id: black
-                name: black
-                language_version: python3.6
-                description: "Black: The uncompromising Python code formatter"
-                entry: black
-                require_serial: true
-                args:
-                    -   -v
-                    -   -l 88
-    -   repo: https://github.com/asottile/seed-isort-config
-        rev: v2.1.0
+            # Run the linter
+            -   id: ruff
+                args: [ --fix ]
+            # Run the formatter
+            -   id: ruff-format
+    
+    # Type checking
+    -   repo: https://github.com/pre-commit/mirrors-mypy
+        rev: v1.8.0
         hooks:
-            -   id: seed-isort-config
-    -   repo: https://github.com/pre-commit/mirrors-isort
-        rev: v4.3.21
+            -   id: mypy
+                additional_dependencies: [types-all]
+                args: [--ignore-missing-imports, --no-strict-optional]
+                exclude: ^tests/
+    
+    # Security scanning
+    -   repo: https://github.com/PyCQA/bandit
+        rev: 1.7.5
         hooks:
-            -   id: isort
-                args:
-                    -   -rc
-    -   repo: https://github.com/PyCQA/pydocstyle
-        rev: 5.0.2
-        hooks:
-            -   id: pydocstyle
-                args: [--select=D105]
+            -   id: bandit
+                args: [-ll, -i, -r, proxybroker]
+                exclude: ^tests/
