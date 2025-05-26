@@ -84,7 +84,7 @@ class TestNegotiatorContracts:
 
         mock_proxy = MagicMock()
 
-        for protocol, negotiator_class in NGTRS.items():
+        for _, negotiator_class in NGTRS.items():
             # Should be able to create instance without errors
             negotiator = negotiator_class(mock_proxy)
             assert negotiator is not None
