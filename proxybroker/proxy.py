@@ -86,7 +86,7 @@ class Proxy:
             "SOCKS5",
         }
         self._timeout = timeout
-        self._ssl_context = True if verify_ssl else _ssl._create_unverified_context()
+        self._ssl_context = _ssl.create_default_context() if verify_ssl else _ssl._create_unverified_context()
         self._types = {}
         self._is_working = False
         self.stat = {"requests": 0, "errors": Counter()}

@@ -61,7 +61,11 @@ class ProxyPool:
         if len(self._pool) + len(self._newcomers) < self._min_queue:
             chosen = await self._import(scheme)
         elif len(self._newcomers) > 0:
-            chosen = self._newcomers.pop(0)
+            try:
+                chosen = self._newcomers.pop(0)
+            except IndexError:
+                # Another coroutine took the last proxy, try importing
+                chosen = await self._import(scheme)
         elif self._strategy == "best":
             # Create a temporary list to store items we need to put back
             temp_items = []
@@ -317,7 +321,14 @@ class Server:
 
         # API for controlling proxybroker2
         if headers["Host"] == "proxycontrol":
-            _api, _operation, _params = headers["Path"].split("/", 5)[3:]
+            path_parts = headers["Path"].split("/")
+            if len(path_parts) >= 6:
+                _api, _operation, _params = path_parts[3:6]
+            else:
+                # Invalid API path format
+                client_writer.write(b"HTTP/1.1 400 Bad Request\r\n\r\n")
+                await client_writer.drain()
+                return
             if _api == "api":
                 if _operation == "remove":
                     proxy_host, proxy_port = _params.split(":", 1)
