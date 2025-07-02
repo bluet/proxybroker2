@@ -345,8 +345,9 @@ class Server:
                             ).encode()
                             client_writer.write(b"HTTP/1.1 200 OK\r\n")
                             client_writer.write(b"Content-Type: application/json\r\n")
+                            content_length = len(previous_proxy_bytestring) + 2  # account for trailing CRLF written below
                             client_writer.write(
-                                f"Content-Length: {str(len(previous_proxy_bytestring) + 2).encode()}\r\n"
+                                f"Content-Length: {content_length}\r\n".encode()
                             )
                             client_writer.write(b"Access-Control-Allow-Origin: *\r\n")
                             client_writer.write(

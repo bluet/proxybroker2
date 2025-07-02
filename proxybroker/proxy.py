@@ -86,7 +86,15 @@ class Proxy:
             "SOCKS5",
         }
         self._timeout = timeout
-        self._ssl_context = True if verify_ssl else _ssl._create_unverified_context()
+        # If SSL certificate verification is requested create a **real** SSLContext
+        # instead of storing a boolean value.  Passing a boolean to `start_tls`
+        # later on leads to an `AttributeError` because the method expects an
+        # instance of `ssl.SSLContext`.  When verification is not required we
+        # fall back to an *unverified* context to preserve the previous
+        # behaviour.
+        self._ssl_context = (
+            _ssl.create_default_context() if verify_ssl else _ssl._create_unverified_context()
+        )
         self._types = {}
         self._is_working = False
         self.stat = {"requests": 0, "errors": Counter()}

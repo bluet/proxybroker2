@@ -53,8 +53,19 @@ def get_headers(rv=False):
 
 
 def get_all_ip(page):
-    # NOTE: IPv6 addresses support need to be tested
-    return set(IPPattern.findall(page) + IPv6Pattern.findall(page))
+    """Extract all IPv4 *and* IPv6 addresses from the supplied text.
+
+    `IPv6Pattern.findall` returns a tuple with many capturing groups.  We only
+    need the **full match** (the first element), otherwise the resulting set
+    contains extremely large tuples which breaks consumers that expect a simple
+    string representation of the IP address.
+    """
+
+    ipv4_matches = IPPattern.findall(page)
+    # Each IPv6 match is a tuple – the first element is the complete address.
+    ipv6_matches = [m[0] if isinstance(m, tuple) else m for m in IPv6Pattern.findall(page)]
+
+    return set(ipv4_matches + ipv6_matches)
 
 
 def get_status_code(resp, start=9, stop=12):
