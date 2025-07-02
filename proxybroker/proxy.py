@@ -315,9 +315,12 @@ class Proxy:
         """
         return f"{self.host}:{self.port}\n"
 
-    def log(self, msg, stime=0, err=None):
+    def log(self, msg: str, stime: float | int = 0, err: Any | None = None) -> None:
         ngtr = self.ngtr.name if self.ngtr else "INFO"
-        runtime: float = float(time.time() - stime) if stime else 0.0
+        # ``stime`` can be an ``int`` or ``float``.  Convert it explicitly to
+        # ``float`` so the subtraction result is always a float as expected by
+        # the ``:.2f`` formatter below.
+        runtime: float = float(time.time() - float(stime)) if stime else 0.0
         log.debug(f"{self.host}:{self.port} [{ngtr}]: {msg}; Runtime: {runtime:.2f}")
         trunc = "..." if len(msg) > 58 else ""
         msg = f"{msg:.60s}{trunc}"
@@ -353,7 +356,9 @@ class Proxy:
                 if plain_writer is None:
                     raise ProxyConnError("Cannot initiate TLS – no plain connection available")
 
-                transport = plain_writer.transport  # type: ignore[attr-defined]
+                from asyncio import transports
+
+                transport: transports.BaseTransport = plain_writer.transport  # type: ignore[attr-defined]
 
                 # Create a *dedicated* StreamReader so that the SSL layer has its own buffer
                 reader_for_ssl = asyncio.StreamReader()

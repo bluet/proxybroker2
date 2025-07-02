@@ -316,8 +316,10 @@ class Server:
         )
 
         # API for controlling proxybroker2
-        if headers["Host"] == "proxycontrol":
-            _api, _operation, _params = headers["Path"].split("/", 5)[3:]
+        host_header: str = headers.get("Host", "")  # type: ignore[arg-type]
+        if host_header == "proxycontrol":
+            path_header: str = str(headers.get("Path", ""))
+            _api, _operation, _params = path_header.split("/", 5)[3:]
             if _api == "api":
                 if _operation == "remove":
                     proxy_host, proxy_port = _params.split(":", 1)

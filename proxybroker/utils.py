@@ -10,6 +10,7 @@ import sys
 import tarfile
 import tempfile
 import urllib.request
+from typing import Any, Dict, Union
 
 from . import __version__ as version
 from .errors import BadStatusLine
@@ -105,20 +106,31 @@ def parse_status_line(line):
     return _headers
 
 
-def parse_headers(headers):
-    headers = headers.decode("utf-8", "ignore").split("\r\n")
-    _headers = {}
-    _headers.update(parse_status_line(headers.pop(0)))
+def parse_headers(headers: Union[bytes, str]) -> Dict[str, Any]:
+    # Ensure we work with a *text* representation
+    header_text: str = (
+        headers.decode("utf-8", "ignore") if isinstance(headers, bytes) else headers
+    )
 
-    for h in headers:
+    lines: list[str] = header_text.split("\r\n")
+
+    _headers: Dict[str, Any] = {}
+    if not lines:
+        return _headers  # defensive – empty input
+
+    _headers.update(parse_status_line(lines.pop(0)))
+
+    for h in lines:
         if not h:
             break
         name, val = h.split(":", 1)
         _headers[name.strip().title()] = val.strip()
 
-    if ":" in _headers.get("Host", ""):
-        host, port = _headers["Host"].split(":")
+    host_val: str = str(_headers.get("Host", ""))
+    if ":" in host_val:
+        host, port = host_val.split(":", 1)
         _headers["Host"], _headers["Port"] = host, int(port)
+
     return _headers
 
 

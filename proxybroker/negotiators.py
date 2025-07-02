@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import asyncio
 import struct
+
 from abc import ABC, abstractmethod
 from socket import inet_aton
 from typing import Any
@@ -42,12 +45,19 @@ def _CONNECT_request(host, port, **kwargs):
 class BaseNegotiator(ABC):
     """Base Negotiator."""
 
-    name = None
-    check_anon_lvl = False
-    use_full_path = False
+    # The concrete protocol name – assigned in subclasses.
+    name: str | None = None
+    # Whether anonymity level should be evaluated (HTTP only).
+    check_anon_lvl: bool = False
+    # Whether the full URI is required in the request line (HTTP only).
+    use_full_path: bool = False
 
-    def __init__(self, proxy):
-        self._proxy = proxy
+    def __init__(self, proxy) -> None:
+        # Keep a strongly-typed reference to the parent proxy to satisfy the
+        # linter when accessing ``send`` / ``recv`` etc.
+        from .proxy import Proxy  # Local import to avoid circular dependency
+
+        self._proxy: Proxy = proxy  # type: ignore[assignment]
 
     @abstractmethod
     async def negotiate(self, **kwargs: Any) -> None:
@@ -98,9 +108,6 @@ class Socks4Ngtr(BaseNegotiator):
 
         await self._proxy.send(struct.pack(">2BH5B", 4, 1, port, *bip, 0))
         resp = await self._proxy.recv(8)
-        if isinstance(resp, asyncio.Future):
-            resp = await resp
-        assert not isinstance(resp, asyncio.Future)
 
         if resp[0] != 0x00 or resp[1] != 0x5A:
             self._proxy.log("Failed (invalid data)", err=BadResponseError)
