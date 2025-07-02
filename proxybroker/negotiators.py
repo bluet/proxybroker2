@@ -24,22 +24,27 @@ __all__ = [
 SMTP_READY = 220
 
 
-def _CONNECT_request(host, port, **kwargs):
-    kwargs.setdefault("User-Agent", get_headers()["User-Agent"])
+def _CONNECT_request(host: str, port: int, **kwargs: Any) -> bytes:
+    # Ensure a proper User-Agent is present; use dict.get to avoid potential
+    # type-checker confusion about the square-bracket operator.
+    raw_headers = get_headers()
+    if isinstance(raw_headers, tuple):
+        headers_map = raw_headers[0]
+    else:
+        headers_map = raw_headers
+
+    kwargs.setdefault("User-Agent", headers_map.get("User-Agent", "PxBroker"))
     kw = {
         "host": host,
         "port": port,
         "headers": "\r\n".join(("%s: %s" % (k, v) for k, v in kwargs.items())),
     }
-    req = (
-        (
-            "CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}\r\n"
-            "{headers}\r\nConnection: keep-alive\r\n\r\n"
+    request_str: str = (
+        "CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}\r\n{headers}\r\nConnection: keep-alive\r\n\r\n".format(
+            **kw
         )
-        .format(**kw)
-        .encode()
     )
-    return req
+    return request_str.encode()
 
 
 class BaseNegotiator(ABC):
@@ -123,7 +128,7 @@ class Connect80Ngtr(BaseNegotiator):
     name = "CONNECT:80"
 
     async def negotiate(self, **kwargs: Any) -> None:
-        await self._proxy.send(_CONNECT_request(kwargs.get("host"), 80))
+        await self._proxy.send(_CONNECT_request(str(kwargs.get("host", "")), 80))
         resp = await self._proxy.recv(head_only=True)
         code = get_status_code(resp)
         if code != 200:
@@ -139,7 +144,7 @@ class Connect25Ngtr(BaseNegotiator):
     name = "CONNECT:25"
 
     async def negotiate(self, **kwargs: Any) -> None:
-        await self._proxy.send(_CONNECT_request(kwargs.get("host"), 25))
+        await self._proxy.send(_CONNECT_request(str(kwargs.get("host", "")), 25))
         resp = await self._proxy.recv(head_only=True)
         code = get_status_code(resp)
         if code != 200:
@@ -161,7 +166,7 @@ class HttpsNgtr(BaseNegotiator):
     name = "HTTPS"
 
     async def negotiate(self, **kwargs: Any) -> None:
-        await self._proxy.send(_CONNECT_request(kwargs.get("host"), 443))
+        await self._proxy.send(_CONNECT_request(str(kwargs.get("host", "")), 443))
         resp = await self._proxy.recv(head_only=True)
         code = get_status_code(resp)
         if code != 200:
