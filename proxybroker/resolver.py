@@ -50,15 +50,22 @@ class Resolver:
 
     @staticmethod
     def host_is_ip(host):
-        """Check a host is IP address."""
-        # TODO: add IPv6 support
+        """Check a host is IP address (supports both IPv4 and IPv6)."""
         try:
-            host = ".".join(f"{int(n)}" for n in host.split("."))
-            ipaddress.IPv4Address(host)
+            # First try IPv4
+            if "." in host and ":" not in host:
+                # Normalize IPv4 address by converting each octet to int and back
+                host = ".".join(f"{int(n)}" for n in host.split("."))
+                ipaddress.IPv4Address(host)
+                return True
+            # Then try IPv6
+            elif ":" in host:
+                ipaddress.IPv6Address(host)
+                return True
+            # If neither format matches, it's not an IP
+            return False
         except (ipaddress.AddressValueError, ValueError):
             return False
-        else:
-            return True
 
     @staticmethod
     def get_ip_info(ip):

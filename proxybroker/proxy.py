@@ -373,15 +373,23 @@ class Proxy:
         if self._writer.get("ssl"):
             try:
                 self._writer["ssl"].close()
-            except Exception as e:
+            except (OSError, ConnectionError, RuntimeError) as e:
                 self.log(f"Error closing SSL writer: {e}")
+            except Exception as e:
+                # Log unexpected exceptions with more detail for debugging
+                log.warning(f"Unexpected error closing SSL writer for {self.host}:{self.port}: {type(e).__name__}: {e}")
+                self.log(f"Unexpected error closing SSL writer: {type(e).__name__}: {e}")
 
         # Close connection writer
         if self._writer.get("conn"):
             try:
                 self._writer["conn"].close()
-            except Exception as e:
+            except (OSError, ConnectionError, RuntimeError) as e:
                 self.log(f"Error closing connection writer: {e}")
+            except Exception as e:
+                # Log unexpected exceptions with more detail for debugging
+                log.warning(f"Unexpected error closing connection writer for {self.host}:{self.port}: {type(e).__name__}: {e}")
+                self.log(f"Unexpected error closing connection writer: {type(e).__name__}: {e}")
 
         # Clear references
         self._reader = {"conn": None, "ssl": None}

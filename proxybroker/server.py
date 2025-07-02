@@ -346,14 +346,14 @@ class Server:
                             client_writer.write(b"HTTP/1.1 200 OK\r\n")
                             client_writer.write(b"Content-Type: application/json\r\n")
                             client_writer.write(
-                                f"Content-Length: {str(len(previous_proxy_bytestring) + 2).encode()}\r\n"
+                                f"Content-Length: {len(previous_proxy_bytestring)}\r\n".encode()
                             )
                             client_writer.write(b"Access-Control-Allow-Origin: *\r\n")
                             client_writer.write(
                                 b"Access-Control-Allow-Credentials: true\r\n\r\n"
                             )
 
-                            client_writer.write(previous_proxy_bytestring + b"\r\n")
+                            client_writer.write(previous_proxy_bytestring)
                             await client_writer.drain()
                             return
 
