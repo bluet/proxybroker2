@@ -340,10 +340,19 @@ class Proxy:
         try:
             if ssl:
                 _type = "ssl"
-                # For SSL connections over existing proxy connection, we need to upgrade
-                # the existing connection to SSL. Use start_tls to avoid deprecated socket access.
-                transport = self._writer["conn"].transport
-                protocol = asyncio.StreamReaderProtocol(asyncio.StreamReader())
+                # For SSL connections over the existing plain-text connection we first need
+                # to make sure that the underlying writer has been created.  This guards
+                # against incorrect call sequences such as invoking ``connect(ssl=True)``
+                # before a successful plain connection has been established.
+                plain_writer = self._writer.get("conn")
+                if plain_writer is None:
+                    raise ProxyConnError("Cannot initiate TLS – no plain connection available")
+
+                transport = plain_writer.transport  # type: ignore[attr-defined]
+
+                # Create a *dedicated* StreamReader so that the SSL layer has its own buffer
+                reader_for_ssl = asyncio.StreamReader()
+                protocol = asyncio.StreamReaderProtocol(reader_for_ssl)
 
                 # Upgrade transport to SSL
                 ssl_transport = await asyncio.wait_for(
@@ -356,8 +365,9 @@ class Proxy:
                     timeout=self._timeout,
                 )
 
-                # Create new reader/writer for SSL connection
-                self._reader[_type] = protocol._stream_reader
+                # Create new reader/writer for SSL connection – at this point
+                # *reader_for_ssl* is fully wired to *ssl_transport*
+                self._reader[_type] = reader_for_ssl
                 self._writer[_type] = asyncio.StreamWriter(
                     ssl_transport,
                     protocol,

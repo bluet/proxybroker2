@@ -2,6 +2,7 @@ import asyncio
 import struct
 from abc import ABC, abstractmethod
 from socket import inet_aton
+from typing import Any
 
 from .errors import BadResponseError, BadStatusError
 from .utils import get_headers, get_status_code
@@ -49,7 +50,7 @@ class BaseNegotiator(ABC):
         self._proxy = proxy
 
     @abstractmethod
-    async def negotiate(self, **kwargs):
+    async def negotiate(self, **kwargs: Any) -> None:
         """Negotiate with proxy."""
 
 
@@ -58,7 +59,7 @@ class Socks5Ngtr(BaseNegotiator):
 
     name = "SOCKS5"
 
-    async def negotiate(self, **kwargs):
+    async def negotiate(self, **kwargs: Any) -> None:
         await self._proxy.send(struct.pack("3B", 5, 1, 0))
         resp = await self._proxy.recv(2)
 
@@ -71,8 +72,9 @@ class Socks5Ngtr(BaseNegotiator):
             self._proxy.log("Failed (invalid data)", err=BadResponseError)
             raise BadResponseError
 
-        bip = inet_aton(kwargs.get("ip"))
-        port = kwargs.get("port", 80)
+        ip_str = str(kwargs.get("ip", "0.0.0.0"))
+        bip = inet_aton(ip_str)
+        port = int(kwargs.get("port", 80))
 
         await self._proxy.send(struct.pack(">8BH", 5, 1, 0, 1, *bip, port))
         resp = await self._proxy.recv(10)
@@ -89,9 +91,10 @@ class Socks4Ngtr(BaseNegotiator):
 
     name = "SOCKS4"
 
-    async def negotiate(self, **kwargs):
-        bip = inet_aton(kwargs.get("ip"))
-        port = kwargs.get("port", 80)
+    async def negotiate(self, **kwargs: Any) -> None:
+        ip_str = str(kwargs.get("ip", "0.0.0.0"))
+        bip = inet_aton(ip_str)
+        port = int(kwargs.get("port", 80))
 
         await self._proxy.send(struct.pack(">2BH5B", 4, 1, port, *bip, 0))
         resp = await self._proxy.recv(8)
@@ -112,7 +115,7 @@ class Connect80Ngtr(BaseNegotiator):
 
     name = "CONNECT:80"
 
-    async def negotiate(self, **kwargs):
+    async def negotiate(self, **kwargs: Any) -> None:
         await self._proxy.send(_CONNECT_request(kwargs.get("host"), 80))
         resp = await self._proxy.recv(head_only=True)
         code = get_status_code(resp)
@@ -128,7 +131,7 @@ class Connect25Ngtr(BaseNegotiator):
 
     name = "CONNECT:25"
 
-    async def negotiate(self, **kwargs):
+    async def negotiate(self, **kwargs: Any) -> None:
         await self._proxy.send(_CONNECT_request(kwargs.get("host"), 25))
         resp = await self._proxy.recv(head_only=True)
         code = get_status_code(resp)
@@ -150,7 +153,7 @@ class HttpsNgtr(BaseNegotiator):
 
     name = "HTTPS"
 
-    async def negotiate(self, **kwargs):
+    async def negotiate(self, **kwargs: Any) -> None:
         await self._proxy.send(_CONNECT_request(kwargs.get("host"), 443))
         resp = await self._proxy.recv(head_only=True)
         code = get_status_code(resp)
@@ -169,7 +172,7 @@ class HttpNgtr(BaseNegotiator):
     check_anon_lvl = True
     use_full_path = True
 
-    async def negotiate(self, **kwargs):
+    async def negotiate(self, **kwargs: Any) -> None:
         pass
 
 
