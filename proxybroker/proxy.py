@@ -171,12 +171,28 @@ class Proxy:
         self._is_working = val
 
     @property
-    def writer(self):
-        return self._writer.get("ssl") or self._writer.get("conn")
+    def writer(self) -> asyncio.StreamWriter:  # type: ignore[override]
+        """Return the active ``asyncio.StreamWriter``.
+
+        During the life-cycle of a :class:`Proxy` instance the writer can be
+        *None* – for example right after instantiation or after
+        :py:meth:`close` has been called.  Accessing the writer in that state
+        is a programming error, therefore we raise a dedicated
+        :class:`ProxyConnError` instead of returning *None* and risking an
+        ``AttributeError`` later on.
+        """
+        writer = self._writer.get("ssl") or self._writer.get("conn")
+        if writer is None:  # pragma: no cover – linter/typing safeguard
+            raise ProxyConnError("Writer is not available; did you forget to call connect()?")
+        return writer
 
     @property
-    def reader(self):
-        return self._reader.get("ssl") or self._reader.get("conn")
+    def reader(self) -> asyncio.StreamReader:  # type: ignore[override]
+        """Return the active ``asyncio.StreamReader`` or raise if absent."""
+        reader = self._reader.get("ssl") or self._reader.get("conn")
+        if reader is None:  # pragma: no cover – linter/typing safeguard
+            raise ProxyConnError("Reader is not available; did you forget to call connect()?")
+        return reader
 
     @property
     def priority(self):
