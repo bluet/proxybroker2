@@ -3,6 +3,7 @@ import ssl as _ssl
 import time
 import warnings
 from collections import Counter
+from typing import Dict, Optional, Any
 
 from .errors import (
     ProxyConnError,
@@ -104,8 +105,12 @@ class Proxy:
         self._runtimes = []
         self._schemes = ()
         self._closed = True
-        self._reader = {"conn": None, "ssl": None}
-        self._writer = {"conn": None, "ssl": None}
+        # Dictionaries hold both the plain-text and the TLS upgraded
+        # stream objects.  Using explicit ``Optional`` annotations helps static
+        # type checkers to understand that *None* is an expected value until
+        # a connection is established.
+        self._reader: Dict[str, Optional[asyncio.StreamReader]] = {"conn": None, "ssl": None}
+        self._writer: Dict[str, Optional[asyncio.StreamWriter]] = {"conn": None, "ssl": None}
 
     def __repr__(self):
         """Class representation
@@ -235,7 +240,7 @@ class Proxy:
         return round(sum(self._runtimes) / len(self._runtimes), 2)
 
     @property
-    def avgRespTime(self):
+    def avgRespTime(self) -> float:  # noqa: N802 – kept for backwards-compat
         """Deprecated property, use avg_resp_time instead.
 
         .. deprecated:: 2.0
@@ -267,11 +272,11 @@ class Proxy:
         return self._geo
 
     @property
-    def ngtr(self):
+    def ngtr(self) -> Optional["BaseNegotiator"]:  # type: ignore[name-defined]
         return self._ngtr
 
     @ngtr.setter
-    def ngtr(self, proto):
+    def ngtr(self, proto: str) -> None:
         self._ngtr = NGTRS[proto](self)
 
     def as_json(self):
@@ -312,7 +317,7 @@ class Proxy:
 
     def log(self, msg, stime=0, err=None):
         ngtr = self.ngtr.name if self.ngtr else "INFO"
-        runtime = time.time() - stime if stime else 0
+        runtime: float = float(time.time() - stime) if stime else 0.0
         log.debug(f"{self.host}:{self.port} [{ngtr}]: {msg}; Runtime: {runtime:.2f}")
         trunc = "..." if len(msg) > 58 else ""
         msg = f"{msg:.60s}{trunc}"
@@ -404,17 +409,19 @@ class Proxy:
         self._closed = True
 
         # Close SSL writer first if it exists
-        if self._writer.get("ssl"):
+        ssl_writer = self._writer.get("ssl")
+        if ssl_writer is not None:
             try:
-                self._writer["ssl"].close()
-            except Exception as e:
+                ssl_writer.close()
+            except Exception as e:  # pragma: no cover – defensive
                 self.log(f"Error closing SSL writer: {e}")
 
         # Close connection writer
-        if self._writer.get("conn"):
+        conn_writer = self._writer.get("conn")
+        if conn_writer is not None:
             try:
-                self._writer["conn"].close()
-            except Exception as e:
+                conn_writer.close()
+            except Exception as e:  # pragma: no cover
                 self.log(f"Error closing connection writer: {e}")
 
         # Clear references
