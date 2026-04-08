@@ -114,16 +114,18 @@ class Judge:
 
 def get_judges(judges=None, timeout=8, verify_ssl=False):
     judges = judges or [
-        "http://httpbin.org/get?show_env",
-        "https://httpbin.org/get?show_env",
-        "smtp://smtp.gmail.com",
-        "smtp://aspmx.l.google.com",
-        "http://azenv.net/",
-        "https://www.proxy-listen.de/azenv.php",
-        "http://www.proxyfire.net/fastenv",
-        "http://proxyjudge.us/azenv.php",
-        "http://ip.spys.ru/",
-        "http://www.proxy-listen.de/azenv.php",
+        'http://httpbin.org/get?show_env',
+        'https://httpbin.org/get?show_env',
+        'smtp://smtp.gmail.com',
+        'smtp://aspmx.l.google.com',
+        'http://azenv.net/',
+        'https://www.proxy-listen.de/azenv.php',
+        'http://www.proxyfire.net/fastenv',
+        'http://proxyjudge.us/azenv.php',
+        'http://ip.spys.ru/',
+        'http://www.proxy-listen.de/azenv.php',
+        'http://httpbin.com.br/anything?show_env',
+        'https://httpbin.com.br/anything?show_env',
     ]
     _judges = []
     for j in judges:
