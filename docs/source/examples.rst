@@ -4,7 +4,7 @@
 Examples
 ========
 
-All examples are also available at `GitHub <https://github.com/constverum/ProxyBroker/examples>`_
+All examples are also available at `GitHub <https://github.com/bluet/proxybroker2/tree/master/examples>`_
 
 .. literalinclude:: ../../examples/basic.py
 

@@ -1,0 +1,7 @@
+sphinx>=8.0
+myst-parser>=4.0
+alabaster>=1.0.0
+linkify-it-py>=2.0.0
+aiohttp>=3.12.0
+aiodns>=3.4.0
+maxminddb>=2.7.0

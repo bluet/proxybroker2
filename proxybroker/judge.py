@@ -12,11 +12,11 @@ from .utils import get_headers, log
 class Judge:
     """Proxy Judge."""
 
-    available = {'HTTP': [], 'HTTPS': [], 'SMTP': []}
+    available = {"HTTP": [], "HTTPS": [], "SMTP": []}
     ev = {
-        'HTTP': asyncio.Event(),
-        'HTTPS': asyncio.Event(),
-        'SMTP': asyncio.Event(),
+        "HTTP": asyncio.Event(),
+        "HTTPS": asyncio.Event(),
+        "SMTP": asyncio.Event(),
     }
 
     def __init__(self, url, timeout=8, verify_ssl=False, loop=None):
@@ -26,33 +26,38 @@ class Judge:
         self.path = url.split(self.host)[-1]
         self.ip = None
         self.is_working = False
-        self.marks = {'via': 0, 'proxy': 0}
+        self.marks = {"via": 0, "proxy": 0}
         self.timeout = timeout
         self.verify_ssl = verify_ssl
-        self._loop = loop or asyncio.get_event_loop()
+        try:
+            self._loop = loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            self._loop = loop
         self._resolver = Resolver(loop=self._loop)
 
     def __repr__(self):
-        return '<Judge [%s] %s>' % (self.scheme, self.host)
+        """Class representation"""
+        return "<Judge [%s] %s>" % (self.scheme, self.host)
 
     @classmethod
     def get_random(cls, proto):
-        if proto == 'HTTPS':
-            scheme = 'HTTPS'
-        elif proto == 'CONNECT:25':
-            scheme = 'SMTP'
+        if proto == "HTTPS":
+            scheme = "HTTPS"
+        elif proto == "CONNECT:25":
+            scheme = "SMTP"
         else:
-            scheme = 'HTTP'
+            scheme = "HTTP"
         return random.choice(cls.available[scheme])
 
     @classmethod
     def clear(cls):
-        cls.available['HTTP'].clear()
-        cls.available['HTTPS'].clear()
-        cls.available['SMTP'].clear()
-        cls.ev['HTTP'].clear()
-        cls.ev['HTTPS'].clear()
-        cls.ev['SMTP'].clear()
+        cls.available["HTTP"].clear()
+        cls.available["HTTPS"].clear()
+        cls.available["SMTP"].clear()
+        cls.ev["HTTP"].clear()
+        cls.ev["HTTPS"].clear()
+        cls.ev["SMTP"].clear()
 
     async def check(self, real_ext_ip):
         # TODO: need refactoring
@@ -61,7 +66,7 @@ class Judge:
         except ResolveError:
             return
 
-        if self.scheme == 'SMTP':
+        if self.scheme == "SMTP":
             self.is_working = True
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
@@ -74,11 +79,12 @@ class Judge:
         )
         try:
             timeout = aiohttp.ClientTimeout(total=self.timeout)
-            async with aiohttp.ClientSession(
-                connector=connector, timeout=timeout, loop=self._loop
-            ) as session, session.get(
-                url=self.url, headers=headers, allow_redirects=False
-            ) as resp:
+            async with (
+                aiohttp.ClientSession(connector=connector, timeout=timeout) as session,
+                session.get(
+                    url=self.url, headers=headers, allow_redirects=False
+                ) as resp,
+            ):
                 page = await resp.text()
         except (
             asyncio.TimeoutError,
@@ -86,31 +92,23 @@ class Judge:
             aiohttp.ClientResponseError,
             aiohttp.ServerDisconnectedError,
         ) as e:
-            log.debug('%s is failed. Error: %r;' % (self, e))
+            log.debug("%s is failed. Error: %r;" % (self, e))
             return
 
         page = page.lower()
 
         if resp.status == 200 and real_ext_ip in page and rv in page:
-            self.marks['via'] = page.count('via')
-            self.marks['proxy'] = page.count('proxy')
+            self.marks["via"] = page.count("via")
+            self.marks["proxy"] = page.count("proxy")
             self.is_working = True
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
-            log.debug('%s is verified' % self)
+            log.debug("%s is verified" % self)
         else:
             log.debug(
-                (
-                    '{j} is failed. HTTP status code: {code}; '
-                    'Real IP on page: {ip}; Version: {word}; '
-                    'Response: {page}'
-                ).format(
-                    j=self,
-                    code=resp.status,
-                    page=page,
-                    ip=(real_ext_ip in page),
-                    word=(rv in page),
-                )
+                f"{self} is failed. HTTP status code: {resp.status}; "
+                f"Real IP on page: {real_ext_ip in page}; Version: {rv in page}; "
+                f"Response: {page}"
             )
 
 

@@ -1,0 +1,54 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+# https://github.com/pyinstaller/pyinstaller/issues/6296#issuecomment-962446033
+
+name: Build Executable
+
+on: [push, pull_request]
+
+jobs:
+  build_exe:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11"]  # Use 3.11 for better PyInstaller compatibility
+        poetry-version: ["2.1.3"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1.4.1
+        with:
+          version: ${{ matrix.poetry-version }}
+          virtualenvs-in-project: true
+      - name: Verify Poetry installation
+        run: poetry --version
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction
+          poetry run pip install pyinstaller
+      - name: Compile python to exe
+        run: |
+          mkdir -p build;
+          cd build;
+          if [ "$RUNNER_OS" == 'Windows' ]; then
+            PATH_SEPARATOR=";"
+          else
+            PATH_SEPARATOR=":"
+          fi
+          poetry run pyinstaller --onefile --name proxybroker-${RUNNER_OS}-$(arch) --add-data "../proxybroker/data${PATH_SEPARATOR}data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py;
+          rm -rf tmp *.spec;
+      - name: Archive proxybroker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proxybroker-build-artifacts-${{ matrix.os }}
+          path: build/proxybroker-*-*

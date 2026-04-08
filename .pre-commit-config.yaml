@@ -1,0 +1,38 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+    python: python3.10
+fail_fast: false
+repos:
+    # Basic file checks
+    -   repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.5.0
+        hooks:
+            -   id: trailing-whitespace
+            -   id: end-of-file-fixer
+            -   id: check-yaml
+            -   id: check-toml
+            -   id: check-json
+            -   id: check-added-large-files
+            -   id: check-merge-conflict
+            -   id: debug-statements  # Catch print() and pdb
+            -   id: mixed-line-ending
+                args: ['--fix=lf']
+
+    # Ruff - fast Python linter and formatter
+    -   repo: https://github.com/astral-sh/ruff-pre-commit
+        rev: v0.1.9
+        hooks:
+            # Run the linter
+            -   id: ruff
+                args: [--fix, --select, "E9,F63,F7,F82,B,S,I,UP", --ignore, "S101", --per-file-ignores, "tests/*:S104"]
+            # Run the formatter
+            -   id: ruff-format
+
+    # Security scanning - important for a proxy tool
+    -   repo: https://github.com/PyCQA/bandit
+        rev: 1.7.5
+        hooks:
+            -   id: bandit
+                args: [-ll, -i, -x, tests]
+                name: bandit (security check)
