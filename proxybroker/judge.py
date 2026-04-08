@@ -126,8 +126,8 @@ def get_judges(judges=None, timeout=8, verify_ssl=False):
         'http://proxyjudge.us/azenv.php',
         'http://ip.spys.ru/',
         'http://www.proxy-listen.de/azenv.php',
-        'http://httpbin.com.br/anything',
-        'https://httpbin.com.br/anything',
+        'http://httpbin.com.br/anything?show_env',
+        'https://httpbin.com.br/anything?show_env',
     ]
     _judges = []
     for j in judges:
