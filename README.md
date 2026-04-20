@@ -612,3 +612,14 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_large)
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=bluet%2Fproxybroker2&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=bluet/proxybroker2&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=bluet/proxybroker2&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=bluet/proxybroker2&type=date&legend=top-left" />
+ </picture>
+</a>
+
