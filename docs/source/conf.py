@@ -53,7 +53,14 @@ def get_version():
 # Get metadata from __init__.py (everything except version)
 with codecs.open(_path_to_init, mode="r", encoding="utf-8") as f:
     content = f.read()
-    _INFO = dict(re.findall(r"__(\w+)__ = ['\"]([^'\"]+)['\"]", content, re.MULTILINE))
+    # Match both `__x__ = "value"` and `__x__ = ("value")` (possibly across lines)
+    _INFO = dict(
+        re.findall(
+            r"__(\w+)__\s*=\s*\(?\s*['\"]([^'\"]+)['\"]\s*\)?",
+            content,
+            re.MULTILINE | re.DOTALL,
+        )
+    )
 
 # Get version from pyproject.toml (single source of truth)
 _INFO["version"] = get_version()
