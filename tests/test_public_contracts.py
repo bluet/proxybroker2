@@ -42,11 +42,13 @@ class TestBrokerPublicContract:
             "verify_ssl",
             "loop",
             "stop_broker_on_sigint",
+            "provider_dirs",
             "kwargs",
         }
         actual_params = set(sig.parameters.keys())
         assert expected_params == actual_params, (
-            f"Missing params: {expected_params - actual_params}"
+            f"Missing params: {expected_params - actual_params}, "
+            f"unexpected params: {actual_params - expected_params}"
         )
 
         # Test default values that users depend on
@@ -56,6 +58,7 @@ class TestBrokerPublicContract:
         assert params["max_tries"].default == 3
         assert params["verify_ssl"].default is False
         assert params["stop_broker_on_sigint"].default is True
+        assert params["provider_dirs"].default is None
 
     @pytest.mark.asyncio
     async def test_broker_find_signature(self):
