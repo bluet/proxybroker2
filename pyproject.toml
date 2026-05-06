@@ -33,7 +33,7 @@ classifiers = [
 python = "^3.10"
 aiohttp = "^3.12.0"
 aiodns = "^3.4.0"
-attrs = "^25.3.0"
+attrs = ">=25.3.0"
 maxminddb = "^2.7.0"
 cachetools = "^5.5.2"
 click = "^8.2.1"
