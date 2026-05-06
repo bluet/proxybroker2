@@ -13,8 +13,12 @@ class TestCLI:
         """Run CLI command and return result."""
         cmd = [sys.executable, "-m", "proxybroker"] + args
         try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout
+            # sys.executable is trusted in test fixtures
+            result = subprocess.run(  # noqa: S603
+                cmd,  # noqa: S603
+                capture_output=True,
+                text=True,
+                timeout=timeout,
             )
             return result
         except subprocess.TimeoutExpired:
@@ -270,3 +274,59 @@ class TestCLI:
         assert result.returncode == 0
         assert "usage:" in result.stdout.lower()
         assert command in result.stdout
+
+
+class TestProviderDirResolution:
+    """Test --provider-dir flag and PROXYBROKER_PROVIDER_DIR fallback resolution."""
+
+    def test_cli_flag_takes_priority(self, monkeypatch):
+        """--provider-dir on CLI overrides env var and /configs convention."""
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.setenv("PROXYBROKER_PROVIDER_DIR", "/from-env")
+
+        class NS:
+            provider_dirs = ["/from-cli-1", "/from-cli-2"]
+
+        assert _resolve_provider_dirs(NS()) == ["/from-cli-1", "/from-cli-2"]
+
+    def test_env_var_used_when_no_flag(self, monkeypatch):
+        """$PROXYBROKER_PROVIDER_DIR is used when --provider-dir is absent."""
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.setenv("PROXYBROKER_PROVIDER_DIR", "/from-env")
+
+        class NS:
+            provider_dirs = None
+
+        assert _resolve_provider_dirs(NS()) == ["/from-env"]
+
+    def test_returns_none_when_unset(self, monkeypatch):
+        """When nothing is configured and /configs does not exist, return None.
+
+        None preserves the Broker's default behaviour (use bundled providers
+        only). Returning [] would be wrong - it would imply 'no providers'.
+        """
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.delenv("PROXYBROKER_PROVIDER_DIR", raising=False)
+        # /configs is unlikely to exist on a dev machine, but be explicit.
+        monkeypatch.setattr(os.path, "isdir", lambda p: False)
+
+        class NS:
+            provider_dirs = None
+
+        assert _resolve_provider_dirs(NS()) is None
+
+    def test_configs_default_when_directory_exists(self, monkeypatch, tmp_path):
+        """If /configs exists in the container, use it as the default."""
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.delenv("PROXYBROKER_PROVIDER_DIR", raising=False)
+        # Pretend /configs exists.
+        monkeypatch.setattr(os.path, "isdir", lambda p: p == "/configs")
+
+        class NS:
+            provider_dirs = None
+
+        assert _resolve_provider_dirs(NS()) == ["/configs"]

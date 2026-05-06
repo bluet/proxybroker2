@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import sys
 from contextlib import contextmanager
 
@@ -138,6 +139,18 @@ def add_broker_args(group):
         action="append",
         dest="providers",
         help="Urls of pages where to find proxies",
+    )
+    group.add_argument(
+        "--provider-dir",
+        action="append",
+        dest="provider_dirs",
+        metavar="PATH",
+        help=(
+            "Directory of YAML/JSON provider configs to load on startup. "
+            "Repeatable. Falls back to $PROXYBROKER_PROVIDER_DIR, then to "
+            "/configs if it exists (Docker convention). Only data files "
+            "are read; no Python is executed."
+        ),
     )
     group.add_argument(
         "--verify-ssl",
@@ -367,6 +380,28 @@ async def handle(proxies, outfile, format):
             is_first = False
 
 
+def _resolve_provider_dirs(ns):
+    """Resolve provider directories from CLI flag, env var, then convention.
+
+    Priority order:
+      1. ``--provider-dir`` (one or more on the command line)
+      2. ``$PROXYBROKER_PROVIDER_DIR`` (single path)
+      3. ``/configs`` if present in-container (Docker bind-mount convention)
+
+    Returns ``None`` when nothing is configured, so the Broker keeps its
+    default behaviour.
+    """
+    cli_dirs = getattr(ns, "provider_dirs", None)
+    if cli_dirs:
+        return cli_dirs
+    env_dir = os.environ.get("PROXYBROKER_PROVIDER_DIR")
+    if env_dir:
+        return [env_dir]
+    if os.path.isdir("/configs"):
+        return ["/configs"]
+    return None
+
+
 def cli(args=sys.argv[1:]):
     parser = create_parser()
     ns = parser.parse_args(args)
@@ -398,6 +433,7 @@ def cli(args=sys.argv[1:]):
         timeout=ns.timeout,
         judges=ns.judges,
         providers=ns.providers,
+        provider_dirs=_resolve_provider_dirs(ns),
         verify_ssl=ns.verify_ssl,
         loop=loop,
     )
