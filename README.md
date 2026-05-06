@@ -260,6 +260,52 @@ if __name__ == "__main__":
 
 [More examples](https://proxybroker2.readthedocs.io/en/latest/examples.html).
 
+### 🆕 Custom Proxy Providers
+
+Add your own proxy sources without modifying the codebase. Two paths:
+
+#### Docker (no coding required)
+
+Drop YAML/JSON config files into a folder, bind-mount it to `/configs`:
+
+```yaml
+# ~/proxy-sources/my_list.yaml
+name: My Internal Source
+type: simple
+url: https://my-server.example.com/proxies.txt
+format: text
+protocols: [HTTP, HTTPS]
+```
+
+```bash
+docker run --rm \
+  -v ~/proxy-sources:/configs \
+  bluet/proxybroker2 \
+  find --types HTTP --limit 10
+```
+
+The CLI also accepts `--provider-dir PATH` (repeatable) and reads `$PROXYBROKER_PROVIDER_DIR` if neither is set.
+
+#### Python API
+
+```python
+from proxybroker import SimpleProvider, Broker
+
+class MyProvider(SimpleProvider):
+    domain = "mysite.com"
+
+    def __init__(self):
+        super().__init__(
+            url="http://mysite.com/proxies.txt",
+            format='text',
+            proto=('HTTP', 'HTTPS')
+        )
+
+broker = Broker(providers=[MyProvider()])
+```
+
+[Full documentation on custom providers](docs/custom_providers.md)
+
 ### 🔬 **Testing Philosophy**
 
 ProxyBroker2 implements a comprehensive **contract-based testing strategy** that ensures reliability while enabling innovation:
