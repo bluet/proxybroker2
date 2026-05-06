@@ -39,6 +39,7 @@ REQUIRES = [
     "maxminddb>=2.7.0",
     "cachetools>=5.5.2",
     "click>=8.2.1",
+    "pyyaml>=6.0.2",
 ]
 SETUP_REQUIRES = ["pytest-runner>=6.0.1"]
 TEST_REQUIRES = [
