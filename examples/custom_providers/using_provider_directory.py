@@ -29,16 +29,17 @@ async def main():
     # Example 2: Use provider directories with Broker
     print("=== Using custom provider directory with Broker ===")
 
-    # Create broker with custom provider directory
+    # Custom directory ONLY (no bundled defaults). providers=[] is the
+    # explicit "no defaults" signal; providers=None would *add* the
+    # bundled list to whatever the directory loads.
     Broker(
-        provider_dirs=[str(custom_dir)],  # Load from custom directory
-        providers=None,  # Don't use default providers
+        providers=[],
+        provider_dirs=[str(custom_dir)],
     )
 
-    # You can also combine default providers with custom ones
+    # Bundled defaults PLUS the custom directory.
     Broker(
-        provider_dirs=[str(custom_dir)],  # Load from custom directory
-        providers=None,  # None means use defaults + custom
+        provider_dirs=[str(custom_dir)],  # providers=None => bundled defaults
     )
 
     # Example 3: Mix custom providers with code-defined ones
@@ -84,9 +85,22 @@ async def main():
 
     # Example 5: Demonstration with actual proxy finding
     # (This would work if you have actual provider configurations)
+    # See examples/find_and_save.py for the full producer/consumer pattern.
     """
-    async for proxy in broker.find(types=['HTTP', 'HTTPS'], limit=10):
-        print(f"Found proxy: {proxy.host}:{proxy.port}")
+    proxies = asyncio.Queue()
+    broker = Broker(proxies, provider_dirs=['/path/to/configs'])
+
+    async def consume(q):
+        while True:
+            p = await q.get()
+            if p is None:
+                break
+            print(f"Found proxy: {p.host}:{p.port}")
+
+    await asyncio.gather(
+        broker.find(types=['HTTP', 'HTTPS'], limit=10),
+        consume(proxies),
+    )
     """
 
 

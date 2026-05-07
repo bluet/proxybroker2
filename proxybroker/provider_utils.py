@@ -310,6 +310,8 @@ class ConfigurableProvider(Provider):
             )
 
         url = cfg.get("url")
+        if not url:
+            raise ValueError("Provider config must include a 'url' field")
         provider_type = cfg.get("type", "simple")
 
         # Create appropriate provider instance
@@ -328,6 +330,7 @@ class ConfigurableProvider(Provider):
                 page_param=cfg.get("page_param", "page"),
                 start_page=cfg.get("start_page", 1),
                 max_pages=cfg.get("max_pages", 10),
+                page_step=cfg.get("page_step", 1),
                 proto=tuple(cfg.get("protocols", [])),
                 max_conn=cfg.get("max_connections", 4),
                 timeout=cfg.get("timeout", 20),
@@ -365,10 +368,16 @@ def load_provider_configs_from_directory(
         log.warning(f"Provider directory does not exist: {directory}")
         return providers
 
+    # Files starting with "_" are skipped (mirrors the Python loader's
+    # convention) so users can disable a config by renaming it.
     config_paths = sorted(
-        list(directory.glob("*.yaml"))
-        + list(directory.glob("*.yml"))
-        + list(directory.glob("*.json"))
+        p
+        for p in (
+            list(directory.glob("*.yaml"))
+            + list(directory.glob("*.yml"))
+            + list(directory.glob("*.json"))
+        )
+        if not p.name.startswith("_")
     )
     for config_path in config_paths:
         try:
@@ -416,10 +425,15 @@ def load_python_providers_from_directory(
 
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
+                # Only instantiate Provider subclasses DEFINED in this
+                # module - skip ones merely imported into its namespace
+                # (e.g. `from proxybroker import SimpleProvider`), otherwise
+                # we would inadvertently spin up a SimpleProvider per file.
                 if (
                     isinstance(attr, type)
                     and issubclass(attr, Provider)
                     and attr is not Provider
+                    and getattr(attr, "__module__", None) == spec.name
                 ):
                     try:
                         provider = attr()

@@ -55,19 +55,23 @@ if __name__ == "__main__":
 
     from proxybroker import Broker
 
-    async def main():
-        # Create custom providers
-        custom_providers = [MySimpleProvider(), MyPatternProvider(), MyJSONProvider()]
-
-        # Use them with Broker
-        broker = Broker(providers=custom_providers)
-
-        # Find proxies from custom sources
-        proxies = []
-        async for proxy in broker.find(types=["HTTP", "HTTPS"], limit=10):
+    async def consume(proxies):
+        results = []
+        while True:
+            proxy = await proxies.get()
+            if proxy is None:
+                break
             print(proxy)
-            proxies.append(proxy)
+            results.append(proxy)
+        print(f"\nFound {len(results)} proxies from custom providers")
 
-        print(f"\nFound {len(proxies)} proxies from custom providers")
+    async def main():
+        custom_providers = [MySimpleProvider(), MyPatternProvider(), MyJSONProvider()]
+        proxies = asyncio.Queue()
+        broker = Broker(proxies, providers=custom_providers)
+        await asyncio.gather(
+            broker.find(types=["HTTP", "HTTPS"], limit=10),
+            consume(proxies),
+        )
 
     asyncio.run(main())

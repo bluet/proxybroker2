@@ -44,7 +44,7 @@ If none of those are set, only the bundled provider list is used (existing behav
 
 ### Replacing the bundled providers entirely
 
-By default, configs from your directory are **added** to the bundled provider list. To use *only* your own configs (and not the bundled ones), pass `providers=[]` from Python or use the CLI's existing `--provider URL` flag with no value semantics:
+By default, configs from your directory are **added** to the bundled provider list. To use *only* your own configs and skip every bundled source, you currently need the Python API:
 
 ```python
 from proxybroker import Broker
@@ -52,6 +52,8 @@ from proxybroker import Broker
 # Only providers from /configs, no bundled defaults.
 broker = Broker(providers=[], provider_dirs=['/configs'])
 ```
+
+There is no CLI equivalent today — `--provider URL` always *adds* a single URL, it cannot express the empty list. If you need a no-defaults Docker workflow, run a tiny Python wrapper instead of `python -m proxybroker`. Tracking issue: open one if you want a `--no-default-providers` CLI flag.
 
 ## Python API (for developers)
 

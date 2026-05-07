@@ -16,10 +16,42 @@ from .api import Broker
 from .utils import update_geoip_db
 
 
+def _build_provider_dir_parent():
+    """Parent parser carrying only --provider-dir.
+
+    Used by both the top-level parser and every subcommand parser so the
+    flag works in any position (`proxybroker --provider-dir X find ...`
+    and `proxybroker find --provider-dir X ...` both parse correctly).
+
+    `default=argparse.SUPPRESS` is critical: when the same arg lives on a
+    parent and a subparser via `parents=[...]`, argparse re-applies the
+    default while parsing the subcommand, overwriting whatever the
+    top-level captured. SUPPRESS makes argparse omit the attribute when
+    the user did not pass it, so the value flows through cleanly.
+    """
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument(
+        "--provider-dir",
+        action="append",
+        dest="provider_dirs",
+        metavar="PATH",
+        default=argparse.SUPPRESS,
+        help=(
+            "Directory of YAML/JSON provider configs to load on startup. "
+            "Repeatable. Falls back to $PROXYBROKER_PROVIDER_DIR, then to "
+            "/configs if it exists (Docker convention). Only data files "
+            "are read; no Python is executed."
+        ),
+    )
+    return p
+
+
 def create_parser():
+    provider_dir_parent = _build_provider_dir_parent()
     parser = argparse.ArgumentParser(
         prog="proxybroker",
         add_help=False,
+        parents=[provider_dir_parent],
         description="Proxy [Finder | Checker | Server]",
         epilog="""Run '%(prog)s <command> --help'
                   for more information on a command.
@@ -39,6 +71,7 @@ def create_parser():
     fparser = subparsers.add_parser(
         "find",
         add_help=False,
+        parents=[provider_dir_parent],
         help="Find and check proxies",
         description="Find and check proxies with specified parameters",
     )
@@ -54,6 +87,7 @@ def create_parser():
     gparser = subparsers.add_parser(
         "grab",
         add_help=False,
+        parents=[provider_dir_parent],
         help="Find proxies without a check",
         description="Find proxies without a check with specified parameters",
     )
@@ -68,6 +102,7 @@ def create_parser():
     sparser = subparsers.add_parser(
         "serve",
         add_help=False,
+        parents=[provider_dir_parent],
         help="Run a local proxy server",
         description="""Run a local proxy server that distributes requests to
                        external proxies, which will be found on the
@@ -140,18 +175,10 @@ def add_broker_args(group):
         dest="providers",
         help="Urls of pages where to find proxies",
     )
-    group.add_argument(
-        "--provider-dir",
-        action="append",
-        dest="provider_dirs",
-        metavar="PATH",
-        help=(
-            "Directory of YAML/JSON provider configs to load on startup. "
-            "Repeatable. Falls back to $PROXYBROKER_PROVIDER_DIR, then to "
-            "/configs if it exists (Docker convention). Only data files "
-            "are read; no Python is executed."
-        ),
-    )
+    # NOTE: --provider-dir is defined separately on _provider_dir_parent so
+    # both `proxybroker --provider-dir X find` and `proxybroker find
+    # --provider-dir X` work. argparse subparsers do not inherit top-level
+    # parser args, so the flag has to be reachable through a parent parser.
     group.add_argument(
         "--verify-ssl",
         "-ssl",

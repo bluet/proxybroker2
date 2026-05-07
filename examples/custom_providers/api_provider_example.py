@@ -84,17 +84,26 @@ if __name__ == "__main__":
 
     from proxybroker import Broker
 
+    async def consume(proxies):
+        while True:
+            proxy = await proxies.get()
+            if proxy is None:
+                break
+            print(f"Found proxy: {proxy.host}:{proxy.port} ({proxy.types})")
+
     async def main():
-        # Create API providers
+        # Note: API keys should come from env vars in real code, e.g.
+        # api_key=os.environ["PROXY_API_KEY"]
         providers = [
-            MyAuthenticatedAPI(api_key="your-api-key-here"),
+            MyAuthenticatedAPI(api_key="your-api-key-here"),  # noqa: S106
             MyCustomHeaderAPI(),
             MyRESTfulAPI(country="US", proxy_type="anonymous"),
         ]
-
-        broker = Broker(providers=providers)
-
-        async for proxy in broker.find(types=["HTTP", "HTTPS"], limit=10):
-            print(f"Found proxy: {proxy.host}:{proxy.port} ({proxy.types})")
+        proxies = asyncio.Queue()
+        broker = Broker(proxies, providers=providers)
+        await asyncio.gather(
+            broker.find(types=["HTTP", "HTTPS"], limit=10),
+            consume(proxies),
+        )
 
     asyncio.run(main())

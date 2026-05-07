@@ -272,3 +272,55 @@ def test_load_python_providers_directly():
 
         assert len(providers) == 1
         assert isinstance(providers[0], SimpleProvider)
+
+
+def test_config_without_url_is_rejected():
+    """A YAML/JSON config that omits 'url' must raise ValueError, not silently
+    construct a Provider with url=None.
+    """
+    with pytest.raises(ValueError, match="url"):
+        ConfigurableProvider.from_config({"type": "simple", "format": "text"})
+
+
+def test_paginated_config_propagates_page_step():
+    """page_step in YAML must reach the PaginatedProvider constructor."""
+    cfg = {
+        "type": "paginated",
+        "url": "http://example.com/page-{}.html",
+        "page_step": 5,
+    }
+    provider = ConfigurableProvider.from_config(cfg)
+    assert isinstance(provider, PaginatedProvider)
+    assert provider.page_step == 5
+
+
+def test_underscore_prefix_yaml_files_are_skipped():
+    """Files starting with '_' are skipped by the config loader, mirroring
+    the Python loader. Lets users disable a config by renaming.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _write_yaml_config(Path(tmpdir) / "active.yaml")
+        _write_yaml_config(Path(tmpdir) / "_disabled.yaml")
+
+        providers = load_provider_configs_from_directory(tmpdir)
+        assert len(providers) == 1
+
+
+def test_python_loader_skips_imported_classes():
+    """A user file that does `from proxybroker import SimpleProvider` should
+    NOT cause SimpleProvider to be instantiated. Only classes defined in
+    the file itself should be loaded.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = Path(tmpdir) / "imports_only.py"
+        path.write_text(
+            textwrap.dedent(
+                """
+                # No locally-defined Provider subclasses, only imports.
+                from proxybroker import SimpleProvider, PaginatedProvider, APIProvider  # noqa: F401
+                """
+            ).lstrip()
+        )
+
+        providers = load_python_providers_from_directory(tmpdir)
+        assert providers == []

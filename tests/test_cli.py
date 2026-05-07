@@ -330,3 +330,49 @@ class TestProviderDirResolution:
             provider_dirs = None
 
         assert _resolve_provider_dirs(NS()) == ["/configs"]
+
+
+class TestProviderDirParserPlacement:
+    """--provider-dir must be accepted before AND after the subcommand.
+
+    Argparse subparsers do not inherit top-level args by default. Without
+    a parent-parser, `proxybroker find --types HTTP --provider-dir X` would
+    fail with 'unrecognized arguments'. This test guards that fix.
+    """
+
+    def _parse(self, *args):
+        from proxybroker.cli import create_parser
+
+        return create_parser().parse_args(list(args))
+
+    def test_provider_dir_before_subcommand(self):
+        ns = self._parse("--provider-dir", "/before", "find", "--types", "HTTP")
+        assert ns.provider_dirs == ["/before"]
+        assert ns.command == "find"
+
+    def test_provider_dir_after_find_subcommand(self):
+        ns = self._parse("find", "--types", "HTTP", "--provider-dir", "/after")
+        assert ns.provider_dirs == ["/after"]
+        assert ns.command == "find"
+
+    def test_provider_dir_after_grab_subcommand(self):
+        ns = self._parse("grab", "--provider-dir", "/g")
+        assert ns.provider_dirs == ["/g"]
+        assert ns.command == "grab"
+
+    def test_provider_dir_after_serve_subcommand(self):
+        ns = self._parse("serve", "--types", "HTTP", "--provider-dir", "/s")
+        assert ns.provider_dirs == ["/s"]
+        assert ns.command == "serve"
+
+    def test_provider_dir_repeatable_after_subcommand(self):
+        ns = self._parse(
+            "find",
+            "--types",
+            "HTTP",
+            "--provider-dir",
+            "/a",
+            "--provider-dir",
+            "/b",
+        )
+        assert ns.provider_dirs == ["/a", "/b"]

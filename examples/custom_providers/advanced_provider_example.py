@@ -165,9 +165,18 @@ if __name__ == "__main__":
         # Create advanced providers
         providers = [AdvancedProvider(), RateLimitedProvider()]
 
-        broker = Broker(providers=providers)
+        async def consume(q):
+            while True:
+                proxy = await q.get()
+                if proxy is None:
+                    break
+                print(f"Found proxy: {proxy.host}:{proxy.port}")
 
-        async for proxy in broker.find(types=["HTTP", "HTTPS"], limit=20):
-            print(f"Found proxy: {proxy.host}:{proxy.port}")
+        proxies = asyncio.Queue()
+        broker = Broker(proxies, providers=providers)
+        await asyncio.gather(
+            broker.find(types=["HTTP", "HTTPS"], limit=20),
+            consume(proxies),
+        )
 
     asyncio.run(main())
