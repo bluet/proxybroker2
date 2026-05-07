@@ -100,6 +100,35 @@ class TestSimpleProvider:
         proxies = provider._parse_json(json_data)
         assert proxies == [("192.0.2.1", "8080")]
 
+    def test_parse_json_unwraps_object_wrapped_list(self):
+        """``{"proxies": [...]}`` and similar wrapper shapes must be parsed.
+
+        Many proxy APIs return their list nested under a single key (the
+        JSON:API style). Without unwrap, SimpleProvider silently returned
+        zero proxies and users were forced to switch to APIProvider just
+        to set ``proxy_path: proxies``. Each common wrapper key is tested.
+        """
+        provider = SimpleProvider("http://example.com/proxies.json", format="json")
+        for key in ("proxies", "data", "results", "items", "list"):
+            wrapped = (
+                '{"' + key + '": [{"ip": "192.0.2.1", "port": 8080}], "meta": "x"}'
+            )
+            proxies = provider._parse_json(wrapped)
+            assert proxies == [("192.0.2.1", "8080")], (
+                f"wrapper key '{key}' did not unwrap"
+            )
+
+    def test_parse_json_object_without_known_wrapper_returns_empty(self):
+        """Objects without a recognised wrapper key yield no proxies.
+
+        Users with non-standard wrapper keys (e.g. ``{"payload": [...]}``)
+        should be directed to APIProvider with explicit ``proxy_path``.
+        Returning empty rather than crashing keeps the behaviour graceful.
+        """
+        provider = SimpleProvider("http://example.com/proxies.json", format="json")
+        json_data = '{"payload": [{"ip": "192.0.2.1", "port": 8080}]}'
+        assert provider._parse_json(json_data) == []
+
 
 class TestPaginatedProvider:
     """Test PaginatedProvider functionality."""

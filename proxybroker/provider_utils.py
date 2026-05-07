@@ -94,11 +94,32 @@ class SimpleProvider(Provider):
         # Default to text
         return "text"
 
+    # Common keys APIs use to wrap a proxy list inside an object response,
+    # e.g. {"proxies": [...]}, {"data": [...]}. Checked in order, first hit
+    # wins. Users with non-standard wrapper keys should use APIProvider with
+    # an explicit `proxy_path` instead.
+    _JSON_LIST_WRAPPER_KEYS = ("proxies", "data", "results", "items", "list")
+
     def _parse_json(self, content):
-        """Parse JSON format proxy lists."""
+        """Parse JSON format proxy lists.
+
+        Accepts either a top-level list (``[{"ip": ..., "port": ...}, ...]``)
+        or a single-level object wrapping such a list under one of
+        :attr:`_JSON_LIST_WRAPPER_KEYS` (``{"proxies": [...]}``). For other
+        nested shapes use :class:`APIProvider` with an explicit ``proxy_path``.
+        """
         try:
             data = json.loads(content)
             proxies = []
+
+            # Unwrap object-wrapped lists at one level. Keeps SimpleProvider
+            # useful for the common API shape `{"proxies": [...]}` without
+            # forcing users to switch to APIProvider for every wrapper key.
+            if isinstance(data, dict):
+                for key in self._JSON_LIST_WRAPPER_KEYS:
+                    if isinstance(data.get(key), list):
+                        data = data[key]
+                        break
 
             # Handle different JSON structures
             if isinstance(data, list):

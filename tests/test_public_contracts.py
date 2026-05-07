@@ -80,7 +80,7 @@ class TestBrokerPublicContract:
         assert expected_params == actual_params
 
         # Test that method is async
-        assert asyncio.iscoroutinefunction(broker.find)
+        assert inspect.iscoroutinefunction(broker.find)
 
     @pytest.mark.asyncio
     async def test_broker_grab_signature(self):
@@ -92,7 +92,7 @@ class TestBrokerPublicContract:
         actual_params = set(sig.parameters.keys()) - {"self"}
         assert expected_params == actual_params
 
-        assert asyncio.iscoroutinefunction(broker.grab)
+        assert inspect.iscoroutinefunction(broker.grab)
 
     @pytest.mark.asyncio
     async def test_broker_serve_signature(self):
@@ -138,7 +138,7 @@ class TestProxyPublicContract:
         actual_params = set(sig.parameters.keys())
         assert expected_params == actual_params
 
-        assert asyncio.iscoroutinefunction(Proxy.create)
+        assert inspect.iscoroutinefunction(Proxy.create)
 
     def test_proxy_as_json_contract(self):
         """Test Proxy.as_json() return structure contract."""
@@ -238,7 +238,7 @@ class TestProxyPoolPublicContract:
         actual_params = set(sig.parameters.keys())
         assert expected_params == actual_params
 
-        assert asyncio.iscoroutinefunction(pool.get)
+        assert inspect.iscoroutinefunction(pool.get)
 
     def test_proxy_pool_put_signature(self):
         """Test ProxyPool.put() signature remains stable."""
@@ -297,7 +297,7 @@ class TestServerPublicContract:
         actual_params = set(sig.parameters.keys())
         assert expected_params == actual_params
 
-        assert asyncio.iscoroutinefunction(server.start)
+        assert inspect.iscoroutinefunction(server.start)
 
 
 class TestErrorContractStability:
