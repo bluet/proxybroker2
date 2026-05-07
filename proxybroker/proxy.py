@@ -94,7 +94,20 @@ class Proxy:
         # nosemgrep: python.lang.security.unverified-ssl-context.unverified-ssl-context
         # Intentional: proxy testing connects to whatever the proxy serves; cert verification
         # is opt-in via verify_ssl=True at the Broker level. See README "Verifying SSL".
-        self._ssl_context = True if verify_ssl else _ssl._create_unverified_context()  # noqa: S323  # nosec B323  # NOSONAR
+        if verify_ssl:
+            self._ssl_context = True
+        else:
+            # Use the public ssl.create_default_context() and explicitly
+            # disable verification rather than the private
+            # _ssl._create_unverified_context() helper. Same end state
+            # (no cert verification, no hostname check), but goes through
+            # the supported public API and inherits modern default
+            # ciphers / protocol restrictions. check_hostname must be
+            # disabled BEFORE verify_mode in older Python versions.
+            _ctx = _ssl.create_default_context()
+            _ctx.check_hostname = False
+            _ctx.verify_mode = _ssl.CERT_NONE
+            self._ssl_context = _ctx  # noqa: S323  # nosec B323  # NOSONAR
         self._types = {}
         self._is_working = False
         self.stat = {"requests": 0, "errors": Counter()}
