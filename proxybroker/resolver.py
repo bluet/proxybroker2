@@ -1,7 +1,7 @@
 import asyncio
 import ipaddress
 import os.path
-import random
+import secrets
 import socket
 from collections import namedtuple
 
@@ -95,7 +95,10 @@ class Resolver:
         return GeoData(code, name, region_code, region_name, city_name)
 
     def _pop_random_ip_host(self):
-        host = random.choice(self._temp_host)  # noqa: S311
+        # secrets.choice (CSPRNG) instead of random.choice for SonarCloud
+        # S2245. The selection isn't security-sensitive (just balances which
+        # ext-IP-detection URL we hit), but secrets is a drop-in here.
+        host = secrets.choice(self._temp_host)
         self._temp_host.remove(host)
         return host
 

@@ -26,44 +26,44 @@ class TestSimpleProvider:
     def test_text_format_detection(self):
         """Test that text format is detected correctly."""
         provider = SimpleProvider("http://example.com/proxies.txt")
-        assert provider._detect_format("192.168.1.1:8080\n10.0.0.1:3128") == "text"
+        assert provider._detect_format("192.0.2.1:8080\n198.51.100.1:3128") == "text"
 
     def test_json_format_detection(self):
         """Test that JSON format is detected correctly."""
         provider = SimpleProvider("http://example.com/proxies.json")
-        json_data = '[{"ip": "192.168.1.1", "port": 8080}]'
+        json_data = '[{"ip": "192.0.2.1", "port": 8080}]'
         assert provider._detect_format(json_data) == "json"
 
     def test_csv_format_detection(self):
         """Test that CSV format is detected correctly."""
         provider = SimpleProvider("http://example.com/proxies.csv")
-        csv_data = "192.168.1.1,8080\n10.0.0.1,3128"
+        csv_data = "192.0.2.1,8080\n198.51.100.1,3128"
         assert provider._detect_format(csv_data) == "csv"
 
     def test_parse_text(self):
         """Test parsing text format proxies."""
         provider = SimpleProvider("http://example.com/proxies.txt", format="text")
-        text_data = "192.168.1.1:8080\n10.0.0.1:3128\n172.16.0.1:8888"
+        text_data = "192.0.2.1:8080\n198.51.100.1:3128\n203.0.113.1:8888"
         proxies = provider._parse_text(text_data)
         assert len(proxies) == 3
-        assert ("192.168.1.1", "8080") in proxies
+        assert ("192.0.2.1", "8080") in proxies
 
     def test_parse_json(self):
         """Test parsing JSON format proxies."""
         provider = SimpleProvider("http://example.com/proxies.json", format="json")
-        json_data = '[{"ip": "192.168.1.1", "port": 8080}, {"host": "10.0.0.1", "port": "3128"}]'
+        json_data = '[{"ip": "192.0.2.1", "port": 8080}, {"host": "198.51.100.1", "port": "3128"}]'
         proxies = provider._parse_json(json_data)
         assert len(proxies) == 2
-        assert ("192.168.1.1", "8080") in proxies
-        assert ("10.0.0.1", "3128") in proxies
+        assert ("192.0.2.1", "8080") in proxies
+        assert ("198.51.100.1", "3128") in proxies
 
     def test_parse_csv(self):
         """Test parsing CSV format proxies."""
         provider = SimpleProvider("http://example.com/proxies.csv", format="csv")
-        csv_data = '"192.168.1.1","8080"\n10.0.0.1,3128'
+        csv_data = '"192.0.2.1","8080"\n198.51.100.1,3128'
         proxies = provider._parse_csv(csv_data)
         assert len(proxies) == 2
-        assert ("192.168.1.1", "8080") in proxies
+        assert ("192.0.2.1", "8080") in proxies
 
 
 class TestPaginatedProvider:
@@ -102,15 +102,15 @@ class TestAPIProvider:
         """Test extracting proxies from JSON list."""
         provider = APIProvider("http://api.example.com/proxies")
         items = [
-            {"ip": "192.168.1.1", "port": 8080},
-            {"host": "10.0.0.1", "proxy_port": "3128"},
-            "172.16.0.1:8888",
+            {"ip": "192.0.2.1", "port": 8080},
+            {"host": "198.51.100.1", "proxy_port": "3128"},
+            "203.0.113.1:8888",
         ]
         proxies = provider._extract_from_list(items)
         assert len(proxies) == 3
-        assert ("192.168.1.1", "8080") in proxies
-        assert ("10.0.0.1", "3128") in proxies
-        assert ("172.16.0.1", "8888") in proxies
+        assert ("192.0.2.1", "8080") in proxies
+        assert ("198.51.100.1", "3128") in proxies
+        assert ("203.0.113.1", "8888") in proxies
 
 
 class TestConfigurableProvider:

@@ -36,18 +36,23 @@ class SimpleProvider(Provider):
         await self._find_on_page(self.url)
 
     def find_proxies(self, page):
-        """Automatically detect format and extract proxies."""
+        """Automatically detect format and extract proxies.
+
+        Detection is per-call: an earlier transient empty/error response
+        must NOT permanently lock self.format to the wrong parser, which
+        was the previous bug when the same SimpleProvider instance is
+        reused across grab cycles in serve mode.
+        """
         if self.custom_pattern:
             return re.findall(self.custom_pattern, page)
 
-        if self.format == "auto":
-            self.format = self._detect_format(page)
+        fmt = self.format if self.format != "auto" else self._detect_format(page)
 
-        if self.format == "json":
+        if fmt == "json":
             return self._parse_json(page)
-        elif self.format == "csv":
+        elif fmt == "csv":
             return self._parse_csv(page)
-        elif self.format == "text":
+        elif fmt == "text":
             return self._parse_text(page)
         else:  # html or fallback
             return self._find_proxies(page)

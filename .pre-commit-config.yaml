@@ -1,7 +1,10 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 default_language_version:
-    python: python3.14
+    # `python3` (any 3.x) so contributors on any of the supported Python
+    # versions (3.10-3.14) can run pre-commit without installing an extra
+    # interpreter. Pinning a specific minor breaks the others.
+    python: python3
 fail_fast: false
 repos:
     # Basic file checks
