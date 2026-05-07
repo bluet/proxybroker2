@@ -15,7 +15,7 @@ class TestCLI:
         try:
             # sys.executable is trusted in test fixtures
             result = subprocess.run(  # noqa: S603
-                cmd,  # noqa: S603
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout,

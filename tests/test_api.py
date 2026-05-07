@@ -107,23 +107,28 @@ class TestBrokerAPI:
         """Test that serve() can be called and returns a server object."""
         broker = Broker()
 
-        # serve() should return a server object or raise an exception
+        # serve() must exist and accept these args. It internally calls
+        # self._loop.run_until_complete(), which fails in the test env in
+        # one of two known ways:
+        #   - RuntimeError "This event loop is already running" (when
+        #     called from inside pytest-asyncio's loop)
+        #   - AttributeError when self._loop is None (when Broker was
+        #     constructed outside any event loop at all)
+        # Both are acceptable here - we are validating the API surface,
+        # not actually starting a server. Any OTHER exception type is a
+        # real regression and should fail the test.
         try:
             server = broker.serve(host="127.0.0.1", port=0)
-            if server is not None:
-                # Server should have basic interface
-                assert hasattr(server, "start")
-                assert hasattr(server, "stop")
-                # Clean up if possible
-                if hasattr(server, "stop") and callable(server.stop):
-                    try:
-                        server.stop()
-                    except Exception:  # noqa: S110
-                        pass
-        except Exception:  # noqa: S110
-            # serve() might not work in all contexts - that's a design consideration
-            # but the API should exist
-            pass
+        except (RuntimeError, AttributeError):
+            return
+        if server is not None:
+            assert hasattr(server, "start")
+            assert hasattr(server, "stop")
+            if hasattr(server, "stop") and callable(server.stop):
+                try:
+                    server.stop()
+                except (RuntimeError, AttributeError):
+                    pass
 
     # Edge Cases and Error Handling
 

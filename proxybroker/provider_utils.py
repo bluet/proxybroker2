@@ -104,14 +104,20 @@ class SimpleProvider(Provider):
             if isinstance(data, list):
                 for item in data:
                     if isinstance(item, dict):
-                        # Try common field names
+                        # Try common field names. Take the FIRST (ip,port)
+                        # pair we find and stop - otherwise an item with
+                        # both 'ip' and 'host' would be added twice.
+                        matched = False
                         for ip_field in ["ip", "host", "address", "proxy"]:
                             for port_field in ["port", "p"]:
                                 if ip_field in item and port_field in item:
                                     proxies.append(
                                         (item[ip_field], str(item[port_field]))
                                     )
+                                    matched = True
                                     break
+                            if matched:
+                                break
                     elif isinstance(item, str) and ":" in item:
                         # Format: "IP:PORT"
                         ip, port = item.split(":", 1)
@@ -123,14 +129,21 @@ class SimpleProvider(Provider):
             return []
 
     def _parse_csv(self, content):
-        """Parse CSV format proxy lists."""
+        """Parse CSV format proxy lists.
+
+        Uses the stdlib csv module so quoted fields with embedded commas
+        ("Server, Inc",80) round-trip correctly. The previous str.split(",")
+        path corrupted any line whose first field contained a comma.
+        """
+        import csv
+        import io
+
         proxies = []
-        for line in content.strip().split("\n"):
-            parts = line.split(",")
-            if len(parts) >= 2:
-                # Assume first two fields are IP and port
-                ip = parts[0].strip().strip('"')
-                port = parts[1].strip().strip('"')
+        reader = csv.reader(io.StringIO(content.strip()))
+        for row in reader:
+            if len(row) >= 2:
+                ip = row[0].strip()
+                port = row[1].strip()
                 if ip and port:
                     proxies.append((ip, port))
         return proxies
@@ -141,10 +154,11 @@ class SimpleProvider(Provider):
         for line in content.strip().split("\n"):
             line = line.strip()
             if ":" in line:
-                # Format: IP:PORT
-                parts = line.split(":")
+                # Format: IP:PORT (split on first ":" only - real lists
+                # often have inline comments after the port).
+                parts = line.split(":", 1)
                 if len(parts) == 2:
-                    proxies.append((parts[0], parts[1]))
+                    proxies.append((parts[0].strip(), parts[1].strip()))
             elif "\t" in line or " " in line:
                 # Format: IP PORT or IP\tPORT
                 parts = line.split()
@@ -248,10 +262,15 @@ class APIProvider(Provider):
             try:
                 data = json.loads(page)
 
-                # Navigate to proxy data using path
+                # Navigate to proxy data using path. Stop walking once
+                # we hit a non-dict (list/scalar): calling .get on those
+                # would raise AttributeError and kill the provider.
                 if self.proxy_path:
                     for key in self.proxy_path.split("."):
-                        data = data.get(key, data)
+                        if isinstance(data, dict):
+                            data = data.get(key, data)
+                        else:
+                            break
 
                 # Extract proxies from data
                 if isinstance(data, list):

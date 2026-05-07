@@ -314,7 +314,13 @@ class Proxylist_me(Provider):
         exp = r"""href\s*=\s*['"][^'"]*/?page=(\d+)['"]"""
         page = await self.get("https://proxylist.me/")
         lastId = max([int(n) for n in re.findall(exp, page)])
-        urls = ["https://proxylist.me/?page=%d" % n for n in range(lastId)]  # noqa: UP031
+        # range(1, lastId + 1): pages are 1-indexed on this site; the
+        # previous range(lastId) requested ?page=0 (404) and never fetched
+        # the actual last page. Pre-existing master bug.
+        urls = [
+            "https://proxylist.me/?page=%d" % n  # noqa: UP031
+            for n in range(1, lastId + 1)
+        ]
         await self._find_on_pages(urls)
 
 

@@ -1,5 +1,6 @@
 """Example of creating an advanced custom provider with all features."""
 
+import asyncio
 import json
 import re
 
@@ -155,8 +156,6 @@ class RateLimitedProvider(Provider):
 
 if __name__ == "__main__":
     # Example usage
-    import asyncio
-
     from proxybroker import Broker
 
     async def main():

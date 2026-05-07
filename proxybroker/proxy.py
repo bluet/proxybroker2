@@ -58,7 +58,12 @@ class Proxy:
             _host = await resolver.resolve(host)
             self = cls(_host, *args, **kwargs)
         except (ResolveError, ValueError) as e:
-            log.error(f"{host}:{args[0]}: Error at creating: {e}")
+            # `port` may be passed positionally (args[0]) or by keyword,
+            # or omitted entirely (defaults to None). Use whichever is
+            # available rather than crashing with IndexError on args[0]
+            # and masking the real error.
+            port = args[0] if args else kwargs.get("port", "?")
+            log.error(f"{host}:{port}: Error at creating: {e}")
             raise
         return self
 
