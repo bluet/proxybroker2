@@ -85,8 +85,6 @@ class AdvancedProvider(Provider):
                     ip = proxy.get("ip")
                     port = str(proxy.get("port"))
                     if ip and port:
-                        # Store additional metadata if needed
-                        proxy.get("type", "HTTP")
                         proxies.append((ip, port))
 
             elif "data" in data:

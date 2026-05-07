@@ -292,10 +292,10 @@ class ConfigurableProvider(Provider):
         if isinstance(config, (str, Path)):
             config_path = Path(config)
             if config_path.suffix in [".yaml", ".yml"]:
-                with open(config_path) as f:
+                with open(config_path, encoding="utf-8") as f:
                     cfg = yaml.safe_load(f)
             elif config_path.suffix == ".json":
-                with open(config_path) as f:
+                with open(config_path, encoding="utf-8") as f:
                     cfg = json.load(f)
             else:
                 raise ValueError(
@@ -523,10 +523,10 @@ def create_provider_config_template(
     filepath = Path(filepath)
 
     if filepath.suffix == ".json":
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(template, f, indent=2)
     else:
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             yaml.dump(template, f, default_flow_style=False)
 
     log.info(f"Created provider template at: {filepath}")

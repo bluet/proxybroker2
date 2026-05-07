@@ -492,13 +492,23 @@ class MyProxySite(Provider):
 # Usage
 if __name__ == "__main__":
     import asyncio
+    import asyncio
     from proxybroker import Broker
 
-    async def main():
-        broker = Broker(providers=[MyProxySite()])
-
-        async for proxy in broker.find(types=['HTTP', 'HTTPS'], limit=10):
+    async def consume(q):
+        while True:
+            proxy = await q.get()
+            if proxy is None:
+                break
             print(f"{proxy.host}:{proxy.port} [{proxy.types}]")
+
+    async def main():
+        proxies = asyncio.Queue()
+        broker = Broker(proxies, providers=[MyProxySite()])
+        await asyncio.gather(
+            broker.find(types=['HTTP', 'HTTPS'], limit=10),
+            consume(proxies),
+        )
 
     asyncio.run(main())
 ```

@@ -124,7 +124,10 @@ def update_geoip_db():
     with tarfile.open(name=local_file, mode="r:gz") as tf:
         for tar_info in tf.getmembers():
             if tar_info.name.endswith(".mmdb"):
-                tf.extract(tar_info, tmp_dir)
+                # filter='data' is required from Python 3.14+ (PEP 706)
+                # and recommended on 3.12-3.13. It rejects unsafe member
+                # paths (absolute, ../, device files, etc.).
+                tf.extract(tar_info, tmp_dir, filter="data")
                 tmp_path = os.path.join(tmp_dir, tar_info.name)
     shutil.move(tmp_path, city_db)
     os.remove(local_file)
