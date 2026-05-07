@@ -25,10 +25,7 @@ class Judge:
         self.host = urlparse(url).netloc
         self.path = url.split(self.host)[-1]
         self.ip = None
-        # is_working is a plain mutable attribute (set True after successful
-        # check). The nosemgrep silences a false positive from
-        # is-function-without-parentheses, which fires on every reference.
-        self.is_working = False  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
+        self._is_working = False
         self.marks = {"via": 0, "proxy": 0}
         self.timeout = timeout
         self.verify_ssl = verify_ssl
@@ -42,6 +39,14 @@ class Judge:
     def __repr__(self):
         """Class representation"""
         return f"<Judge [{self.scheme}] {self.host}>"
+
+    @property
+    def is_working(self):
+        return self._is_working
+
+    @is_working.setter
+    def is_working(self, val):
+        self._is_working = val
 
     @classmethod
     def get_random(cls, proto):
@@ -73,7 +78,7 @@ class Judge:
             return
 
         if self.scheme == "SMTP":
-            self.is_working = True  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
+            self.is_working = True
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
             return
@@ -106,7 +111,7 @@ class Judge:
         if resp.status == 200 and real_ext_ip in page and rv in page:
             self.marks["via"] = page.count("via")
             self.marks["proxy"] = page.count("proxy")
-            self.is_working = True  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
+            self.is_working = True
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
             log.debug(f"{self} is verified")

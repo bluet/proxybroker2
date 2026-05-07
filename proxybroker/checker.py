@@ -160,16 +160,10 @@ class Checker:
                 result = await self._check(proxy, proto)
             results.append(result)
 
-        # `is_working` is a @property on Proxy (not a method); the assignment
-        # goes through the property's setter. The nosemgrep on the next line
-        # silences a false positive from is-function-without-parentheses.
-        proxy.is_working = (
-            True if any(results) else False
-        )  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
+        working = any(results)
+        proxy.is_working = working
 
-        if (
-            proxy.is_working and self._types_passed(proxy)
-        ):  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
+        if working and self._types_passed(proxy):
             return True
         return False
 
