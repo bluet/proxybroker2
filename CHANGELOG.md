@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0b2] - 2026-05-08
+
+🎯 **Custom Provider System & Quality Pass**
+
+This release adds a user-extensible proxy provider system (the headline feature) and bundles a focused quality pass: parser bug fixes with regression tests, removal of recurring SAST false positives by fixing the underlying code (not just suppressing), modernization of `%`-formatting to f-strings, and isolation of the unverified-SSL bypass into a named helper.
+
+Tracked follow-ups for next releases: #200 (GeoIP replacement), #201 (IPv6 regex via stdlib `ipaddress`), #202 (cognitive-complexity refactor in parsers), #203 (`argparse.FileType` and `asyncio.get_event_loop()` deprecation).
+
 ### Added
 - **Custom proxy provider system**: users can register their own proxy
   sources without modifying the package. Drop YAML/JSON config files
