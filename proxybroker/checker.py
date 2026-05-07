@@ -165,11 +165,11 @@ class Checker:
         # silences a false positive from is-function-without-parentheses.
         proxy.is_working = (
             True if any(results) else False
-        )  # nosemgrep: python.lang.maintainability.is-function-without-parentheses
+        )  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
 
-        if proxy.is_working and self._types_passed(
-            proxy
-        ):  # nosemgrep: python.lang.maintainability.is-function-without-parentheses
+        if (
+            proxy.is_working and self._types_passed(proxy)
+        ):  # nosemgrep: python.lang.maintainability.is-function-without-parentheses,app.packages.opengrep.rules.python.lang.maintainability.is-function-without-parentheses
             return True
         return False
 

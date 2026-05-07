@@ -22,7 +22,7 @@ IPPattern = re.compile(
     r"(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)"
 )
 
-# nosemgrep: python.lang.security.audit.regex_dos
+# nosemgrep: python.lang.security.audit.regex_dos,app.packages.opengrep.rules.python.lang.security.audit.regex_dos
 # IPv6 grammar requires deep alternation. Inputs come from scraped pages
 # bounded to a few KB, not arbitrary user payloads, so the catastrophic-
 # backtracking risk is bounded. Replacing this would require reaching
@@ -124,14 +124,14 @@ def update_geoip_db():
     filename = "GeoLite2-City.tar.gz"
     local_file = os.path.join(DATA_DIR, filename)
     city_db = os.path.join(DATA_DIR, "GeoLite2-City.mmdb")
-    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
+    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve,app.packages.opengrep.rules.python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
     # MaxMind retired this download endpoint years ago (NXDOMAIN today);
     # `update-geo` is effectively dead and slated for replacement with the
     # license-key-based GeoLite2 distribution. The HTTP scheme is moot.
     url = f"http://geolite.maxmind.com/download/geoip/database/{filename}"
 
-    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected
-    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
+    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected,app.packages.opengrep.rules.python.lang.security.audit.dynamic-urllib-use-detected
+    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve,app.packages.opengrep.rules.python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
     # `url` is constructed from a hardcoded prefix + filename param chosen
     # by the caller (which is in turn this module's own update_geoip_db
     # entrypoint - never user-controlled).
