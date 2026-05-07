@@ -1,3 +1,4 @@
+import ssl
 import time
 from asyncio.streams import StreamReader
 
@@ -9,6 +10,25 @@ from proxybroker.negotiators import HttpsNgtr
 from proxybroker.utils import log as logger
 
 from .utils import ResolveResult, future_iter
+
+
+def test_ssl_context_unverified_by_default():
+    """When verify_ssl is False (the default for proxy testing),
+    self._ssl_context must be a real SSLContext with cert verification
+    fully disabled. Guards the migration from the private
+    ssl._create_unverified_context() to the public
+    ssl.create_default_context() + override path.
+    """
+    p = Proxy("127.0.0.1", "80", verify_ssl=False)
+    assert isinstance(p._ssl_context, ssl.SSLContext)
+    assert p._ssl_context.check_hostname is False
+    assert p._ssl_context.verify_mode == ssl.CERT_NONE
+
+
+def test_ssl_context_verified_when_requested():
+    """verify_ssl=True keeps the True sentinel - existing contract."""
+    p = Proxy("127.0.0.1", "80", verify_ssl=True)
+    assert p._ssl_context is True
 
 
 @pytest.fixture
