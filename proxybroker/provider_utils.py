@@ -154,11 +154,22 @@ class SimpleProvider(Provider):
         for line in content.strip().split("\n"):
             line = line.strip()
             if ":" in line:
-                # Format: IP:PORT (split on first ":" only - real lists
-                # often have inline comments after the port).
-                parts = line.split(":", 1)
-                if len(parts) == 2:
-                    proxies.append((parts[0].strip(), parts[1].strip()))
+                # Format: IP:PORT, with optional trailing junk like
+                #   "1.2.3.4:8080"
+                #   "1.2.3.4:8080 # US"
+                #   "1.2.3.4:8080:tag"
+                # Keep only the leading digit run after the FIRST `:` as
+                # the port. Without this guard the whole suffix becomes
+                # the port string and Proxy.create's int(port) crashes.
+                host, _, rest = line.partition(":")
+                port_chars = []
+                for ch in rest.lstrip():
+                    if ch.isdigit():
+                        port_chars.append(ch)
+                    else:
+                        break
+                if port_chars:
+                    proxies.append((host.strip(), "".join(port_chars)))
             elif "\t" in line or " " in line:
                 # Format: IP PORT or IP\tPORT
                 parts = line.split()
@@ -201,18 +212,38 @@ class PaginatedProvider(Provider):
             self.start_page + (self.max_pages * self.page_step),
             self.page_step,
         ):
-            if "{}" in self.base_url:
-                # Format: http://example.com/proxies/{}.html
-                url = self.base_url.format(page)
-            elif "?" in self.base_url:
-                # Format: http://example.com/proxies?page=1
-                url = f"{self.base_url}&{self.page_param}={page}"
-            else:
-                # Format: http://example.com/proxies
-                url = f"{self.base_url}?{self.page_param}={page}"
-            urls.append(url)
+            urls.append(self._build_page_url(page))
 
         await self._find_on_pages(urls)
+
+    def _build_page_url(self, page):
+        """Substitute the page number into base_url cleanly.
+
+        - `{}` placeholder => format()
+        - existing `?<page_param>=...` => REPLACE the value (don't append a
+          duplicate param; many servers honor only the first occurrence)
+        - otherwise => append `?<page_param>=N`
+        """
+        from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+        if "{}" in self.base_url:
+            return self.base_url.format(page)
+
+        parsed = urlparse(self.base_url)
+        if parsed.query:
+            params = parse_qsl(parsed.query, keep_blank_values=True)
+            replaced = False
+            new_params = []
+            for key, value in params:
+                if key == self.page_param:
+                    new_params.append((key, str(page)))
+                    replaced = True
+                else:
+                    new_params.append((key, value))
+            if not replaced:
+                new_params.append((self.page_param, str(page)))
+            return urlunparse(parsed._replace(query=urlencode(new_params)))
+        return f"{self.base_url}?{self.page_param}={page}"
 
 
 class APIProvider(Provider):

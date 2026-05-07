@@ -75,17 +75,21 @@ class TestSimpleProvider:
         assert proxies == [("Server, Inc", "8080"), ("Other, Co", "3128")]
 
     def test_parse_text_strips_whitespace_and_extra_colons(self):
-        """split(':',1) + .strip() must accept lines like 'host:port  '
-        and 'host:port:comment', not silently drop them.
+        """Annotated lines like 'host:port comment' or 'host:port:tag' must
+        yield a clean numeric port, not the whole suffix. Otherwise
+        Proxy.create's int(port) call crashes and the proxy is silently
+        dropped.
         """
         provider = SimpleProvider("http://example.com/proxies.txt", format="text")
-        text_data = "  192.0.2.1:8080  \n198.51.100.1:3128:trailing-comment"
+        text_data = (
+            "  192.0.2.1:8080  \n"
+            "198.51.100.1:3128 # US\n"
+            "203.0.113.1:8888:trailing-tag\n"
+        )
         proxies = provider._parse_text(text_data)
         assert ("192.0.2.1", "8080") in proxies
-        # Second line: the colon after port is part of the port field
-        # (split limit=1 keeps it). That's intentionally lenient: better
-        # to capture a slightly-off port than silently drop the line.
-        assert any(p[0] == "198.51.100.1" for p in proxies)
+        assert ("198.51.100.1", "3128") in proxies
+        assert ("203.0.113.1", "8888") in proxies
 
     def test_parse_json_does_not_duplicate_when_both_ip_and_host(self):
         """An item with both 'ip' and 'host' keys must be emitted once,
@@ -113,6 +117,58 @@ class TestPaginatedProvider:
         assert provider.base_url == "http://example.com/page-{}.html"
         assert provider.start_page == 1
         assert provider.max_pages == 3
+
+    def test_build_page_url_replaces_existing_param(self):
+        """When base_url already contains the page param, the next page
+        REPLACES that value rather than appending a duplicate. Many
+        servers honor only the first occurrence of duplicate query keys,
+        so appending would silently re-fetch page 1 forever.
+        """
+        provider = PaginatedProvider(
+            base_url="http://example.com/proxies?page=1",
+            start_page=1,
+            max_pages=3,
+        )
+        assert provider._build_page_url(2) == "http://example.com/proxies?page=2"
+        assert provider._build_page_url(7) == "http://example.com/proxies?page=7"
+
+    def test_build_page_url_preserves_other_params(self):
+        provider = PaginatedProvider(
+            base_url="http://example.com/proxies?country=US&page=1&type=http",
+            start_page=1,
+            max_pages=2,
+        )
+        url = provider._build_page_url(5)
+        assert "country=US" in url
+        assert "type=http" in url
+        assert "page=5" in url
+        assert "page=1" not in url
+
+    def test_build_page_url_appends_when_param_absent(self):
+        provider = PaginatedProvider(
+            base_url="http://example.com/proxies?country=US",
+            start_page=1,
+            max_pages=2,
+        )
+        assert provider._build_page_url(3) == (
+            "http://example.com/proxies?country=US&page=3"
+        )
+
+    def test_build_page_url_handles_no_query_string(self):
+        provider = PaginatedProvider(
+            base_url="http://example.com/proxies",
+            start_page=1,
+            max_pages=2,
+        )
+        assert provider._build_page_url(4) == "http://example.com/proxies?page=4"
+
+    def test_build_page_url_uses_format_placeholder_when_present(self):
+        provider = PaginatedProvider(
+            base_url="http://example.com/proxies/page-{}.html",
+            start_page=1,
+            max_pages=2,
+        )
+        assert provider._build_page_url(2) == "http://example.com/proxies/page-2.html"
 
 
 class TestAPIProvider:
