@@ -5,11 +5,7 @@ import os
 import os.path
 import re
 import secrets
-import shutil
 import sys
-import tarfile
-import tempfile
-import urllib.request
 
 from . import __version__ as version
 from .errors import BadStatusLine
@@ -120,39 +116,11 @@ def parse_headers(headers):
 
 
 def update_geoip_db():
-    print("The update in progress, please waite for a while...")
-    filename = "GeoLite2-City.tar.gz"
-    local_file = os.path.join(DATA_DIR, filename)
-    city_db = os.path.join(DATA_DIR, "GeoLite2-City.mmdb")
-    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve,app.packages.opengrep.rules.python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
-    # MaxMind retired this download endpoint years ago (NXDOMAIN today);
-    # `update-geo` is effectively dead and slated for replacement with the
-    # license-key-based GeoLite2 distribution. The HTTP scheme is moot.
-    url = f"http://geolite.maxmind.com/download/geoip/database/{filename}"
-
-    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected,app.packages.opengrep.rules.python.lang.security.audit.dynamic-urllib-use-detected
-    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve,app.packages.opengrep.rules.python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
-    # `url` is constructed from a hardcoded prefix + filename param chosen
-    # by the caller (which is in turn this module's own update_geoip_db
-    # entrypoint - never user-controlled).
-    urllib.request.urlretrieve(url, local_file)  # noqa: S310  # nosec B310
-
-    tmp_dir = tempfile.gettempdir()
-    with tarfile.open(name=local_file, mode="r:gz") as tf:
-        for tar_info in tf.getmembers():
-            if tar_info.name.endswith(".mmdb"):
-                # filter='data' is required from Python 3.14+ (PEP 706)
-                # and recommended on 3.12-3.13. It rejects unsafe member
-                # paths (absolute, ../, device files, etc.).
-                tf.extract(tar_info, tmp_dir, filter="data")
-                tmp_path = os.path.join(tmp_dir, tar_info.name)
-    shutil.move(tmp_path, city_db)
-    os.remove(local_file)
-
-    if os.path.exists(city_db):
-        print(
-            "The GeoLite2-City DB successfully downloaded and now you "
-            "have access to detailed geolocation information of the proxy."
-        )
-    else:
-        print("Something went wrong, please try again later.")
+    raise RuntimeError(
+        "`proxybroker update-geo` is no longer functional. MaxMind retired "
+        "the public GeoLite2 download endpoint on 2019-12-30 and now requires "
+        "a license key. The bundled GeoLite2 databases in proxybroker/data/ "
+        "still work for runtime IP lookups, but cannot be refreshed via this "
+        "command. Tracking issue: "
+        "https://github.com/bluet/proxybroker2/issues/200"
+    )

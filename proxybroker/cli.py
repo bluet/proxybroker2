@@ -124,11 +124,12 @@ def create_parser():
     uparser = subparsers.add_parser(
         "update-geo",
         add_help=False,
-        help="Download and use a detailed GeoIP database",
+        help="(broken since 2019) Download GeoIP database - see issue #200",
         description=(
-            "Download and use a detailed GeoIP DB to get "
-            "additional geolocation information of the proxy "
-            "(ISO and name of region, city name)."
+            "Originally downloaded a detailed GeoIP DB for additional "
+            "geolocation information. MaxMind retired the public download "
+            "endpoint on 2019-12-30; this command now raises an error. "
+            "Tracking issue: https://github.com/bluet/proxybroker2/issues/200"
         ),
     )
     uparser_group = uparser.add_argument_group(title="Options")
