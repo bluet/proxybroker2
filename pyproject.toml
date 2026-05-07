@@ -1,7 +1,7 @@
 
 [tool.poetry]
 name = "proxybroker2"
-version = "2.0.0b1"
+version = "2.0.0b2"
 description = "The New (auto rotate) Proxy [Finder | Checker | Server]. HTTP(S) & SOCKS."
 authors = ["BlueT - Matthew Lien - 練喆明 <bluet@bluet.org>", "Denis Constverum <constverum@gmail.com>"]
 repository = "https://github.com/bluet/proxybroker2"
@@ -20,6 +20,7 @@ classifiers = [
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
     'Operating System :: POSIX',
     'Operating System :: MacOS :: MacOS X',
     'Operating System :: Microsoft :: Windows',
@@ -37,6 +38,7 @@ attrs = ">=25.3.0"
 maxminddb = "^2.7.0"
 cachetools = "^5.5.2"
 click = "^8.2.1"
+pyyaml = "^6.0.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.5"

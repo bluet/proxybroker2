@@ -19,7 +19,7 @@ async def fetch(url, proxy_pool, timeout=10):
         print("Waiting a proxy...")
         proxy = await proxy_pool.get(scheme=urlparse(url).scheme)
         print("Found proxy:", proxy)
-        proxy_url = "http://%s:%d" % (proxy.host, proxy.port)
+        proxy_url = "http://%s:%d" % (proxy.host, proxy.port)  # noqa: UP031
         _timeout = aiohttp.ClientTimeout(total=timeout)
         async with (
             aiohttp.ClientSession(timeout=_timeout) as session,
@@ -37,14 +37,14 @@ async def fetch(url, proxy_pool, timeout=10):
     finally:
         if proxy:
             proxy_pool.put(proxy)
-        return (url, resp)
+    return (url, resp)
 
 
 async def get_pages(urls, proxy_pool, timeout=10):
     tasks = [fetch(url, proxy_pool, timeout) for url in urls]
     for task in asyncio.as_completed(tasks):
         url, content = await task
-        print("%s\nDone!\nURL: %s;\nContent: %s" % ("-" * 20, url, content))
+        print("{}\nDone!\nURL: {};\nContent: {}".format("-" * 20, url, content))
 
 
 async def main():

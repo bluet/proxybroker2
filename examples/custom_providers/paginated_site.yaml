@@ -1,0 +1,14 @@
+# Paginated proxy site configuration
+name: My Paginated Proxy Site
+type: paginated
+url: http://example.com/proxies/page-{}.html  # {} will be replaced with page number
+page_param: page
+start_page: 1
+max_pages: 10
+protocols:
+  - HTTP
+  - HTTPS
+  - SOCKS4
+  - SOCKS5
+max_connections: 4
+timeout: 20

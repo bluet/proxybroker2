@@ -39,6 +39,7 @@ REQUIRES = [
     "maxminddb>=2.7.0",
     "cachetools>=5.5.2",
     "click>=8.2.1",
+    "pyyaml>=6.0.2",
 ]
 SETUP_REQUIRES = ["pytest-runner>=6.0.1"]
 TEST_REQUIRES = [
@@ -77,6 +78,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Operating System :: POSIX",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: Microsoft :: Windows",

@@ -21,16 +21,15 @@ async def fetch(url, proxy_url):
         aiohttp.errors.ClientResponseError,
         aiohttp.errors.ServerDisconnectedError,
     ) as e:
-        print("Error!\nURL: %s;\nError: %r" % (url, e))
-    finally:
-        return (url, resp)
+        print(f"Error!\nURL: {url};\nError: {e!r}")
+    return (url, resp)
 
 
 async def get_pages(urls, proxy_url):
     tasks = [fetch(url, proxy_url) for url in urls]
     for task in asyncio.as_completed(tasks):
         url, content = await task
-        print("%s\nDone!\nURL: %s;\nContent: %s" % ("-" * 20, url, content))
+        print("{}\nDone!\nURL: {};\nContent: {}".format("-" * 20, url, content))
 
 
 def main():

@@ -13,7 +13,7 @@ async def save(proxies, filename):
             if proxy is None:
                 break
             proto = "https" if "HTTPS" in proxy.types else "http"
-            row = "%s://%s:%d\n" % (proto, proxy.host, proxy.port)
+            row = "%s://%s:%d\n" % (proto, proxy.host, proxy.port)  # noqa: UP031
             f.write(row)
 
 

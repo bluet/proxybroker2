@@ -1,4 +1,15 @@
-FROM python:3.13-slim AS base
+# Tag-and-digest pin: tag (`3.14-slim`) is human-readable documentation,
+# digest (`sha256:...`) is the immutability anchor. This dual form is the
+# pattern recommended by Docker, Snyk, and Anchore for production base
+# images - readers can scan the tag at a glance, builders pull the exact
+# bits. SonarCloud rule docker:S8431 disagrees and flags this as
+# redundant; that finding is intentionally accepted as "won't fix" with
+# the rationale documented in PR #199.
+#
+# Update procedure:
+#   docker pull python:3.14-slim
+#   docker inspect --format '{{index .RepoDigests 0}}' python:3.14-slim
+FROM python:3.14-slim@sha256:5b3879b6f3cb77e712644d50262d05a7c146b7312d784a18eff7ff5462e77033 AS base
 
 ENV \
     # Keeps Python from generating .pyc files in the container

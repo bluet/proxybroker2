@@ -13,7 +13,7 @@ async def save(proxies, filename):
             proxy = await proxies.get()
             if proxy is None:
                 break
-            f.write("smtp://%s:%d\n" % (proxy.host, proxy.port))
+            f.write("smtp://%s:%d\n" % (proxy.host, proxy.port))  # noqa: UP031
 
 
 def main():

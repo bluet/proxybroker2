@@ -1,0 +1,15 @@
+{
+  "name": "My Proxy API",
+  "type": "api",
+  "url": "http://api.example.com/v1/proxies",
+  "api_key": "your-api-key-here",
+  "headers": {
+    "User-Agent": "ProxyBroker/2.0",
+    "Accept": "application/json"
+  },
+  "response_format": "json",
+  "proxy_path": "data.proxies",
+  "protocols": ["HTTP", "HTTPS"],
+  "max_connections": 2,
+  "timeout": 30
+}

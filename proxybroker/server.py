@@ -122,11 +122,11 @@ class ProxyPool:
         if proxy.stat["requests"] < self._min_req_proxy:
             self._newcomers.append(proxy)
         elif proxy.stat["requests"] >= self._min_req_proxy and is_exceed_time:
-            log.debug("%s:%d removed from proxy pool" % (proxy.host, proxy.port))
+            log.debug(f"{proxy.host}:{proxy.port} removed from proxy pool")
         else:
             heapq.heappush(self._pool, (proxy.avg_resp_time, proxy))
 
-        log.debug("%s:%d stat: %s" % (proxy.host, proxy.port, proxy.stat))
+        log.debug(f"{proxy.host}:{proxy.port} stat: {proxy.stat}")
 
     def remove(self, host, port):
         # Check newcomers first
@@ -286,7 +286,7 @@ class Server:
         def _on_completion(f):
             reader, writer = self._connections.pop(f)
             writer.close()
-            log.debug("client: %d; closed" % id(client_reader))
+            log.debug(f"client: {id(client_reader)}; closed")
             try:
                 exc = f.exception()
             except asyncio.CancelledError:
@@ -304,15 +304,16 @@ class Server:
 
     async def _handle(self, client_reader, client_writer):
         log.debug(
-            "Accepted connection from %s" % (client_writer.get_extra_info("peername"),)
+            "Accepted connection from {}".format(
+                client_writer.get_extra_info("peername")
+            )
         )
 
         request, headers = await self._parse_request(client_reader)
         scheme = self._identify_scheme(headers)
         client = id(client_reader)
         log.debug(
-            "client: %d; request: %s; headers: %s; scheme: %s"
-            % (client, request, headers, scheme)
+            f"client: {client}; request: {request}; headers: {headers}; scheme: {scheme}"
         )
 
         # API for controlling proxybroker2
@@ -323,8 +324,9 @@ class Server:
                     proxy_host, proxy_port = _params.split(":", 1)
                     self._proxy_pool.remove(proxy_host, int(proxy_port))
                     log.debug(
-                        "Remove Proxy: client: %d; request: %s; headers: %s; scheme: %s; proxy_host: %s; proxy_port: %s"
-                        % (client, request, headers, scheme, proxy_host, proxy_port)
+                        f"Remove Proxy: client: {client}; request: {request}; "
+                        f"headers: {headers}; scheme: {scheme}; "
+                        f"proxy_host: {proxy_host}; proxy_port: {proxy_port}"
                     )
                     client_writer.write(b"HTTP/1.1 204 No Content\r\n\r\n")
                     await client_writer.drain()
@@ -341,7 +343,7 @@ class Server:
                             return
                         else:
                             previous_proxy_bytestring = (
-                                '{"proxy": "%s"}' % previous_proxy
+                                f'{{"proxy": "{previous_proxy}"}}'
                             ).encode()
                             client_writer.write(b"HTTP/1.1 200 OK\r\n")
                             client_writer.write(b"Content-Type: application/json\r\n")
@@ -362,8 +364,7 @@ class Server:
             proxy = await self._proxy_pool.get(scheme)
             proto = self._choice_proto(proxy, scheme)
             log.debug(
-                "client: %d; attempt: %d; proxy: %s; proto: %s"
-                % (client, attempt, proxy, proto)
+                f"client: {client}; attempt: {attempt}; proxy: {proxy}; proto: {proto}"
             )
 
             try:
@@ -420,12 +421,11 @@ class Server:
                 BadStatusError,
                 BadResponseError,
             ) as e:
-                log.debug("client: %d; error: %r" % (client, e))
+                log.debug(f"client: {client}; error: {e!r}")
                 continue
             except ErrorOnStream as e:
                 log.debug(
-                    "client: %d; error: %r; EOF: %s"
-                    % (client, e, client_reader.at_eof())
+                    f"client: {client}; error: {e!r}; EOF: {client_reader.at_eof()}"
                 )
                 for task in stream:
                     if not task.done():
@@ -519,7 +519,9 @@ class Server:
                 raise BadResponseError from e
             if header["Status"] not in self._http_allowed_codes:
                 raise BadStatusError(
-                    "%r not in %r" % (header["Status"], self._http_allowed_codes)
+                    "{!r} not in {!r}".format(
+                        header["Status"], self._http_allowed_codes
+                    )
                 )
 
     def _inject_headers(self, data, scheme, headers):
@@ -530,7 +532,7 @@ class Server:
             custom_lines.append(status_line)
 
             for k, v in headers.items():
-                custom_lines.append(("%s: %s" % (k, v)).encode())
+                custom_lines.append((f"{k}: {v}").encode())
 
             custom_lines.append(rest_lines)
             data = b"\r\n".join(custom_lines)
