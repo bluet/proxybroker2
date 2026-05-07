@@ -84,8 +84,7 @@ class Provider:
             await self._pipe()
 
         log.debug(
-            "%d proxies received from %s: %s"  # noqa: UP031
-            % (len(self.proxies), self.domain, self.proxies)
+            f"{len(self.proxies)} proxies received from {self.domain}: {self.proxies}"
         )
         return self.proxies
 
@@ -117,9 +116,7 @@ class Provider:
             )
         self.proxies = received
         added = len(self.proxies) - oldcount
-        log.debug(
-            "%d(%d) proxies added(received) from %s" % (added, len(received), url)  # noqa: UP031
-        )
+        log.debug(f"{added}({len(received)}) proxies added(received) from {url}")
 
     async def get(self, url, data=None, headers=None, method="GET"):
         for _ in range(self._max_tries):
@@ -317,10 +314,7 @@ class Proxylist_me(Provider):
         # range(1, lastId + 1): pages are 1-indexed on this site; the
         # previous range(lastId) requested ?page=0 (404) and never fetched
         # the actual last page. Pre-existing master bug.
-        urls = [
-            "https://proxylist.me/?page=%d" % n  # noqa: UP031
-            for n in range(1, lastId + 1)
-        ]
+        urls = [f"https://proxylist.me/?page={n}" for n in range(1, lastId + 1)]
         await self._find_on_pages(urls)
 
 
@@ -328,7 +322,7 @@ class Foxtools_ru(Provider):
     domain = "foxtools.ru"
 
     async def _pipe(self):
-        urls = ["http://api.foxtools.ru/v2/Proxy.txt?page=%d" % n for n in range(1, 6)]  # noqa: UP031
+        urls = [f"http://api.foxtools.ru/v2/Proxy.txt?page={n}" for n in range(1, 6)]
         await self._find_on_pages(urls)
 
 
@@ -646,7 +640,7 @@ class Proxylistplus_com(Provider):
     async def _pipe(self):
         names = ["Fresh-HTTP-Proxy", "SSL", "Socks"]
         urls = [
-            "http://list.proxylistplus.com/%s-List-%d" % (i, n)  # noqa: UP031
+            f"http://list.proxylistplus.com/{i}-List-{n}"
             for i in names
             for n in range(1, 7)
         ]

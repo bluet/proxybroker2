@@ -122,11 +122,11 @@ class ProxyPool:
         if proxy.stat["requests"] < self._min_req_proxy:
             self._newcomers.append(proxy)
         elif proxy.stat["requests"] >= self._min_req_proxy and is_exceed_time:
-            log.debug("%s:%d removed from proxy pool" % (proxy.host, proxy.port))  # noqa: UP031
+            log.debug(f"{proxy.host}:{proxy.port} removed from proxy pool")
         else:
             heapq.heappush(self._pool, (proxy.avg_resp_time, proxy))
 
-        log.debug("%s:%d stat: %s" % (proxy.host, proxy.port, proxy.stat))  # noqa: UP031
+        log.debug(f"{proxy.host}:{proxy.port} stat: {proxy.stat}")
 
     def remove(self, host, port):
         # Check newcomers first
@@ -286,7 +286,7 @@ class Server:
         def _on_completion(f):
             reader, writer = self._connections.pop(f)
             writer.close()
-            log.debug("client: %d; closed" % id(client_reader))  # noqa: UP031
+            log.debug(f"client: {id(client_reader)}; closed")
             try:
                 exc = f.exception()
             except asyncio.CancelledError:
@@ -313,8 +313,7 @@ class Server:
         scheme = self._identify_scheme(headers)
         client = id(client_reader)
         log.debug(
-            "client: %d; request: %s; headers: %s; scheme: %s"  # noqa: UP031
-            % (client, request, headers, scheme)
+            f"client: {client}; request: {request}; headers: {headers}; scheme: {scheme}"
         )
 
         # API for controlling proxybroker2
@@ -325,8 +324,9 @@ class Server:
                     proxy_host, proxy_port = _params.split(":", 1)
                     self._proxy_pool.remove(proxy_host, int(proxy_port))
                     log.debug(
-                        "Remove Proxy: client: %d; request: %s; headers: %s; scheme: %s; proxy_host: %s; proxy_port: %s"  # noqa: UP031
-                        % (client, request, headers, scheme, proxy_host, proxy_port)
+                        f"Remove Proxy: client: {client}; request: {request}; "
+                        f"headers: {headers}; scheme: {scheme}; "
+                        f"proxy_host: {proxy_host}; proxy_port: {proxy_port}"
                     )
                     client_writer.write(b"HTTP/1.1 204 No Content\r\n\r\n")
                     await client_writer.drain()
@@ -364,8 +364,7 @@ class Server:
             proxy = await self._proxy_pool.get(scheme)
             proto = self._choice_proto(proxy, scheme)
             log.debug(
-                "client: %d; attempt: %d; proxy: %s; proto: %s"  # noqa: UP031
-                % (client, attempt, proxy, proto)
+                f"client: {client}; attempt: {attempt}; proxy: {proxy}; proto: {proto}"
             )
 
             try:
@@ -422,12 +421,11 @@ class Server:
                 BadStatusError,
                 BadResponseError,
             ) as e:
-                log.debug("client: %d; error: %r" % (client, e))  # noqa: UP031
+                log.debug(f"client: {client}; error: {e!r}")
                 continue
             except ErrorOnStream as e:
                 log.debug(
-                    "client: %d; error: %r; EOF: %s"  # noqa: UP031
-                    % (client, e, client_reader.at_eof())
+                    f"client: {client}; error: {e!r}; EOF: {client_reader.at_eof()}"
                 )
                 for task in stream:
                     if not task.done():

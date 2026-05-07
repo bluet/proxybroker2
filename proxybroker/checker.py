@@ -68,7 +68,7 @@ class Checker:
 
         self._judges = [j for j in self._judges if j.is_working]
         log.debug(
-            "%d judges added. Runtime: %.4f;" % (len(self._judges), time.time() - stime)  # noqa: UP031
+            f"{len(self._judges)} judges added. Runtime: {time.time() - stime:.4f};"
         )
 
         nojudges = []
@@ -103,7 +103,7 @@ class Checker:
                 stacklevel=2,
             )
         if self._judges:
-            log.debug("Loaded: %d proxy judges" % len(set(self._judges)))  # noqa: UP031
+            log.debug(f"Loaded: {len(set(self._judges))} proxy judges")
         else:
             raise RuntimeError("Not found judges")
 

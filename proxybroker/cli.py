@@ -508,7 +508,7 @@ def cli(args=sys.argv[1:]):
             strict=ns.strict,
             dnsbl=ns.dnsbl,
         )
-        print("Server started at http://%s:%d" % (ns.host, ns.port))  # noqa: UP031
+        print(f"Server started at http://{ns.host}:{ns.port}")
 
     try:
         if tasks:

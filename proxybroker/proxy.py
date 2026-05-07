@@ -20,6 +20,23 @@ _HTTP_PROTOS = {"HTTP", "CONNECT:80", "SOCKS4", "SOCKS5"}
 _HTTPS_PROTOS = {"HTTPS", "SOCKS4", "SOCKS5"}
 
 
+# nosemgrep: python.lang.security.unverified-ssl-context.unverified-ssl-context
+def _make_unverified_ssl_context_for_proxy_testing():
+    """Build an SSL context that skips cert + hostname verification.
+
+    Intentional. Proxy testing connects to whatever server the proxy is
+    (often expired/self-signed/mismatched). Users who only test trusted
+    proxies should construct ``Proxy(verify_ssl=True)`` to opt into the
+    standard verifying context. This helper exists so the unsafe choice
+    is named, isolated, and only annotated in one place rather than
+    spread across the constructor.
+    """
+    ctx = _ssl.create_default_context()  # NOSONAR
+    ctx.check_hostname = False  # NOSONAR
+    ctx.verify_mode = _ssl.CERT_NONE  # NOSONAR
+    return ctx  # noqa: S323  # nosec B323  # NOSONAR
+
+
 class Proxy:
     """Proxy.
 
@@ -91,23 +108,10 @@ class Proxy:
             "SOCKS5",
         }
         self._timeout = timeout
-        # nosemgrep: python.lang.security.unverified-ssl-context.unverified-ssl-context
-        # Intentional: proxy testing connects to whatever the proxy serves; cert verification
-        # is opt-in via verify_ssl=True at the Broker level. See README "Verifying SSL".
         if verify_ssl:
             self._ssl_context = True
         else:
-            # Use the public ssl.create_default_context() and explicitly
-            # disable verification rather than the private
-            # _ssl._create_unverified_context() helper. Same end state
-            # (no cert verification, no hostname check), but goes through
-            # the supported public API and inherits modern default
-            # ciphers / protocol restrictions. check_hostname must be
-            # disabled BEFORE verify_mode in older Python versions.
-            _ctx = _ssl.create_default_context()  # NOSONAR
-            _ctx.check_hostname = False  # NOSONAR
-            _ctx.verify_mode = _ssl.CERT_NONE  # NOSONAR
-            self._ssl_context = _ctx  # noqa: S323  # nosec B323  # NOSONAR
+            self._ssl_context = _make_unverified_ssl_context_for_proxy_testing()
         self._types = {}
         self._is_working = False
         self.stat = {"requests": 0, "errors": Counter()}

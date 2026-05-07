@@ -368,7 +368,7 @@ class Broker:
                         await self._handle(proxy, check=check)
             log.debug("Grab cycle is complete")
             if self._server:
-                log.debug("fall asleep for %d seconds" % GRAB_PAUSE)  # noqa: UP031
+                log.debug(f"fall asleep for {GRAB_PAUSE} seconds")
                 await asyncio.sleep(GRAB_PAUSE)
                 log.debug("awaked")
             else:
@@ -465,7 +465,7 @@ class Broker:
             if not task.done():
                 task.cancel()
         self._push_to_result(None)
-        log.info("Done! Total found proxies: %d" % len(self.unique_proxies))  # noqa: UP031
+        log.info(f"Done! Total found proxies: {len(self.unique_proxies)}")
 
     def show_stats(self, verbose=False, **kwargs):
         """Show statistics on the found proxies.
