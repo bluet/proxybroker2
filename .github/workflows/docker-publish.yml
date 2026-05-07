@@ -59,11 +59,21 @@ jobs:
 
       # docker/metadata-action computes the tag list from the git ref using
       # semver rules. Strategy:
-      #   - Version tag (e.g. `2.0.0b2`) always pushed.
-      #   - `latest`, `2`, `2.0` only pushed for STABLE releases. The
-      #     `enable=...!github.event.release.prerelease` guard means a
-      #     beta release (which we mark as prerelease in the GH UI) won't
-      #     advance these floating tags.
+      #   - `:VERSION` (e.g. `:2.0.0b2`) always pushed - exact version pin.
+      #   - `:major`, `:major.minor`, `:latest` ALSO pushed on every release,
+      #     INCLUDING prereleases. Rationale: this project has been in beta
+      #     for over a year. If `:latest` only moved on stable releases,
+      #     users pulling `:latest` would be stuck on a year-old beta until
+      #     2.0.0 ships. A user who pulls `:2` wants the most recent 2.x.y,
+      #     not the most recent stable 2.x.y - same for `:latest`.
+      #   - `:latest` is gated on release events only (not workflow_dispatch)
+      #     so a manual rerun from older code never accidentally advances
+      #     the floating tag.
+      #   - Side-effect: if a future patch is released for an OLDER version
+      #     line (e.g. 1.5.1 after 2.0.0), it would advance `:latest`
+      #     backward. Acceptable for now - this project doesn't maintain
+      #     old version lines. Switch to `flavor: latest=auto` if that
+      #     ever changes.
       - name: Extract image metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
@@ -73,9 +83,9 @@ jobs:
             ghcr.io/bluet/proxybroker2
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=semver,pattern={{major}},enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=raw,value=manual-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'workflow_dispatch' }}
 
       # Build once, push to both registries. cache-from/to use the GitHub
