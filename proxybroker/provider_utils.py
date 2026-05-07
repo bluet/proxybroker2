@@ -512,7 +512,11 @@ def create_provider_config_template(
             "name": "My Proxy API",
             "type": "api",
             "url": "http://api.example.com/v1/proxies",
-            "api_key": "your-api-key-here",  # Optional
+            # Optional. Recommendation: don't paste a literal here -
+            # leave blank and have your code do
+            #     api_key=os.environ["PROXY_API_KEY"]
+            # before calling ConfigurableProvider.from_config().
+            "api_key": "",
             "headers": {  # Optional custom headers
                 "User-Agent": "ProxyBroker/2.0"
             },

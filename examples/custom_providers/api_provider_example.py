@@ -1,5 +1,7 @@
 """Example of creating an API-based custom provider."""
 
+import os
+
 from proxybroker import APIProvider
 
 
@@ -92,10 +94,10 @@ if __name__ == "__main__":
             print(f"Found proxy: {proxy.host}:{proxy.port} ({proxy.types})")
 
     async def main():
-        # Note: API keys should come from env vars in real code, e.g.
-        # api_key=os.environ["PROXY_API_KEY"]
+        # API keys come from env vars - never hardcode credentials in source.
+        # Set PROXY_API_KEY in your shell or .env before running.
         providers = [
-            MyAuthenticatedAPI(api_key="your-api-key-here"),  # noqa: S106
+            MyAuthenticatedAPI(api_key=os.environ.get("PROXY_API_KEY", "")),
             MyCustomHeaderAPI(),
             MyRESTfulAPI(country="US", proxy_type="anonymous"),
         ]
