@@ -104,9 +104,9 @@ class Proxy:
             # the supported public API and inherits modern default
             # ciphers / protocol restrictions. check_hostname must be
             # disabled BEFORE verify_mode in older Python versions.
-            _ctx = _ssl.create_default_context()
-            _ctx.check_hostname = False
-            _ctx.verify_mode = _ssl.CERT_NONE
+            _ctx = _ssl.create_default_context()  # NOSONAR
+            _ctx.check_hostname = False  # NOSONAR
+            _ctx.verify_mode = _ssl.CERT_NONE  # NOSONAR
             self._ssl_context = _ctx  # noqa: S323  # nosec B323  # NOSONAR
         self._types = {}
         self._is_working = False
