@@ -398,3 +398,56 @@ class TestProviderDirParserPlacement:
             "/after",
         )
         assert _resolve_provider_dirs(ns) == ["/before", "/after"]
+
+
+class TestOutputHandling:
+    """Cover the cli.handle() / outformat() output path used by find/grab."""
+
+    def test_outformat_json_brackets_added(self, tmp_path):
+        """JSON output mode wraps writes in [ ... ]."""
+        from proxybroker.cli import outformat
+
+        outfile = tmp_path / "out.json"
+        with outfile.open("w") as f:
+            with outformat(f, "json"):
+                f.write('{"host":"192.0.2.1"}')
+        text = outfile.read_text()
+        assert text.startswith("[\n")
+        assert text.endswith("\n]")
+
+    def test_outformat_txt_no_wrapping(self, tmp_path):
+        """Non-JSON formats do not add brackets."""
+        from proxybroker.cli import outformat
+
+        outfile = tmp_path / "out.txt"
+        with outfile.open("w") as f:
+            with outformat(f, "txt"):
+                f.write("192.0.2.1:8080\n")
+        text = outfile.read_text()
+        assert text == "192.0.2.1:8080\n"
+
+    @pytest.mark.asyncio
+    async def test_handle_consumes_proxies_from_queue(self, tmp_path):
+        """handle() reads from an asyncio.Queue and writes per-proxy lines
+        until it sees the None sentinel.
+        """
+        import asyncio
+        from unittest.mock import MagicMock
+
+        from proxybroker.cli import handle
+
+        proxies = asyncio.Queue()
+        # Two fake proxies + sentinel
+        for host in ("192.0.2.1", "198.51.100.1"):
+            p = MagicMock()
+            p.__repr__ = lambda self_, h=host: f"<Proxy {h}:8080>"
+            p.as_text = lambda h=host: f"{h}:8080\n"
+            await proxies.put(p)
+        await proxies.put(None)
+
+        outfile = tmp_path / "out.txt"
+        with outfile.open("w") as f:
+            await handle(proxies, outfile=f, format="txt")
+        text = outfile.read_text()
+        assert "192.0.2.1:8080" in text
+        assert "198.51.100.1:8080" in text
