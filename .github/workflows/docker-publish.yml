@@ -1,0 +1,93 @@
+name: Publish Docker Image
+
+# Triggers:
+#   - GitHub Release published: builds + pushes the image automatically.
+#     Same trigger as python-publish.yml, so one release ships both
+#     PyPI and Docker artifacts.
+#   - workflow_dispatch: lets a maintainer re-run after a transient
+#     registry failure or a token rotation, without cutting a new release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (tag/branch/SHA) to build from"
+        required: true
+        default: "master"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # required to push to ghcr.io
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          # On release events the default checkout is the tag.
+          # On workflow_dispatch we honor the user-supplied ref.
+          # All branches/tags/SHAs are repo-controlled, not arbitrary
+          # untrusted text - safe to pass to the checkout action.
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      # Multi-arch builds need QEMU for cross-compilation under buildx.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Buildx is the modern docker builder; supports multi-platform output.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Docker Hub login. Token must be a Hub access token (NOT a password)
+      # scoped to the proxybroker2 repository for least-privilege.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # GHCR login uses the workflow's built-in GITHUB_TOKEN (no extra secret
+      # needed). The `packages: write` permission above is what authorises it.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # docker/metadata-action computes the tag list from the git ref using
+      # semver rules. Strategy:
+      #   - Version tag (e.g. `2.0.0b2`) always pushed.
+      #   - `latest`, `2`, `2.0` only pushed for STABLE releases. The
+      #     `enable=...!github.event.release.prerelease` guard means a
+      #     beta release (which we mark as prerelease in the GH UI) won't
+      #     advance these floating tags.
+      - name: Extract image metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            bluet/proxybroker2
+            ghcr.io/bluet/proxybroker2
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=semver,pattern={{major}},enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=raw,value=manual-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      # Build once, push to both registries. cache-from/to use the GitHub
+      # Actions cache backend so a second run on the same code reuses
+      # layers and finishes in seconds instead of minutes.
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
