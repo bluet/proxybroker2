@@ -5,7 +5,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import List, Union
 
 import yaml
 
@@ -285,7 +284,7 @@ class ConfigurableProvider(Provider):
     """Provider that can be configured via YAML/JSON without coding."""
 
     @classmethod
-    def from_config(cls, config: Union[str, Path, dict]):
+    def from_config(cls, config: str | Path | dict):
         """Create provider from configuration.
 
         :param config: Path to YAML/JSON file or dict configuration
@@ -349,8 +348,8 @@ class ConfigurableProvider(Provider):
 
 
 def load_provider_configs_from_directory(
-    directory: Union[str, Path],
-) -> List[Provider]:
+    directory: str | Path,
+) -> list[Provider]:
     """Load YAML/JSON provider configs from a directory.
 
     Safe to point at a Docker bind-mount or any user-controlled directory:
@@ -383,8 +382,8 @@ def load_provider_configs_from_directory(
 
 
 def load_python_providers_from_directory(
-    directory: Union[str, Path],
-) -> List[Provider]:
+    directory: str | Path,
+) -> list[Provider]:
     """Load Provider subclasses from *.py files in a directory.
 
     SECURITY: This function executes arbitrary Python code from every .py
@@ -438,10 +437,10 @@ def load_python_providers_from_directory(
 
 
 def load_providers_from_directory(
-    directory: Union[str, Path],
+    directory: str | Path,
     *,
     allow_python: bool = False,
-) -> List[Provider]:
+) -> list[Provider]:
     """Load providers from a directory.
 
     By default, only YAML/JSON config files are loaded — safe for Docker
@@ -461,7 +460,7 @@ def load_providers_from_directory(
 
 
 def create_provider_config_template(
-    filepath: Union[str, Path], provider_type: str = "simple"
+    filepath: str | Path, provider_type: str = "simple"
 ):
     """Create a template configuration file for a provider.
 

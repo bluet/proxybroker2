@@ -92,7 +92,7 @@ class Resolver:
         return GeoData(code, name, region_code, region_name, city_name)
 
     def _pop_random_ip_host(self):
-        host = random.choice(self._temp_host)
+        host = random.choice(self._temp_host)  # noqa: S311
         self._temp_host.remove(host)
         return host
 
@@ -148,10 +148,10 @@ class Resolver:
             else:
                 self._cached_hosts[host] = hosts[0]["host"]
             if logging:
-                log.debug("%s: Host resolved: %s" % (host, self._cached_hosts[host]))
+                log.debug(f"{host}: Host resolved: {self._cached_hosts[host]}")
         else:
             if logging:
-                log.warning("%s: Could not resolve host" % host)
+                log.warning(f"{host}: Could not resolve host")
         return self._cached_hosts.get(host)
 
     async def _resolve(self, host, qtype):

@@ -68,7 +68,7 @@ class Checker:
 
         self._judges = [j for j in self._judges if j.is_working]
         log.debug(
-            "%d judges added. Runtime: %.4f;" % (len(self._judges), time.time() - stime)
+            "%d judges added. Runtime: %.4f;" % (len(self._judges), time.time() - stime)  # noqa: UP031
         )
 
         nojudges = []
@@ -103,7 +103,7 @@ class Checker:
                 stacklevel=2,
             )
         if self._judges:
-            log.debug("Loaded: %d proxy judges" % len(set(self._judges)))
+            log.debug("Loaded: %d proxy judges" % len(set(self._judges)))  # noqa: UP031
         else:
             raise RuntimeError("Not found judges")
 
@@ -168,7 +168,7 @@ class Checker:
 
     async def _check_conn_25(self, proxy, proto):
         judge = Judge.get_random(proto)
-        proxy.log("Selected judge: %s" % judge)
+        proxy.log(f"Selected judge: {judge}")
         result = False
         for _ in range(self._max_tries):
             try:
@@ -196,7 +196,7 @@ class Checker:
 
     async def _check(self, proxy, proto):
         judge = Judge.get_random(proto)
-        proxy.log("Selected judge: %s" % judge)
+        proxy.log(f"Selected judge: {judge}")
         result = False
         for _ in range(self._max_tries):
             try:
@@ -243,8 +243,8 @@ def _request(method, host, path, fullpath=False, data=""):
         hdrs["Content-Type"] = "application/octet-stream"
     kw = {
         "method": method,
-        "path": "http://%s%s" % (host, path) if fullpath else path,  # HTTP
-        "headers": "\r\n".join(("%s: %s" % (k, v) for k, v in hdrs.items())),
+        "path": f"http://{host}{path}" if fullpath else path,  # HTTP
+        "headers": "\r\n".join((f"{k}: {v}" for k, v in hdrs.items())),
         "data": data,
     }
     req = ("{method} {path} HTTP/1.1\r\n{headers}\r\n\r\n{data}").format(**kw).encode()
@@ -273,14 +273,7 @@ async def _send_test_request(method, proxy, judge):
     finally:
         proxy.log("Get: %s" % ("success" if content else "failed"), err=err)
         log.debug(
-            "{h}:{p} [{n}]: ({j}) rv: {rv}, response: {resp}".format(
-                h=proxy.host,
-                p=proxy.port,
-                n=proxy.ngtr.name,
-                j=judge.url,
-                rv=rv,
-                resp=resp,
-            )
+            f"{proxy.host}:{proxy.port} [{proxy.ngtr.name}]: ({judge.url}) rv: {rv}, response: {resp}"
         )
     return headers, content, rv
 
@@ -314,8 +307,7 @@ def _check_test_response(proxy, headers, content, rv):
         return True
     else:
         proxy.log(
-            "Response: not correct; ip: %s, rv: %s, ref: %s, cookie: %s"
-            % (bool(foundIP), verIsCorrect, refSupported, cookieSupported)
+            f"Response: not correct; ip: {bool(foundIP)}, rv: {verIsCorrect}, ref: {refSupported}, cookie: {cookieSupported}"
         )
         return False
 

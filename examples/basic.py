@@ -10,7 +10,7 @@ async def show(proxies):
         proxy = await proxies.get()
         if proxy is None:
             break
-        print("Found proxy: %s" % proxy)
+        print(f"Found proxy: {proxy}")
 
 
 async def main():

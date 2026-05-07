@@ -6,7 +6,7 @@ fail_fast: false
 repos:
     # Basic file checks
     -   repo: https://github.com/pre-commit/pre-commit-hooks
-        rev: v4.5.0
+        rev: v6.0.0
         hooks:
             -   id: trailing-whitespace
             -   id: end-of-file-fixer
@@ -21,7 +21,7 @@ repos:
 
     # Ruff - fast Python linter and formatter
     -   repo: https://github.com/astral-sh/ruff-pre-commit
-        rev: v0.1.9
+        rev: v0.15.12
         hooks:
             # Run the linter
             -   id: ruff
@@ -31,7 +31,7 @@ repos:
 
     # Security scanning - important for a proxy tool
     -   repo: https://github.com/PyCQA/bandit
-        rev: 1.7.5
+        rev: 1.9.4
         hooks:
             -   id: bandit
                 args: [-ll, -i, -x, tests]

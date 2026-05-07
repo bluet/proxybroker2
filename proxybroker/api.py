@@ -368,7 +368,7 @@ class Broker:
                         await self._handle(proxy, check=check)
             log.debug("Grab cycle is complete")
             if self._server:
-                log.debug("fall asleep for %d seconds" % GRAB_PAUSE)
+                log.debug("fall asleep for %d seconds" % GRAB_PAUSE)  # noqa: UP031
                 await asyncio.sleep(GRAB_PAUSE)
                 log.debug("awaked")
             else:
@@ -425,7 +425,7 @@ class Broker:
         if self._server and not self._proxies.empty() and self._limit <= 0:
             log.debug(f"pause. proxies: {self._proxies.qsize()}; limit: {self._limit}")
             await self._proxies.join()
-            log.debug("unpause. proxies: %s" % self._proxies.qsize())
+            log.debug(f"unpause. proxies: {self._proxies.qsize()}")
 
         await self._on_check.put(None)
         task = asyncio.create_task(self._checker.check(proxy))
@@ -465,7 +465,7 @@ class Broker:
             if not task.done():
                 task.cancel()
         self._push_to_result(None)
-        log.info("Done! Total found proxies: %d" % len(self.unique_proxies))
+        log.info("Done! Total found proxies: %d" % len(self.unique_proxies))  # noqa: UP031
 
     def show_stats(self, verbose=False, **kwargs):
         """Show statistics on the found proxies.
@@ -532,7 +532,7 @@ class Broker:
                 for ngtr, events in sorted(
                     events_by_ngtr.items(), key=lambda item: item[0]
                 ):
-                    full_log.append("\t%s" % ngtr)
+                    full_log.append(f"\t{ngtr}")
                     for event, runtime in events:
                         if event.startswith("Initial connection"):
                             full_log.append("\t\t-------------------")

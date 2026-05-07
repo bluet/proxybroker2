@@ -39,9 +39,9 @@ IPPortPatternGlobal = re.compile(
 
 
 def get_headers(rv=False):
-    _rv = str(random.randint(1000, 9999)) if rv else ""
+    _rv = str(random.randint(1000, 9999)) if rv else ""  # noqa: S311
     headers = {
-        "User-Agent": "PxBroker/%s/%s" % (version, _rv),
+        "User-Agent": f"PxBroker/{version}/{_rv}",
         "Accept": "*/*",
         "Accept-Encoding": "gzip, deflate",
         "Pragma": "no-cache",
@@ -116,9 +116,9 @@ def update_geoip_db():
     filename = "GeoLite2-City.tar.gz"
     local_file = os.path.join(DATA_DIR, filename)
     city_db = os.path.join(DATA_DIR, "GeoLite2-City.mmdb")
-    url = "http://geolite.maxmind.com/download/geoip/database/%s" % filename
+    url = f"http://geolite.maxmind.com/download/geoip/database/{filename}"
 
-    urllib.request.urlretrieve(url, local_file)
+    urllib.request.urlretrieve(url, local_file)  # noqa: S310  # nosec B310
 
     tmp_dir = tempfile.gettempdir()
     with tarfile.open(name=local_file, mode="r:gz") as tf:

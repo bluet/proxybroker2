@@ -68,8 +68,8 @@ class _AssertLogsContext:
             return False
         if len(self.watcher.records) == 0:
             __tracebackhide__ = True
-            assert 0, "no logs of level {} or higher triggered on {}".format(
-                logging.getLevelName(self.level), self.logger.name
+            assert 0, (
+                f"no logs of level {logging.getLevelName(self.level)} or higher triggered on {self.logger.name}"
             )
 
 

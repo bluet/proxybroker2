@@ -118,9 +118,9 @@ class TestBrokerAPI:
                 if hasattr(server, "stop") and callable(server.stop):
                     try:
                         server.stop()
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
-        except Exception:
+        except Exception:  # noqa: S110
             # serve() might not work in all contexts - that's a design consideration
             # but the API should exist
             pass

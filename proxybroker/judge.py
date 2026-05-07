@@ -38,7 +38,7 @@ class Judge:
 
     def __repr__(self):
         """Class representation"""
-        return "<Judge [%s] %s>" % (self.scheme, self.host)
+        return f"<Judge [{self.scheme}] {self.host}>"
 
     @classmethod
     def get_random(cls, proto):
@@ -48,7 +48,7 @@ class Judge:
             scheme = "SMTP"
         else:
             scheme = "HTTP"
-        return random.choice(cls.available[scheme])
+        return random.choice(cls.available[scheme])  # noqa: S311
 
     @classmethod
     def clear(cls):
@@ -92,7 +92,7 @@ class Judge:
             aiohttp.ClientResponseError,
             aiohttp.ServerDisconnectedError,
         ) as e:
-            log.debug("%s is failed. Error: %r;" % (self, e))
+            log.debug(f"{self} is failed. Error: {e!r};")
             return
 
         page = page.lower()
@@ -103,7 +103,7 @@ class Judge:
             self.is_working = True
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
-            log.debug("%s is verified" % self)
+            log.debug(f"{self} is verified")
         else:
             log.debug(
                 f"{self} is failed. HTTP status code: {resp.status}; "
