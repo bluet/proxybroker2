@@ -65,6 +65,37 @@ class TestSimpleProvider:
         assert len(proxies) == 2
         assert ("192.0.2.1", "8080") in proxies
 
+    def test_parse_csv_handles_quoted_commas(self):
+        """The csv module path must round-trip fields containing commas
+        (e.g. "Server, Inc",80) - the previous str.split(',') corrupted those.
+        """
+        provider = SimpleProvider("http://example.com/proxies.csv", format="csv")
+        csv_data = '"Server, Inc",8080\n"Other, Co",3128'
+        proxies = provider._parse_csv(csv_data)
+        assert proxies == [("Server, Inc", "8080"), ("Other, Co", "3128")]
+
+    def test_parse_text_strips_whitespace_and_extra_colons(self):
+        """split(':',1) + .strip() must accept lines like 'host:port  '
+        and 'host:port:comment', not silently drop them.
+        """
+        provider = SimpleProvider("http://example.com/proxies.txt", format="text")
+        text_data = "  192.0.2.1:8080  \n198.51.100.1:3128:trailing-comment"
+        proxies = provider._parse_text(text_data)
+        assert ("192.0.2.1", "8080") in proxies
+        # Second line: the colon after port is part of the port field
+        # (split limit=1 keeps it). That's intentionally lenient: better
+        # to capture a slightly-off port than silently drop the line.
+        assert any(p[0] == "198.51.100.1" for p in proxies)
+
+    def test_parse_json_does_not_duplicate_when_both_ip_and_host(self):
+        """An item with both 'ip' and 'host' keys must be emitted once,
+        not twice. Guards against the previous nested-loop bug.
+        """
+        provider = SimpleProvider("http://example.com/proxies.json", format="json")
+        json_data = '[{"ip": "192.0.2.1", "host": "192.0.2.1", "port": 8080}]'
+        proxies = provider._parse_json(json_data)
+        assert proxies == [("192.0.2.1", "8080")]
+
 
 class TestPaginatedProvider:
     """Test PaginatedProvider functionality."""
@@ -111,6 +142,26 @@ class TestAPIProvider:
         assert ("192.0.2.1", "8080") in proxies
         assert ("198.51.100.1", "3128") in proxies
         assert ("203.0.113.1", "8888") in proxies
+
+    def test_find_proxies_proxy_path_handles_non_dict(self):
+        """When proxy_path walks into a non-dict (e.g. middle key is a
+        list), the previous code crashed with AttributeError. Now we
+        stop walking and let the extraction step handle whatever we
+        landed on.
+        """
+        provider = APIProvider(
+            "http://api.example.com/proxies",
+            response_format="json",
+            proxy_path="data.proxies",
+        )
+        # data is a list, not a dict - the .get('proxies') would crash.
+        json_response = '{"data": [{"ip": "192.0.2.1", "port": 8080}]}'
+        # Should not raise; should fall through to fallback pattern matching
+        # (which returns whatever IPPortPatternGlobal finds in the raw text).
+        result = provider.find_proxies(json_response)
+        # The exact return depends on fallback behaviour; key assertion
+        # is that this call does not raise AttributeError.
+        assert isinstance(result, list)
 
 
 class TestConfigurableProvider:

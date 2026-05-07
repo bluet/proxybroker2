@@ -255,3 +255,112 @@ class TestServerAPI:
 
         # Event loop should still be running (we can call more async code)
         await asyncio.sleep(0.001)  # This would fail if loop was stopped
+
+
+class TestProxyPool:
+    """ProxyPool put/remove logic - exercised without network or full Server."""
+
+    def _make_proxy(
+        self, host="192.0.2.1", port=8080, requests=10, errors=0, avg_resp_time=1.0
+    ):
+        """Build a Proxy-shaped MagicMock that satisfies ProxyPool's checks."""
+        p = MagicMock()
+        p.host = host
+        p.port = port
+        p.stat = {"requests": requests}
+        p.error_rate = (errors / requests) if requests else 0
+        p.avg_resp_time = avg_resp_time
+        return p
+
+    def test_put_routes_newcomer_below_min_req(self):
+        """Proxies with fewer than min_req_proxy requests go into _newcomers."""
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5)
+        proxy = self._make_proxy(requests=2)
+        pool.put(proxy)
+        assert proxy in pool._newcomers
+        assert len(pool._pool) == 0
+
+    def test_put_routes_to_pool_when_proven(self):
+        """Proven proxies (req >= min, errors low, fast) join the heap pool."""
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5, max_error_rate=0.5, max_resp_time=8)
+        proxy = self._make_proxy(requests=10, errors=0, avg_resp_time=1.0)
+        pool.put(proxy)
+        assert len(pool._pool) == 1
+        assert pool._newcomers == []
+
+    def test_put_drops_proxy_exceeding_error_rate(self):
+        """Proxies past min_req with too many errors are silently dropped."""
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5, max_error_rate=0.3)
+        proxy = self._make_proxy(requests=10, errors=5)  # 50% > 30%
+        pool.put(proxy)
+        assert proxy not in pool._newcomers
+        assert all(p[1] is not proxy for p in pool._pool)
+
+    def test_put_drops_proxy_too_slow(self):
+        """Proxies past min_req with avg response time over threshold are dropped."""
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5, max_resp_time=2.0)
+        proxy = self._make_proxy(requests=10, errors=0, avg_resp_time=10.0)
+        pool.put(proxy)
+        assert all(p[1] is not proxy for p in pool._pool)
+
+    def test_put_none_is_noop(self):
+        """ProxyPool.put(None) must not crash - signals end-of-stream."""
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue)
+        pool.put(None)
+        assert pool._pool == []
+        assert pool._newcomers == []
+
+    def test_remove_finds_in_newcomers(self):
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5)
+        target = self._make_proxy("192.0.2.1", 8080, requests=2)
+        other = self._make_proxy("198.51.100.1", 3128, requests=2)
+        pool.put(target)
+        pool.put(other)
+        removed = pool.remove("192.0.2.1", 8080)
+        assert removed is target
+        assert target not in pool._newcomers
+        assert other in pool._newcomers
+
+    def test_remove_finds_in_main_pool(self):
+        """O(N log N) heap-safe removal preserves the heap invariant."""
+        import heapq
+
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5)
+        a = self._make_proxy("192.0.2.1", 80, requests=10, avg_resp_time=1.0)
+        b = self._make_proxy("198.51.100.1", 80, requests=10, avg_resp_time=2.0)
+        c = self._make_proxy("203.0.113.1", 80, requests=10, avg_resp_time=3.0)
+        for p in (a, b, c):
+            pool.put(p)
+        assert len(pool._pool) == 3
+
+        pool.remove("198.51.100.1", 80)
+        # b is gone; a and c remain; heap invariant holds
+        remaining = [p[1] for p in pool._pool]
+        assert b not in remaining
+        assert a in remaining and c in remaining
+        # heap_pop should still give them in priority order
+        priorities = [pool._pool[i][0] for i in range(len(pool._pool))]
+        assert priorities == list(heapq.nsmallest(len(priorities), priorities))
+
+    def test_remove_target_not_present_restores_pool(self):
+        """When target not in pool, all items must be put back unchanged."""
+        queue = asyncio.Queue()
+        pool = ProxyPool(queue, min_req_proxy=5)
+        a = self._make_proxy("192.0.2.1", 80, requests=10, avg_resp_time=1.0)
+        b = self._make_proxy("198.51.100.1", 80, requests=10, avg_resp_time=2.0)
+        pool.put(a)
+        pool.put(b)
+        pool.remove("nonexistent.host", 9999)
+        assert len(pool._pool) == 2
+
+    def test_init_rejects_unsupported_strategy(self):
+        """The class explicitly raises ValueError for non-'best' strategies."""
+        with pytest.raises(ValueError, match="strategy"):
+            ProxyPool(asyncio.Queue(), strategy="random")
