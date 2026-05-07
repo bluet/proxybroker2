@@ -89,7 +89,7 @@ class Proxy:
         # nosemgrep: python.lang.security.unverified-ssl-context.unverified-ssl-context
         # Intentional: proxy testing connects to whatever the proxy serves; cert verification
         # is opt-in via verify_ssl=True at the Broker level. See README "Verifying SSL".
-        self._ssl_context = True if verify_ssl else _ssl._create_unverified_context()  # noqa: S323  # nosec B323  # NOSONAR python:S5527 - intentional, see comment above
+        self._ssl_context = True if verify_ssl else _ssl._create_unverified_context()  # noqa: S323  # nosec B323  # NOSONAR
         self._types = {}
         self._is_working = False
         self.stat = {"requests": 0, "errors": Counter()}
