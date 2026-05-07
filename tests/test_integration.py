@@ -28,13 +28,17 @@ class TestUserWorkflows:
         )
 
         # Test that the basic API contract works - we don't need to complete the operation
-        # Just verify the API accepts the expected parameters without errors
+        # Just verify the API accepts the expected parameters without errors.
         try:
-            # This will start but we'll cancel it quickly to test the contract
             find_task = asyncio.create_task(
                 broker.find(types=["HTTP", "HTTPS"], limit=1)
             )
-            await asyncio.sleep(0.5)  # Give it more time to initialize
+            # Wait for the broker to actually initialize its checker rather
+            # than relying on a fixed sleep (which races on slow CI runners).
+            for _ in range(50):  # up to 5s
+                if broker._checker is not None:
+                    break
+                await asyncio.sleep(0.1)
             find_task.cancel()
             try:
                 await find_task
@@ -44,8 +48,7 @@ class TestUserWorkflows:
             # If it fails immediately, that indicates an API contract issue
             pytest.fail(f"find() API contract broken: {e}")
 
-        # Verify broker was properly configured for the find operation
-        # The limit and checker should be set during find() initialization
+        # Verify broker was properly configured for the find operation.
         assert broker._checker is not None  # Checker should be created for find()
 
     @pytest.mark.asyncio
