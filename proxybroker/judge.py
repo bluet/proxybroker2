@@ -25,7 +25,10 @@ class Judge:
         self.host = urlparse(url).netloc
         self.path = url.split(self.host)[-1]
         self.ip = None
-        self.is_working = False
+        # is_working is a plain mutable attribute (set True after successful
+        # check). The nosemgrep silences a false positive from
+        # is-function-without-parentheses, which fires on every reference.
+        self.is_working = False  # nosemgrep: python.lang.maintainability.is-function-without-parentheses
         self.marks = {"via": 0, "proxy": 0}
         self.timeout = timeout
         self.verify_ssl = verify_ssl
@@ -67,7 +70,7 @@ class Judge:
             return
 
         if self.scheme == "SMTP":
-            self.is_working = True
+            self.is_working = True  # nosemgrep: python.lang.maintainability.is-function-without-parentheses
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
             return
@@ -100,7 +103,7 @@ class Judge:
         if resp.status == 200 and real_ext_ip in page and rv in page:
             self.marks["via"] = page.count("via")
             self.marks["proxy"] = page.count("proxy")
-            self.is_working = True
+            self.is_working = True  # nosemgrep: python.lang.maintainability.is-function-without-parentheses
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
             log.debug(f"{self} is verified")

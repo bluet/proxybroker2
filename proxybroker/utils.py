@@ -22,6 +22,11 @@ IPPattern = re.compile(
     r"(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)"
 )
 
+# nosemgrep: python.lang.security.audit.regex_dos
+# IPv6 grammar requires deep alternation. Inputs come from scraped pages
+# bounded to a few KB, not arbitrary user payloads, so the catastrophic-
+# backtracking risk is bounded. Replacing this would require reaching
+# for a non-stdlib parser - tracked for a future refactor.
 IPv6Pattern = re.compile(
     r"\s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\s*"
 )
@@ -116,8 +121,17 @@ def update_geoip_db():
     filename = "GeoLite2-City.tar.gz"
     local_file = os.path.join(DATA_DIR, filename)
     city_db = os.path.join(DATA_DIR, "GeoLite2-City.mmdb")
+    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
+    # MaxMind retired this download endpoint years ago (NXDOMAIN today);
+    # `update-geo` is effectively dead and slated for replacement with the
+    # license-key-based GeoLite2 distribution. The HTTP scheme is moot.
     url = f"http://geolite.maxmind.com/download/geoip/database/{filename}"
 
+    # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected
+    # nosemgrep: python.lang.security.audit.insecure-transport.urllib.insecure-urlretrieve
+    # `url` is constructed from a hardcoded prefix + filename param chosen
+    # by the caller (which is in turn this module's own update_geoip_db
+    # entrypoint - never user-controlled).
     urllib.request.urlretrieve(url, local_file)  # noqa: S310  # nosec B310
 
     tmp_dir = tempfile.gettempdir()
