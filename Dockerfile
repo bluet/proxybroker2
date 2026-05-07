@@ -1,6 +1,11 @@
 # Pinned to SHA256 for reproducible, tamper-evident builds (supply-chain).
-# Update with `docker pull python:3.14-slim && docker inspect --format '{{index .RepoDigests 0}}' python:3.14-slim`.
-FROM python:3.14-slim@sha256:5b3879b6f3cb77e712644d50262d05a7c146b7312d784a18eff7ff5462e77033 AS base
+# Resolves to python:3.14-slim as of 2026-04. Update procedure:
+#   docker pull python:3.14-slim
+#   docker inspect --format '{{index .RepoDigests 0}}' python:3.14-slim
+# (Tag is intentionally omitted from the FROM line: SonarCloud rule docker:S8431
+# treats tag+digest as redundant since the digest is what actually pins the
+# image. The version is documented in this comment instead.)
+FROM python@sha256:5b3879b6f3cb77e712644d50262d05a7c146b7312d784a18eff7ff5462e77033 AS base
 
 ENV \
     # Keeps Python from generating .pyc files in the container

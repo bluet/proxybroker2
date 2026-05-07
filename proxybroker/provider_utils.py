@@ -79,7 +79,7 @@ class SimpleProvider(Provider):
             try:
                 json.loads(content)
                 return "json"
-            except (json.JSONDecodeError, ValueError):
+            except json.JSONDecodeError:
                 pass
 
         # Check for CSV (has commas and multiple lines)
