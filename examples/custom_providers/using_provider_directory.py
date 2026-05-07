@@ -30,13 +30,13 @@ async def main():
     print("=== Using custom provider directory with Broker ===")
 
     # Create broker with custom provider directory
-    broker = Broker(
+    Broker(
         provider_dirs=[str(custom_dir)],  # Load from custom directory
         providers=None,  # Don't use default providers
     )
 
     # You can also combine default providers with custom ones
-    broker_combined = Broker(
+    Broker(
         provider_dirs=[str(custom_dir)],  # Load from custom directory
         providers=None,  # None means use defaults + custom
     )
@@ -52,7 +52,7 @@ async def main():
     )
 
     # Use both
-    broker_mixed = Broker(
+    Broker(
         providers=[code_provider],  # Code-defined providers
         provider_dirs=[str(custom_dir)],  # Plus directory providers
     )
@@ -70,7 +70,7 @@ async def main():
         dir_path.mkdir(parents=True, exist_ok=True)
 
     # Load from all directories
-    broker_multi = Broker(
+    Broker(
         provider_dirs=[
             str(http_providers_dir),
             str(socks_providers_dir),

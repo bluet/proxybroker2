@@ -63,7 +63,7 @@ class MyAPIPaginatedProvider(PaginatedProvider):
                     proxies.append((ip, port))
 
             return proxies
-        except:
+        except (ValueError, AttributeError, KeyError):
             return []
 
 

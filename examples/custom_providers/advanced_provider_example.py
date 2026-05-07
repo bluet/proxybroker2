@@ -58,7 +58,7 @@ class AdvancedProvider(Provider):
         try:
             data = json.loads(page)
             return data.get("token")
-        except:
+        except (json.JSONDecodeError, AttributeError):
             # Fallback to regex if not JSON
             match = re.search(r'token["\']:\s*["\']([^"\']+)', page)
             return match.group(1) if match else None
@@ -68,7 +68,7 @@ class AdvancedProvider(Provider):
         try:
             data = json.loads(page)
             return data.get("total_pages", 1)
-        except:
+        except (json.JSONDecodeError, AttributeError):
             return 1
 
     def find_proxies(self, page):
@@ -86,7 +86,7 @@ class AdvancedProvider(Provider):
                     port = str(proxy.get("port"))
                     if ip and port:
                         # Store additional metadata if needed
-                        proxy_type = proxy.get("type", "HTTP")
+                        proxy.get("type", "HTTP")
                         proxies.append((ip, port))
 
             elif "data" in data:
