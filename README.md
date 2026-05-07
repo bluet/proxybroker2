@@ -3,7 +3,7 @@ ProxyBroker2
 
 *🚀 Production-Ready Async Proxy Management - v2.0.0b1*
 
-**The modernized successor to ProxyBroker with Python 3.10-3.13 support, zero critical bugs, and 100% test coverage**
+**The modernized successor to ProxyBroker with Python 3.10-3.14 support, zero critical bugs, and 100% test coverage**
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_shield)
@@ -40,7 +40,7 @@ Features
 
 -   **✅ Zero Critical Bugs** - Fixed all signal handler leaks, deadlocks, and heap corruption
 -   **✅ 100% Test Coverage** - All 131 tests passing with comprehensive validation
--   **✅ Modern Async Patterns** - Updated from deprecated asyncio patterns for Python 3.10-3.13
+-   **✅ Modern Async Patterns** - Updated from deprecated asyncio patterns for Python 3.10-3.14
 -   **✅ Type Safety** - Enhanced API with proper type validation and error handling
 -   **✅ Resource Management** - Comprehensive cleanup and connection management
 -   **✅ Cache Optimization** - Smart scheme caching with proper invalidation
@@ -53,7 +53,7 @@ Features
 -   **📡 50+ Proxy Sources** - Automatically discovers and validates from multiple providers
 -   **🖥️ Proxy Server Mode** - Deploy your own rotating proxy server with automatic failover
 -   **🎯 Smart Filtering** - Filter by country, protocol, anonymity level, response time
--   **🐍 Modern Python** - Full support for Python 3.10, 3.11, 3.12, and 3.13
+-   **🐍 Modern Python** - Full support for Python 3.10, 3.11, 3.12, 3.13, and 3.14
 
 
 
@@ -109,7 +109,7 @@ $ docker run --rm bluet/proxybroker2 --help
 Requirements
 ------------
 
--   **Python 3.10-3.13** (latest stable versions supported)
+-   **Python 3.10-3.14** (latest stable versions supported)
 -   **Core Dependencies** (automatically installed):
     -   [aiohttp](https://pypi.python.org/pypi/aiohttp) 3.12.0+ (modern asyncio HTTP client/server)
     -   [aiodns](https://pypi.python.org/pypi/aiodns) 3.4.0+ (fast async DNS resolution)
@@ -123,7 +123,7 @@ Installation
 
 ### 📦 Install v2.0.0b1 (Production Ready Beta)
 
-> 🎉 **ProxyBroker2 v2.0.0b1 is production-ready!** Zero critical bugs, 100% test coverage, and full Python 3.10-3.13 support.
+> 🎉 **ProxyBroker2 v2.0.0b1 is production-ready!** Zero critical bugs, 100% test coverage, and full Python 3.10-3.14 support.
 
 > ⚠️ **WARNING**: The PyPI package `proxybroker` is outdated (v0.3.2) and no longer maintained. Use ProxyBroker2 from GitHub for the latest production-ready version.
 
@@ -139,7 +139,7 @@ $ pip install -U git+https://github.com/bluet/proxybroker2.git
 
 **Why ProxyBroker2 v2.0.0b1?**
 - **🚀 Production Ready**: Zero critical bugs, thoroughly tested
-- **🐍 Modern Python**: Full Python 3.10-3.13 compatibility
+- **🐍 Modern Python**: Full Python 3.10-3.14 compatibility
 - **⚡ High Performance**: Modern async patterns and optimizations
 - **🛡️ Stable API**: Contract-based testing ensures backward compatibility
 - **📚 Great Docs**: Comprehensive guides and API documentation
@@ -532,7 +532,7 @@ asyncio.run(main())  # Modern async pattern
 - **Zero critical bugs** - Fixed deadlocks, memory leaks, and race conditions that existed in v0.3.2
 - **Active maintenance** - Regular updates vs abandoned original project
 - **Better performance** - Modern async patterns and optimizations
-- **Python 3.10-3.13 support** - Latest Python features and compatibility
+- **Python 3.10-3.14 support** - Latest Python features and compatibility
 - **Comprehensive testing** - Reliable test suite vs limited testing in v0.3.2
 - **Better documentation** - Updated examples and comprehensive guides
 
@@ -668,4 +668,3 @@ This project follows the [all-contributors](https://github.com/all-contributors/
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=bluet/proxybroker2&type=date&legend=top-left" />
  </picture>
 </a>
-

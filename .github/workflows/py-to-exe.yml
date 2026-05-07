@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.11"]  # Use 3.11 for better PyInstaller compatibility
+        python-version: ["3.14"]  # Default to current Python; revert to 3.13 if PyInstaller breaks
         poetry-version: ["2.1.3"]
     steps:
       - uses: actions/checkout@v4
