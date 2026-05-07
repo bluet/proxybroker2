@@ -46,7 +46,10 @@ class Resolver:
         except RuntimeError:
             # No running event loop, will be set later
             self._loop = loop
-        self._resolver = aiodns.DNSResolver()
+        # aiodns.DNSResolver() falls back to asyncio.get_event_loop() when
+        # no loop is passed, which raises RuntimeError on Python 3.14+.
+        # Defer construction until first use if we have no loop yet.
+        self._resolver = aiodns.DNSResolver(loop=self._loop) if self._loop else None
 
     @staticmethod
     def host_is_ip(host):
@@ -155,6 +158,9 @@ class Resolver:
         return self._cached_hosts.get(host)
 
     async def _resolve(self, host, qtype):
+        if self._resolver is None:
+            # Deferred construction - we are now inside a running loop.
+            self._resolver = aiodns.DNSResolver()
         try:
             resp = await asyncio.wait_for(
                 self._resolver.query(host, qtype), timeout=self._timeout
