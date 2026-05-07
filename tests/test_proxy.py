@@ -12,7 +12,10 @@ from .utils import ResolveResult, future_iter
 
 
 @pytest.fixture
-def proxy():
+async def proxy():
+    # async fixture so pytest-asyncio sets up an event loop first.
+    # StreamReader() requires a running loop on Python 3.14+
+    # (was a DeprecationWarning on 3.10-3.13, became RuntimeError in 3.14).
     proxy = Proxy("127.0.0.1", "80", timeout=0.1)
     proxy._reader["conn"] = StreamReader()
     return proxy
@@ -197,7 +200,7 @@ async def test_recv_eof(proxy):
 
 
 @pytest.mark.asyncio
-async def test_recv_length(event_loop, proxy):
+async def test_recv_length(proxy):
     proxy.reader.feed_data(b"abc")
     assert await proxy.recv(length=3) == b"abc"
     proxy.reader._buffer.clear()
@@ -213,7 +216,7 @@ async def test_recv_length(event_loop, proxy):
 
 
 @pytest.mark.asyncio
-async def test_recv_head_only(event_loop, proxy):
+async def test_recv_head_only(proxy):
     data = b"HTTP/1.1 200 Connection established\r\n\r\n"
     proxy.reader.feed_data(data)
     assert await proxy.recv(head_only=True) == data
@@ -248,7 +251,7 @@ async def test_recv_content_encoding(proxy):
 
 
 @pytest.mark.asyncio
-async def test_recv_content_encoding_without_eof(event_loop, proxy):
+async def test_recv_content_encoding_without_eof(proxy):
     resp = (
         b"HTTP/1.1 200 OK\r\n"
         b"Content-Encoding: gzip\r\n"
