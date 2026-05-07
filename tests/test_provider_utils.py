@@ -306,6 +306,29 @@ def test_underscore_prefix_yaml_files_are_skipped():
         assert len(providers) == 1
 
 
+def test_simple_provider_custom_pattern_normalises_strings():
+    """When a custom regex has 0 or 1 capture groups, re.findall returns
+    strings. find_proxies must convert those to (host, port) tuples so
+    Provider.proxies setter doesn't blow up on iter unpacking. Real
+    user-supplied patterns commonly omit explicit capture groups.
+    """
+    page = "192.0.2.1:8080\nnot-a-proxy\n198.51.100.1:3128"
+    # Pattern with NO capture groups
+    p = SimpleProvider("http://example.com/list.txt", pattern=r"\d+\.\d+\.\d+\.\d+:\d+")
+    assert p.find_proxies(page) == [
+        ("192.0.2.1", "8080"),
+        ("198.51.100.1", "3128"),
+    ]
+    # Pattern with TWO capture groups (already returns tuples)
+    p2 = SimpleProvider(
+        "http://example.com/list.txt", pattern=r"(\d+\.\d+\.\d+\.\d+):(\d+)"
+    )
+    assert p2.find_proxies(page) == [
+        ("192.0.2.1", "8080"),
+        ("198.51.100.1", "3128"),
+    ]
+
+
 def test_python_loader_skips_imported_classes():
     """A user file that does `from proxybroker import SimpleProvider` should
     NOT cause SimpleProvider to be instantiated. Only classes defined in

@@ -16,24 +16,21 @@ from .api import Broker
 from .utils import update_geoip_db
 
 
-def _build_provider_dir_parent():
-    """Parent parser carrying only --provider-dir.
+def _add_provider_dir_arg(parser_or_group, dest):
+    """Add --provider-dir to a parser, storing into the given dest.
 
-    Used by both the top-level parser and every subcommand parser so the
-    flag works in any position (`proxybroker --provider-dir X find ...`
-    and `proxybroker find --provider-dir X ...` both parse correctly).
-
-    `default=argparse.SUPPRESS` is critical: when the same arg lives on a
-    parent and a subparser via `parents=[...]`, argparse re-applies the
-    default while parsing the subcommand, overwriting whatever the
-    top-level captured. SUPPRESS makes argparse omit the attribute when
-    the user did not pass it, so the value flows through cleanly.
+    We use DIFFERENT dest names on the top-level parser
+    (``_provider_dirs_top``) versus each subparser (``provider_dirs``)
+    and merge them in `_resolve_provider_dirs`. This is the workaround
+    for an argparse limitation: when the same option lives on both a
+    parent and a subparser, the subparser's `action="append"` starts
+    from the default and silently overwrites whatever the top-level
+    captured. With separate dests both lists survive intact.
     """
-    p = argparse.ArgumentParser(add_help=False)
-    p.add_argument(
+    parser_or_group.add_argument(
         "--provider-dir",
         action="append",
-        dest="provider_dirs",
+        dest=dest,
         metavar="PATH",
         default=argparse.SUPPRESS,
         help=(
@@ -43,21 +40,23 @@ def _build_provider_dir_parent():
             "are read; no Python is executed."
         ),
     )
-    return p
 
 
 def create_parser():
-    provider_dir_parent = _build_provider_dir_parent()
     parser = argparse.ArgumentParser(
         prog="proxybroker",
         add_help=False,
-        parents=[provider_dir_parent],
         description="Proxy [Finder | Checker | Server]",
         epilog="""Run '%(prog)s <command> --help'
                   for more information on a command.
                   Suggestions and bug reports are greatly appreciated:
                   https://github.com/bluet/proxybroker2/issues""",
     )
+    # Top-level --provider-dir stores into a separate dest so values
+    # supplied before the subcommand survive even when the user also
+    # supplies --provider-dir after the subcommand. Merged in
+    # _resolve_provider_dirs.
+    _add_provider_dir_arg(parser, dest="_provider_dirs_top")
 
     subparsers = parser.add_subparsers(
         dest="command",
@@ -71,10 +70,10 @@ def create_parser():
     fparser = subparsers.add_parser(
         "find",
         add_help=False,
-        parents=[provider_dir_parent],
         help="Find and check proxies",
         description="Find and check proxies with specified parameters",
     )
+    _add_provider_dir_arg(fparser, dest="provider_dirs")
     fparser_group = fparser.add_argument_group(title="Options")
     add_find_args(fparser_group)
     add_grab_args(fparser_group)
@@ -87,10 +86,10 @@ def create_parser():
     gparser = subparsers.add_parser(
         "grab",
         add_help=False,
-        parents=[provider_dir_parent],
         help="Find proxies without a check",
         description="Find proxies without a check with specified parameters",
     )
+    _add_provider_dir_arg(gparser, dest="provider_dirs")
     gparser_group = gparser.add_argument_group(title="Options")
     add_grab_args(gparser_group)
     add_limit_arg(gparser_group)
@@ -102,12 +101,12 @@ def create_parser():
     sparser = subparsers.add_parser(
         "serve",
         add_help=False,
-        parents=[provider_dir_parent],
         help="Run a local proxy server",
         description="""Run a local proxy server that distributes requests to
                        external proxies, which will be found on the
                        specified parameters""",
     )
+    _add_provider_dir_arg(sparser, dest="provider_dirs")
     add_serve_args(sparser.add_argument_group(title="Server options"))
     sparser_fgroup = sparser.add_argument_group(title="Find proxies options")
     add_find_args(sparser_fgroup)
@@ -418,7 +417,11 @@ def _resolve_provider_dirs(ns):
     Returns ``None`` when nothing is configured, so the Broker keeps its
     default behaviour.
     """
-    cli_dirs = getattr(ns, "provider_dirs", None)
+    # Merge both positional sources of --provider-dir (top-level + subcommand)
+    # so values supplied in either position - or both - all flow through.
+    # See _add_provider_dir_arg for why the dests are different.
+    cli_dirs = list(getattr(ns, "_provider_dirs_top", None) or [])
+    cli_dirs.extend(getattr(ns, "provider_dirs", None) or [])
     if cli_dirs:
         return cli_dirs
     env_dir = os.environ.get("PROXYBROKER_PROVIDER_DIR")

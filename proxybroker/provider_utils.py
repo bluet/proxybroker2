@@ -44,7 +44,20 @@ class SimpleProvider(Provider):
         reused across grab cycles in serve mode.
         """
         if self.custom_pattern:
-            return re.findall(self.custom_pattern, page)
+            matches = re.findall(self.custom_pattern, page)
+            # Provider.proxies setter expects (host, port) tuples. With a
+            # 2-capture-group pattern, re.findall already returns tuples.
+            # With 0 or 1 groups it returns strings - try to recover by
+            # splitting on ':'.
+            normalized = []
+            for m in matches:
+                if isinstance(m, tuple) and len(m) >= 2:
+                    normalized.append((m[0], m[1]))
+                elif isinstance(m, str) and ":" in m:
+                    host, _, port = m.rpartition(":")
+                    normalized.append((host, port))
+                # else: cannot extract a host/port pair, drop silently
+            return normalized
 
         fmt = self.format if self.format != "auto" else self._detect_format(page)
 

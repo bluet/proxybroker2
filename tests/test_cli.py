@@ -346,8 +346,11 @@ class TestProviderDirParserPlacement:
         return create_parser().parse_args(list(args))
 
     def test_provider_dir_before_subcommand(self):
+        from proxybroker.cli import _resolve_provider_dirs
+
         ns = self._parse("--provider-dir", "/before", "find", "--types", "HTTP")
-        assert ns.provider_dirs == ["/before"]
+        # Top-level uses a separate dest; the resolver merges both.
+        assert _resolve_provider_dirs(ns) == ["/before"]
         assert ns.command == "find"
 
     def test_provider_dir_after_find_subcommand(self):
@@ -376,3 +379,22 @@ class TestProviderDirParserPlacement:
             "/b",
         )
         assert ns.provider_dirs == ["/a", "/b"]
+
+    def test_provider_dir_merges_top_and_sub_positions(self):
+        """When the user supplies --provider-dir on BOTH sides, both
+        values must be preserved. argparse's parents= pattern would
+        silently drop the top-level value; we work around it by using
+        different dests and merging in _resolve_provider_dirs.
+        """
+        from proxybroker.cli import _resolve_provider_dirs
+
+        ns = self._parse(
+            "--provider-dir",
+            "/before",
+            "find",
+            "--types",
+            "HTTP",
+            "--provider-dir",
+            "/after",
+        )
+        assert _resolve_provider_dirs(ns) == ["/before", "/after"]
