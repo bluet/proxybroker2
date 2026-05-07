@@ -3,8 +3,8 @@
 import logging
 import os
 import os.path
-import random
 import re
+import secrets
 import shutil
 import sys
 import tarfile
@@ -44,7 +44,10 @@ IPPortPatternGlobal = re.compile(
 
 
 def get_headers(rv=False):
-    _rv = str(random.randint(1000, 9999)) if rv else ""  # noqa: S311
+    # secrets.randbelow (CSPRNG) clears SonarCloud S2245. Used as a request
+    # marker to detect proxy header injection - non-cryptographic role, but
+    # secrets is a drop-in for the small-int range.
+    _rv = str(1000 + secrets.randbelow(9000)) if rv else ""
     headers = {
         "User-Agent": f"PxBroker/{version}/{_rv}",
         "Accept": "*/*",

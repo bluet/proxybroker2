@@ -1,5 +1,5 @@
 import asyncio
-import random
+import secrets
 from urllib.parse import urlparse
 
 import aiohttp
@@ -51,7 +51,10 @@ class Judge:
             scheme = "SMTP"
         else:
             scheme = "HTTP"
-        return random.choice(cls.available[scheme])  # noqa: S311
+        # secrets.choice (CSPRNG) clears SonarCloud S2245; the selection
+        # is not security-sensitive (just round-robins judges) but secrets
+        # is a drop-in replacement.
+        return secrets.choice(cls.available[scheme])
 
     @classmethod
     def clear(cls):
