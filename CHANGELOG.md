@@ -8,18 +8,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Type validation for Proxy.types setter with clear error messages
-- Comprehensive test coverage for type validation scenarios
-- Enhanced cache invalidation when proxy types are updated
-
-### Fixed
-- Resolver test exception handling with proper asyncio.TimeoutError usage
-- Broad exception handling in tests replaced with specific exception types
-- Code formatting consistency across all test files
+- **Custom proxy provider system**: users can register their own proxy
+  sources without modifying the package. Drop YAML/JSON config files
+  into a directory, mount it into the container, and the broker
+  auto-loads them at startup. Targets the Docker bind-mount workflow
+  for entry-level / no-code users.
+- Four provider helper classes in `proxybroker.provider_utils`:
+  `SimpleProvider` (text/CSV/JSON list endpoints with format
+  autodetect), `PaginatedProvider` (numbered-page endpoints with
+  configurable URL templates and step), `APIProvider` (JSON APIs with
+  optional Bearer/key auth and dotted `proxy_path` navigation), and
+  `ConfigurableProvider` (factory that reads YAML/JSON and dispatches
+  to the right class).
+- CLI flag `--provider-dir PATH` (repeatable) on top-level and on
+  every subcommand. Falls back to env var
+  `PROXYBROKER_PROVIDER_DIR`, then to the `/configs` Docker
+  convention if the directory exists.
+- Python API: `Broker(provider_dirs=[...])` for programmatic use. The
+  empty-list contract is preserved: `providers=[]` means "no bundled
+  defaults" (distinct from `providers=None` which means "use defaults").
+- `load_provider_configs_from_directory()` (safe-by-default YAML/JSON
+  loader, used by Docker UX) and `load_python_providers_from_directory()`
+  (Python file loader, opt-in only - not wired to the CLI; users must
+  call it explicitly from their own code).
+- Type validation for `Proxy.types` setter with clear error messages.
+- Comprehensive test coverage: 32 tests for `provider_utils` parsers,
+  13 tests for `Provider` base class behavior, 9 tests for `ProxyPool`,
+  expanded CLI tests including `--provider-dir` placement validation.
+- Documentation: `docs/custom_providers.md` (Docker-first user guide
+  with YAML config recipes and Python examples).
+- Eight worked examples under `examples/custom_providers/` covering
+  each provider type and the configuration-directory loading flow.
+- Python 3.14 to the supported version matrix (now 3.10-3.14).
+- Pre-commit hook: ruff hook now runs with `--unsafe-fixes` enabled,
+  so future `%`-formatting and similar modernization lints get
+  auto-fixed at commit time instead of accumulating.
 
 ### Changed
-- Pre-commit configuration updated to ignore false positive security warnings for test files
-- Improved error messages for invalid type assignments to proxy.types
+- `Judge.is_working` is now a `@property` with setter (was a plain
+  attribute). Mirrors the pattern already used by `Proxy.is_working`
+  and removes a recurring SAST false-positive flag. Behavior is
+  unchanged - read/write sites work as before.
+- The unverified-SSL context construction in `Proxy.__init__` is
+  extracted into a private helper
+  `_make_unverified_ssl_context_for_proxy_testing()`. Suppression
+  annotations are concentrated on the helper instead of bracketing
+  four lines of inline code. Behavior unchanged.
+- `aiodns.DNSResolver()` is now lazy-initialised on first resolve
+  call rather than at module-import time. Required for Python 3.14
+  where the eager call raises `RuntimeError` (no running event loop).
+- Eighteen `%`-formatting calls across `api.py`, `checker.py`,
+  `cli.py`, `providers.py`, and `server.py` are now f-strings.
+  Modernization debt that had been silently accumulating because the
+  pre-commit ruff hook was missing `--unsafe-fixes`.
+- Dockerfile is pinned to a specific SHA256 digest of `python:3.14-slim`
+  (was a floating tag). Tag is retained alongside the digest as
+  human-readable documentation.
+- CLI subcommand `update-geo` help text now reads
+  `(broken since 2019) Download GeoIP database - see issue #200`
+  so users see the deprecation before they run the command.
+- Pre-commit configuration tightened to actually enforce the rule
+  selection it was already configured for.
+
+### Removed
+- `proxybroker.utils.update_geoip_db()` body. The function previously
+  attempted to download from `geolite.maxmind.com`, which has been
+  NXDOMAIN since 2019-12-30 (MaxMind retired the unauthenticated
+  endpoint and now requires a license key). The function now raises
+  `RuntimeError` with a message linking to the tracking issue
+  (#200). Bundled GeoLite2 databases in `proxybroker/data/` continue
+  to work for runtime IP lookups; they just cannot be refreshed via
+  this command.
+- Four now-unused stdlib imports (`shutil`, `tarfile`, `tempfile`,
+  `urllib.request`) along with the `update_geoip_db()` body.
+
+### Fixed
+- `SimpleProvider._parse_csv` now uses the stdlib `csv` module so
+  quoted fields with embedded commas (e.g. `"Company, Inc",80`)
+  round-trip correctly. The previous `str.split(",")` path corrupted
+  any line whose first field contained a comma.
+- `SimpleProvider._parse_text` now extracts only the leading digit
+  run after the first `:` as the port. Lines like `"1.2.3.4:8080:tag"`
+  or `"1.2.3.4:8080 # US"` previously crashed `Proxy.create` because
+  the entire suffix was treated as the port string.
+- `SimpleProvider._parse_json` no longer emits duplicate proxies for
+  items that have both `ip` and `host` keys (these are alias fields,
+  not separate proxies).
+- `SimpleProvider._parse_json` now unwraps single-level object-wrapped
+  list responses (`{"proxies": [...]}`, `{"data": [...]}`, etc.).
+  Previously it silently returned zero proxies for the very common
+  JSON:API style.
+- `PaginatedProvider` URL building now replaces an existing `page=`
+  query parameter rather than appending a duplicate, so URLs like
+  `https://example.com/list?page=1` are paginated correctly.
+- `APIProvider.find_proxies` `proxy_path` navigation now stops
+  gracefully when it encounters a non-dict, instead of raising
+  `AttributeError` and killing the provider.
+- `Resolver` test exception handling uses `asyncio.TimeoutError`
+  rather than catching `Exception`.
+- `tests/test_public_contracts.py` swapped `asyncio.iscoroutinefunction`
+  for `inspect.iscoroutinefunction`. The asyncio alias is deprecated
+  in Python 3.14 and slated for removal in 3.16.
+- Multiple SAST false-positive suppressions removed by fixing the
+  underlying code patterns (e.g. converting `Judge.is_working` to a
+  property removed five `# nosemgrep` annotations).
 
 ## [2.0.0b1] - 2025-05-26
 

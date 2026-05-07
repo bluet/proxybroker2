@@ -116,10 +116,24 @@ class SimpleProvider(Provider):
             # useful for the common API shape `{"proxies": [...]}` without
             # forcing users to switch to APIProvider for every wrapper key.
             if isinstance(data, dict):
+                unwrapped = data
                 for key in self._JSON_LIST_WRAPPER_KEYS:
                     if isinstance(data.get(key), list):
-                        data = data[key]
+                        unwrapped = data[key]
                         break
+                if unwrapped is data:
+                    # No wrapper key matched - the response is an object
+                    # but proxies aren't under any of the known keys. Most
+                    # users hit this when their API uses a non-standard
+                    # wrapper like `{"payload": [...]}`; APIProvider with
+                    # an explicit `proxy_path` is the right tool there.
+                    log.debug(
+                        f"{self.domain}: JSON response is an object with no "
+                        f"recognized wrapper key {self._JSON_LIST_WRAPPER_KEYS}. "
+                        "Returning empty list. For non-standard wrappers, use "
+                        "APIProvider with `proxy_path: <key>` instead."
+                    )
+                data = unwrapped
 
             # Handle different JSON structures
             if isinstance(data, list):
@@ -473,7 +487,12 @@ def load_provider_configs_from_directory(
             provider = ConfigurableProvider.from_config(str(config_path))
             providers.append(provider)
             log.info(f"Loaded provider from config: {config_path}")
-        except Exception as e:
+        except (yaml.YAMLError, json.JSONDecodeError, ValueError, OSError) as e:
+            # Narrow catch: parse errors from yaml.safe_load / json.loads,
+            # validation errors from from_config (missing url, unknown type),
+            # filesystem errors from open(). Programming errors (TypeError,
+            # AttributeError, etc.) are not caught - they should propagate
+            # so we don't silently mask refactor bugs.
             log.error(f"Error loading provider config {config_path}: {e}")
 
     return providers
