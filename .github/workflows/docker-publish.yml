@@ -8,22 +8,28 @@ name: Publish Docker Image
 #       python-publish.yml, so one release ships PyPI + Docker together.
 #
 #   - workflow_dispatch
-#       Manual trigger. Behavior depends on what ref it's invoked with
-#       (`gh workflow run ... --ref <ref>`):
+#       Manual trigger. Two modes depending on inputs:
 #
-#       - With `--ref <tag>` (e.g. `--ref v2.0.0b2`):
-#           Publishes :VERSION only (no floating aliases). Useful for
-#           retroactive single-version rebuilds that must NOT move
-#           :latest / :major / :major.minor. The version tag fires
-#           because metadata-action's pep440 type matches the tag ref.
+#       - With `version` input (e.g. `--field version=2.0.0b2`):
+#           Publishes the full tag set (:VERSION, :major.minor, :major,
+#           :latest) using the supplied version string. Builds whatever
+#           code is at the dispatched ref. Use this for retroactive
+#           publishes when the release event didn't fire docker-publish
+#           (e.g. workflow file added after the release was created),
+#           or to force-republish a specific version.
 #
-#       - With `--ref master` (default):
-#           No tag ref to match - publishes :manual-<timestamp> only.
-#           Useful for smoke-testing the workflow itself.
+#       - Without `version` input:
+#           Publishes :manual-<timestamp> only. Useful for smoke-testing
+#           the workflow on master HEAD without affecting any version tags.
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 2.0.0b2). Leave empty for a smoke-test build tagged :manual-<timestamp>."
+        required: false
+        default: ""
 
 jobs:
   publish:
@@ -53,14 +59,46 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # GHCR login uses the workflow's built-in GITHUB_TOKEN (no extra secret
-      # needed). The `packages: write` permission above is what authorises it.
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # GHCR login + push are temporarily disabled. Tracking #206.
+      # Reason: the GHCR package `ghcr.io/bluet/proxybroker2` doesn't
+      # exist yet, and `permissions: packages: write` + the OCI source
+      # label (added in PR #205) aren't sufficient to bootstrap a
+      # brand-new package from a workflow's GITHUB_TOKEN - the first
+      # push gets 403 Forbidden. Pre-creating the package once via the
+      # GHCR web UI (or pushing once with a maintainer PAT scoped to
+      # write:packages) unblocks subsequent workflow pushes.
+      # Re-enable by uncommenting the two GHCR-related blocks below
+      # AND restoring `ghcr.io/bluet/proxybroker2` in the `images:`
+      # list of the metadata-action step.
+      #
+      # - name: Log in to GitHub Container Registry
+      #   uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Compute version components for manual workflow_dispatch with version input.
+      # Strips any leading 'v', then derives major / major.minor by removing
+      # PEP 440 prerelease/post suffixes (a / b / rc / .dev / .post). Only runs
+      # when version input is non-empty.
+      - name: Compute version components (manual dispatch)
+        id: ver
+        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${INPUT_VERSION#v}"
+          # Strip prerelease/post suffix to get bare M.N.P
+          base=$(echo "$version" | sed -E 's/(a|b|rc|\.dev|\.post)[0-9]+.*$//')
+          major="${base%%.*}"
+          major_minor=$(echo "$base" | cut -d. -f1-2)
+          {
+            echo "version=$version"
+            echo "major=$major"
+            echo "major_minor=$major_minor"
+          } >> "$GITHUB_OUTPUT"
 
       # Tag strategy:
       #
@@ -68,34 +106,27 @@ jobs:
       #     Uses type=pep440 (NOT type=semver) because this project
       #     versions in PEP 440 form (`2.0.0b2`), not SemVer
       #     (`2.0.0-beta.2`). PyPI mandates PEP 440 - we follow.
-      #     Fires on any tag-shaped GITHUB_REF: release events AND
-      #     workflow_dispatch invoked with `--ref v...`.
       #
       # `:major.minor` / `:major` / `:latest` - floating aliases.
-      #     Gated on `release` events only via explicit enable=.
-      #     Reasons:
-      #     - Manual workflow_dispatch rebuilds shouldn't accidentally
-      #       move floating tags.
-      #     - Type=match is used instead of {{major}} / {{major.minor}}
-      #       templates because metadata-action's pep440/semver parsers
-      #       deliberately hold floating aliases back for prereleases.
-      #       We want them to advance for prereleases too: this project
-      #       has been in beta for a year, and locking floating tags to
-      #       stable releases would freeze them on `v2.0.0b1` (May 2025)
-      #       until 2.0.0 ships.
+      #     Advanced on every release event AND on workflow_dispatch
+      #     with version input. Type=match is used for release events
+      #     (regex on git tag) because metadata-action's pep440/semver
+      #     parsers deliberately hold floating aliases back for
+      #     prereleases - we want them to advance for prereleases too:
+      #     this project has been in beta for a year, and locking
+      #     floating tags to stable releases would freeze them on
+      #     `v2.0.0b1` (May 2025) until 2.0.0 ships.
       #
-      # `:manual-<timestamp>` - per-build tag for workflow_dispatch.
-      #     Avoids collision with release-published tags.
+      # `:manual-<timestamp>` - per-build tag for workflow_dispatch
+      #     without a version input. Smoke-test builds.
       #
       # `flavor: latest=false` disables metadata-action's automatic
-      # `:latest` setting for the highest stable version. We control
-      # `:latest` explicitly via the type=raw rule above so it ONLY
-      # fires on release events, not on manual workflow_dispatch runs
-      # of stable tags.
+      # `:latest` for the highest stable version. We control `:latest`
+      # explicitly above so it only fires when we explicitly say so.
       #
       # Acknowledged side-effect: if a future patch is released for an
-      # OLDER version line (e.g. 1.5.1 after 2.0.0), the floating tags
-      # would advance backward. Not maintaining old version lines today;
+      # OLDER version line (e.g. 1.5.1 after 2.0.0), floating tags would
+      # advance backward. Not maintaining old version lines today;
       # restore `flavor: latest=auto` if that ever changes.
       - name: Extract image metadata (tags, labels)
         id: meta
@@ -103,15 +134,18 @@ jobs:
         with:
           images: |
             bluet/proxybroker2
-            ghcr.io/bluet/proxybroker2
           flavor: |
             latest=false
           tags: |
-            type=pep440,pattern={{version}}
+            type=pep440,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=match,pattern=v(\d+\.\d+),group=1,enable=${{ github.event_name == 'release' }}
             type=match,pattern=v(\d+),group=1,enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
-            type=raw,value=manual-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{ steps.ver.outputs.version }},enable=${{ steps.ver.outputs.version != '' }}
+            type=raw,value=${{ steps.ver.outputs.major_minor }},enable=${{ steps.ver.outputs.major_minor != '' }}
+            type=raw,value=${{ steps.ver.outputs.major }},enable=${{ steps.ver.outputs.major != '' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
+            type=raw,value=manual-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'workflow_dispatch' && inputs.version == '' }}
 
       # Build once, push to both registries. cache-from/to use the GitHub
       # Actions cache backend so a second run on the same code reuses
