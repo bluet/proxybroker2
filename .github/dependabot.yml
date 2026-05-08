@@ -1,0 +1,25 @@
+# Dependabot configuration.
+#
+# Goals:
+#   - Stay safe: SHA-pinned third-party Actions get bumped when they
+#     release new versions, so we don't fall behind for years.
+#   - Stay quiet: routine bumps land in ONE grouped PR per month, not
+#     one PR per action per release. (Past experience: ungrouped
+#     SHA-pinning floods the inbox; the grouping config below avoids it.)
+#   - Stay reactive on CVEs: security-advisory PRs ALWAYS fire
+#     immediately regardless of the schedule below. The `interval` only
+#     affects routine version updates, not the security-update path.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      gha-deps:
+        patterns:
+          - "*"
+    # Use a single label so monthly grouped PRs are easy to filter.
+    labels:
+      - "dependencies"
+      - "github-actions"
