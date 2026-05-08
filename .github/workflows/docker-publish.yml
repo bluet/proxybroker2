@@ -4,17 +4,18 @@ name: Publish Docker Image
 #   - GitHub Release published: builds + pushes the image automatically.
 #     Same trigger as python-publish.yml, so one release ships both
 #     PyPI and Docker artifacts.
-#   - workflow_dispatch: lets a maintainer re-run after a transient
-#     registry failure or a token rotation, without cutting a new release.
+#   - workflow_dispatch: lets a maintainer kick a build of master HEAD,
+#     useful for testing the workflow itself. Does NOT publish version
+#     tags - to (re)publish a specific tagged release, re-fire the
+#     release event by deleting + recreating the GitHub release.
+#     Reason: docker/metadata-action reads GITHUB_REF, which stays at
+#     the workflow's branch (master) for workflow_dispatch even when
+#     checkout uses a different ref. So the version-tag generation
+#     wouldn't fire correctly from a manual ref input.
 on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      ref:
-        description: "Git ref (tag/branch/SHA) to build from"
-        required: true
-        default: "master"
 
 jobs:
   publish:
@@ -25,12 +26,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        with:
-          # On release events the default checkout is the tag.
-          # On workflow_dispatch we honor the user-supplied ref.
-          # All branches/tags/SHAs are repo-controlled, not arbitrary
-          # untrusted text - safe to pass to the checkout action.
-          ref: ${{ github.event.inputs.ref || github.ref }}
+        # ref omitted: uses GITHUB_REF, which is the released tag for
+        # release events and master for workflow_dispatch.
 
       # Multi-arch builds need QEMU for cross-compilation under buildx.
       - name: Set up QEMU
@@ -57,23 +54,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # docker/metadata-action computes the tag list from the git ref using
-      # semver rules. Strategy:
-      #   - `:VERSION` (e.g. `:2.0.0b2`) always pushed - exact version pin.
-      #   - `:major`, `:major.minor`, `:latest` ALSO pushed on every release,
-      #     INCLUDING prereleases. Rationale: this project has been in beta
-      #     for over a year. If `:latest` only moved on stable releases,
-      #     users pulling `:latest` would be stuck on a year-old beta until
-      #     2.0.0 ships. A user who pulls `:2` wants the most recent 2.x.y,
-      #     not the most recent stable 2.x.y - same for `:latest`.
-      #   - `:latest` is gated on release events only (not workflow_dispatch)
-      #     so a manual rerun from older code never accidentally advances
-      #     the floating tag.
-      #   - Side-effect: if a future patch is released for an OLDER version
-      #     line (e.g. 1.5.1 after 2.0.0), it would advance `:latest`
-      #     backward. Acceptable for now - this project doesn't maintain
-      #     old version lines. Switch to `flavor: latest=auto` if that
-      #     ever changes.
+      # Tag strategy:
+      #
+      # `:VERSION` (e.g. `:2.0.0b2`) - exact version pin, always pushed.
+      #     Uses type=pep440, NOT type=semver: this project versions in
+      #     PEP 440 form (`2.0.0b2`), not SemVer (`2.0.0-beta.2`).
+      #     `type=semver,pattern={{version}}` would silently fail to match
+      #     PEP 440 prerelease tags and skip the build.
+      #
+      # `:major.minor` (e.g. `:2.0`) and `:major` (e.g. `:2`) - floating
+      #     aliases, advanced on EVERY release including prereleases.
+      #     We use `type=match` with a regex against the git tag name,
+      #     NOT `type=pep440,pattern={{major}}.{{minor}}`, because
+      #     metadata-action's PEP 440/SemVer parsers deliberately hold
+      #     these floating aliases back for prereleases. We want them to
+      #     advance for prereleases too: this project has been in beta
+      #     for over a year, and locking floating tags to stable releases
+      #     would leave them frozen on `v2.0.0b1` (May 2025) until 2.0.0
+      #     ships. A user pulling `:2` wants the latest 2.x.y, not the
+      #     latest stable 2.x.y.
+      #
+      # `:latest` - same advancement policy as :major / :major.minor.
+      #     Gated on `release` events only (not workflow_dispatch) so a
+      #     manual master-HEAD build never accidentally moves :latest.
+      #
+      # `:manual-<timestamp>` - per-build tag for workflow_dispatch.
+      #     Avoids collision with release-published tags.
+      #
+      # Acknowledged side-effect: if a future patch is released for an
+      # OLDER version line (e.g. 1.5.1 after 2.0.0), :latest / :major /
+      # :major.minor would advance backward. Not maintaining old version
+      # lines today; switch to `flavor: latest=auto` if that changes.
       - name: Extract image metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
@@ -82,9 +93,9 @@ jobs:
             bluet/proxybroker2
             ghcr.io/bluet/proxybroker2
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=pep440,pattern={{version}}
+            type=match,pattern=v(\d+\.\d+),group=1,enable=${{ github.event_name == 'release' }}
+            type=match,pattern=v(\d+),group=1,enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=raw,value=manual-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'workflow_dispatch' }}
 
