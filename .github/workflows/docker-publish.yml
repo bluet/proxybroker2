@@ -1,17 +1,25 @@
 name: Publish Docker Image
 
 # Triggers:
-#   - GitHub Release published: builds + pushes the image automatically.
-#     Same trigger as python-publish.yml, so one release ships both
-#     PyPI and Docker artifacts.
-#   - workflow_dispatch: lets a maintainer kick a build of master HEAD,
-#     useful for testing the workflow itself. Does NOT publish version
-#     tags - to (re)publish a specific tagged release, re-fire the
-#     release event by deleting + recreating the GitHub release.
-#     Reason: docker/metadata-action reads GITHUB_REF, which stays at
-#     the workflow's branch (master) for workflow_dispatch even when
-#     checkout uses a different ref. So the version-tag generation
-#     wouldn't fire correctly from a manual ref input.
+#
+#   - release: published
+#       Full tag set (:VERSION, :major.minor, :major, :latest) - the
+#       canonical "ship a new version" path. Same trigger as
+#       python-publish.yml, so one release ships PyPI + Docker together.
+#
+#   - workflow_dispatch
+#       Manual trigger. Behavior depends on what ref it's invoked with
+#       (`gh workflow run ... --ref <ref>`):
+#
+#       - With `--ref <tag>` (e.g. `--ref v2.0.0b2`):
+#           Publishes :VERSION only (no floating aliases). Useful for
+#           retroactive single-version rebuilds that must NOT move
+#           :latest / :major / :major.minor. The version tag fires
+#           because metadata-action's pep440 type matches the tag ref.
+#
+#       - With `--ref master` (default):
+#           No tag ref to match - publishes :manual-<timestamp> only.
+#           Useful for smoke-testing the workflow itself.
 on:
   release:
     types: [published]
@@ -26,8 +34,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-        # ref omitted: uses GITHUB_REF, which is the released tag for
-        # release events and master for workflow_dispatch.
+        # ref omitted: uses GITHUB_REF, which for both `release` events
+        # and `workflow_dispatch` is the ref that triggered the workflow.
 
       # Multi-arch builds need QEMU for cross-compilation under buildx.
       - name: Set up QEMU
@@ -56,35 +64,39 @@ jobs:
 
       # Tag strategy:
       #
-      # `:VERSION` (e.g. `:2.0.0b2`) - exact version pin, always pushed.
-      #     Uses type=pep440, NOT type=semver: this project versions in
-      #     PEP 440 form (`2.0.0b2`), not SemVer (`2.0.0-beta.2`).
-      #     `type=semver,pattern={{version}}` would silently fail to match
-      #     PEP 440 prerelease tags and skip the build.
+      # `:VERSION` (e.g. `:2.0.0b2`) - exact version pin.
+      #     Uses type=pep440 (NOT type=semver) because this project
+      #     versions in PEP 440 form (`2.0.0b2`), not SemVer
+      #     (`2.0.0-beta.2`). PyPI mandates PEP 440 - we follow.
+      #     Fires on any tag-shaped GITHUB_REF: release events AND
+      #     workflow_dispatch invoked with `--ref v...`.
       #
-      # `:major.minor` (e.g. `:2.0`) and `:major` (e.g. `:2`) - floating
-      #     aliases, advanced on EVERY release including prereleases.
-      #     We use `type=match` with a regex against the git tag name,
-      #     NOT `type=pep440,pattern={{major}}.{{minor}}`, because
-      #     metadata-action's PEP 440/SemVer parsers deliberately hold
-      #     these floating aliases back for prereleases. We want them to
-      #     advance for prereleases too: this project has been in beta
-      #     for over a year, and locking floating tags to stable releases
-      #     would leave them frozen on `v2.0.0b1` (May 2025) until 2.0.0
-      #     ships. A user pulling `:2` wants the latest 2.x.y, not the
-      #     latest stable 2.x.y.
-      #
-      # `:latest` - same advancement policy as :major / :major.minor.
-      #     Gated on `release` events only (not workflow_dispatch) so a
-      #     manual master-HEAD build never accidentally moves :latest.
+      # `:major.minor` / `:major` / `:latest` - floating aliases.
+      #     Gated on `release` events only via explicit enable=.
+      #     Reasons:
+      #     - Manual workflow_dispatch rebuilds shouldn't accidentally
+      #       move floating tags.
+      #     - Type=match is used instead of {{major}} / {{major.minor}}
+      #       templates because metadata-action's pep440/semver parsers
+      #       deliberately hold floating aliases back for prereleases.
+      #       We want them to advance for prereleases too: this project
+      #       has been in beta for a year, and locking floating tags to
+      #       stable releases would freeze them on `v2.0.0b1` (May 2025)
+      #       until 2.0.0 ships.
       #
       # `:manual-<timestamp>` - per-build tag for workflow_dispatch.
       #     Avoids collision with release-published tags.
       #
+      # `flavor: latest=false` disables metadata-action's automatic
+      # `:latest` setting for the highest stable version. We control
+      # `:latest` explicitly via the type=raw rule above so it ONLY
+      # fires on release events, not on manual workflow_dispatch runs
+      # of stable tags.
+      #
       # Acknowledged side-effect: if a future patch is released for an
-      # OLDER version line (e.g. 1.5.1 after 2.0.0), :latest / :major /
-      # :major.minor would advance backward. Not maintaining old version
-      # lines today; switch to `flavor: latest=auto` if that changes.
+      # OLDER version line (e.g. 1.5.1 after 2.0.0), the floating tags
+      # would advance backward. Not maintaining old version lines today;
+      # restore `flavor: latest=auto` if that ever changes.
       - name: Extract image metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5
@@ -92,6 +104,8 @@ jobs:
           images: |
             bluet/proxybroker2
             ghcr.io/bluet/proxybroker2
+          flavor: |
+            latest=false
           tags: |
             type=pep440,pattern={{version}}
             type=match,pattern=v(\d+\.\d+),group=1,enable=${{ github.event_name == 'release' }}
