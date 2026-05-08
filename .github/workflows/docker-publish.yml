@@ -1,0 +1,128 @@
+name: Publish Docker Image
+
+# Triggers:
+#
+#   - release: published
+#       Full tag set (:VERSION, :major.minor, :major, :latest) - the
+#       canonical "ship a new version" path. Same trigger as
+#       python-publish.yml, so one release ships PyPI + Docker together.
+#
+#   - workflow_dispatch
+#       Manual trigger. Behavior depends on what ref it's invoked with
+#       (`gh workflow run ... --ref <ref>`):
+#
+#       - With `--ref <tag>` (e.g. `--ref v2.0.0b2`):
+#           Publishes :VERSION only (no floating aliases). Useful for
+#           retroactive single-version rebuilds that must NOT move
+#           :latest / :major / :major.minor. The version tag fires
+#           because metadata-action's pep440 type matches the tag ref.
+#
+#       - With `--ref master` (default):
+#           No tag ref to match - publishes :manual-<timestamp> only.
+#           Useful for smoke-testing the workflow itself.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # required to push to ghcr.io
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        # ref omitted: uses GITHUB_REF, which for both `release` events
+        # and `workflow_dispatch` is the ref that triggered the workflow.
+
+      # Multi-arch builds need QEMU for cross-compilation under buildx.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4.0.0
+
+      # Buildx is the modern docker builder; supports multi-platform output.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4.0.0
+
+      # Docker Hub login. Token must be a Hub access token (NOT a password)
+      # scoped to the proxybroker2 repository for least-privilege.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # GHCR login uses the workflow's built-in GITHUB_TOKEN (no extra secret
+      # needed). The `packages: write` permission above is what authorises it.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tag strategy:
+      #
+      # `:VERSION` (e.g. `:2.0.0b2`) - exact version pin.
+      #     Uses type=pep440 (NOT type=semver) because this project
+      #     versions in PEP 440 form (`2.0.0b2`), not SemVer
+      #     (`2.0.0-beta.2`). PyPI mandates PEP 440 - we follow.
+      #     Fires on any tag-shaped GITHUB_REF: release events AND
+      #     workflow_dispatch invoked with `--ref v...`.
+      #
+      # `:major.minor` / `:major` / `:latest` - floating aliases.
+      #     Gated on `release` events only via explicit enable=.
+      #     Reasons:
+      #     - Manual workflow_dispatch rebuilds shouldn't accidentally
+      #       move floating tags.
+      #     - Type=match is used instead of {{major}} / {{major.minor}}
+      #       templates because metadata-action's pep440/semver parsers
+      #       deliberately hold floating aliases back for prereleases.
+      #       We want them to advance for prereleases too: this project
+      #       has been in beta for a year, and locking floating tags to
+      #       stable releases would freeze them on `v2.0.0b1` (May 2025)
+      #       until 2.0.0 ships.
+      #
+      # `:manual-<timestamp>` - per-build tag for workflow_dispatch.
+      #     Avoids collision with release-published tags.
+      #
+      # `flavor: latest=false` disables metadata-action's automatic
+      # `:latest` setting for the highest stable version. We control
+      # `:latest` explicitly via the type=raw rule above so it ONLY
+      # fires on release events, not on manual workflow_dispatch runs
+      # of stable tags.
+      #
+      # Acknowledged side-effect: if a future patch is released for an
+      # OLDER version line (e.g. 1.5.1 after 2.0.0), the floating tags
+      # would advance backward. Not maintaining old version lines today;
+      # restore `flavor: latest=auto` if that ever changes.
+      - name: Extract image metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf  # v6.0.0
+        with:
+          images: |
+            bluet/proxybroker2
+            ghcr.io/bluet/proxybroker2
+          flavor: |
+            latest=false
+          tags: |
+            type=pep440,pattern={{version}}
+            type=match,pattern=v(\d+\.\d+),group=1,enable=${{ github.event_name == 'release' }}
+            type=match,pattern=v(\d+),group=1,enable=${{ github.event_name == 'release' }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            type=raw,value=manual-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      # Build once, push to both registries. cache-from/to use the GitHub
+      # Actions cache backend so a second run on the same code reuses
+      # layers and finishes in seconds instead of minutes.
+      - name: Build and push
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,7 +1,7 @@
 import asyncio
 import ipaddress
 import os.path
-import random
+import secrets
 import socket
 from collections import namedtuple
 
@@ -46,7 +46,10 @@ class Resolver:
         except RuntimeError:
             # No running event loop, will be set later
             self._loop = loop
-        self._resolver = aiodns.DNSResolver()
+        # aiodns.DNSResolver() falls back to asyncio.get_event_loop() when
+        # no loop is passed, which raises RuntimeError on Python 3.14+.
+        # Defer construction until first use if we have no loop yet.
+        self._resolver = aiodns.DNSResolver(loop=self._loop) if self._loop else None
 
     @staticmethod
     def host_is_ip(host):
@@ -92,7 +95,10 @@ class Resolver:
         return GeoData(code, name, region_code, region_name, city_name)
 
     def _pop_random_ip_host(self):
-        host = random.choice(self._temp_host)
+        # secrets.choice (CSPRNG) instead of random.choice for SonarCloud
+        # S2245. The selection isn't security-sensitive (just balances which
+        # ext-IP-detection URL we hit), but secrets is a drop-in here.
+        host = secrets.choice(self._temp_host)
         self._temp_host.remove(host)
         return host
 
@@ -148,13 +154,16 @@ class Resolver:
             else:
                 self._cached_hosts[host] = hosts[0]["host"]
             if logging:
-                log.debug("%s: Host resolved: %s" % (host, self._cached_hosts[host]))
+                log.debug(f"{host}: Host resolved: {self._cached_hosts[host]}")
         else:
             if logging:
-                log.warning("%s: Could not resolve host" % host)
+                log.warning(f"{host}: Could not resolve host")
         return self._cached_hosts.get(host)
 
     async def _resolve(self, host, qtype):
+        if self._resolver is None:
+            # Deferred construction - we are now inside a running loop.
+            self._resolver = aiodns.DNSResolver()
         try:
             resp = await asyncio.wait_for(
                 self._resolver.query(host, qtype), timeout=self._timeout

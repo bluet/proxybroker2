@@ -1,0 +1,108 @@
+"""Example of using provider directories to load custom providers."""
+
+import asyncio
+from pathlib import Path
+
+from proxybroker import Broker, create_provider_config_template
+
+
+async def main():
+    # Example 1: Load providers from a directory
+    print("=== Loading providers from directory ===")
+
+    # Create a custom providers directory
+    custom_dir = Path("./my_custom_providers")
+    custom_dir.mkdir(exist_ok=True)
+
+    # Create some template configurations
+    create_provider_config_template(
+        custom_dir / "simple_proxy_list.yaml", provider_type="simple"
+    )
+    create_provider_config_template(
+        custom_dir / "paginated_proxy_site.yaml", provider_type="paginated"
+    )
+    create_provider_config_template(custom_dir / "proxy_api.json", provider_type="api")
+
+    print(f"Created template configurations in {custom_dir}")
+    print("Edit these files with your actual proxy source URLs\n")
+
+    # Example 2: Use provider directories with Broker
+    print("=== Using custom provider directory with Broker ===")
+
+    # Custom directory ONLY (no bundled defaults). providers=[] is the
+    # explicit "no defaults" signal; providers=None would *add* the
+    # bundled list to whatever the directory loads.
+    Broker(
+        providers=[],
+        provider_dirs=[str(custom_dir)],
+    )
+
+    # Bundled defaults PLUS the custom directory.
+    Broker(
+        provider_dirs=[str(custom_dir)],  # providers=None => bundled defaults
+    )
+
+    # Example 3: Mix custom providers with code-defined ones
+    print("=== Mixing configuration and code providers ===")
+
+    from proxybroker import SimpleProvider
+
+    # Define a provider in code
+    code_provider = SimpleProvider(
+        url="http://example.com/proxies.txt", format="text", proto=("HTTP", "HTTPS")
+    )
+
+    # Use both
+    Broker(
+        providers=[code_provider],  # Code-defined providers
+        provider_dirs=[str(custom_dir)],  # Plus directory providers
+    )
+
+    # Example 4: Multiple provider directories
+    print("=== Using multiple provider directories ===")
+
+    # You might have providers organized by type or source
+    http_providers_dir = Path("./providers/http")
+    socks_providers_dir = Path("./providers/socks")
+    api_providers_dir = Path("./providers/apis")
+
+    # Create directories
+    for dir_path in [http_providers_dir, socks_providers_dir, api_providers_dir]:
+        dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Load from all directories
+    Broker(
+        provider_dirs=[
+            str(http_providers_dir),
+            str(socks_providers_dir),
+            str(api_providers_dir),
+        ]
+    )
+
+    print(
+        "\nProvider directories created. Add your provider configurations to use them!"
+    )
+
+    # Example 5: Demonstration with actual proxy finding
+    # (This would work if you have actual provider configurations)
+    # See examples/find_and_save.py for the full producer/consumer pattern.
+    """
+    proxies = asyncio.Queue()
+    broker = Broker(proxies, provider_dirs=['/path/to/configs'])
+
+    async def consume(q):
+        while True:
+            p = await q.get()
+            if p is None:
+                break
+            print(f"Found proxy: {p.host}:{p.port}")
+
+    await asyncio.gather(
+        broker.find(types=['HTTP', 'HTTPS'], limit=10),
+        consume(proxies),
+    )
+    """
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

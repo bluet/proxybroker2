@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ProxyBroker2 is an async proxy finder, checker, and server. It discovers public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
 **Repository**: `bluet/proxybroker2` (GitHub)
-**Python**: 3.10-3.13
+**Python**: 3.10-3.14
 **Key Dependencies**: aiohttp 3.12.0+, aiodns 3.4.0+, attrs 25.3.0+, asyncio
 
 ## Common Development Commands
@@ -174,6 +174,25 @@ docs/source/
 ├── changelog.md     # Auto-included from root CHANGELOG.md
 └── index.rst        # Main documentation page
 ```
+
+## Custom Providers
+
+Users can add their own proxy sources without modifying the codebase. The
+primary UX is Docker bind-mount: drop `*.yaml` / `*.yml` / `*.json` configs
+into a directory, mount it as `/configs`, and the CLI auto-loads them.
+
+- `--provider-dir PATH` (repeatable) on the CLI
+- `PROXYBROKER_PROVIDER_DIR` env var fallback (single path)
+- `/configs` is the in-container default if it exists
+- `Broker(provider_dirs=[...])` from Python; `providers=[]` means "no
+  bundled defaults" (preserved contract)
+- Helper classes in `proxybroker.provider_utils`: `SimpleProvider`,
+  `PaginatedProvider`, `APIProvider`, `ConfigurableProvider`
+- `load_provider_configs_from_directory()` reads only YAML/JSON (safe for
+  bind-mounts). `load_python_providers_from_directory()` executes `.py`
+  files - opt-in only, never wired to the CLI.
+
+See `docs/custom_providers.md` for the full guide.
 
 ## Known Quirks
 

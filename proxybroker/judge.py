@@ -1,5 +1,5 @@
 import asyncio
-import random
+import secrets
 from urllib.parse import urlparse
 
 import aiohttp
@@ -25,7 +25,7 @@ class Judge:
         self.host = urlparse(url).netloc
         self.path = url.split(self.host)[-1]
         self.ip = None
-        self.is_working = False
+        self._is_working = False
         self.marks = {"via": 0, "proxy": 0}
         self.timeout = timeout
         self.verify_ssl = verify_ssl
@@ -38,7 +38,15 @@ class Judge:
 
     def __repr__(self):
         """Class representation"""
-        return "<Judge [%s] %s>" % (self.scheme, self.host)
+        return f"<Judge [{self.scheme}] {self.host}>"
+
+    @property
+    def is_working(self):
+        return self._is_working
+
+    @is_working.setter
+    def is_working(self, val):
+        self._is_working = val
 
     @classmethod
     def get_random(cls, proto):
@@ -48,7 +56,10 @@ class Judge:
             scheme = "SMTP"
         else:
             scheme = "HTTP"
-        return random.choice(cls.available[scheme])
+        # secrets.choice (CSPRNG) clears SonarCloud S2245; the selection
+        # is not security-sensitive (just round-robins judges) but secrets
+        # is a drop-in replacement.
+        return secrets.choice(cls.available[scheme])
 
     @classmethod
     def clear(cls):
@@ -92,7 +103,7 @@ class Judge:
             aiohttp.ClientResponseError,
             aiohttp.ServerDisconnectedError,
         ) as e:
-            log.debug("%s is failed. Error: %r;" % (self, e))
+            log.debug(f"{self} is failed. Error: {e!r};")
             return
 
         page = page.lower()
@@ -103,7 +114,7 @@ class Judge:
             self.is_working = True
             self.available[self.scheme].append(self)
             self.ev[self.scheme].set()
-            log.debug("%s is verified" % self)
+            log.debug(f"{self} is verified")
         else:
             log.debug(
                 f"{self} is failed. HTTP status code: {resp.status}; "

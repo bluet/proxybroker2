@@ -45,6 +45,14 @@ class Broker:
     :param loop: (optional) asyncio compatible event loop
     :param stop_broker_on_sigint: (optional) whether set SIGINT signal on broker object.
         Useful for a thread other than main thread.
+    :param list provider_dirs:
+        (optional) List of directories from which to load YAML/JSON
+        provider config files at startup. Loaded providers are appended
+        to ``providers`` (or to the default list if ``providers`` is
+        ``None``). Safe for Docker bind-mounts: only data files are read,
+        no Python is executed. Pass ``providers=[]`` together with
+        ``provider_dirs=[...]`` to use ONLY the directory-loaded
+        providers and disable the bundled defaults.
 
     .. deprecated:: 0.2.0
         Use :attr:`max_conn` and :attr:`max_tries` instead of
@@ -62,6 +70,7 @@ class Broker:
         verify_ssl=False,
         loop=None,
         stop_broker_on_sigint=True,
+        provider_dirs=None,
         **kwargs,
     ):
         try:
@@ -107,9 +116,22 @@ class Broker:
         self._on_check = asyncio.Queue(maxsize=max_conn)
         self._max_tries = max_tries
         self._judges = judges
+
+        # Resolve the provider list. Contract:
+        #   providers=None  -> use the bundled PROVIDERS defaults
+        #   providers=[...] -> use exactly that list (empty stays empty)
+        # provider_dirs entries are appended to whichever base was chosen,
+        # so passing providers=[] with provider_dirs=['/configs'] yields
+        # ONLY the directory-loaded providers.
+        base_providers = list(PROVIDERS) if providers is None else list(providers)
+        if provider_dirs:
+            from .provider_utils import load_provider_configs_from_directory
+
+            for directory in provider_dirs:
+                base_providers.extend(load_provider_configs_from_directory(directory))
+
         self._providers = [
-            p if isinstance(p, Provider) else Provider(p)
-            for p in (PROVIDERS if providers is None else providers)
+            p if isinstance(p, Provider) else Provider(p) for p in base_providers
         ]
         if stop_broker_on_sigint and self._loop:
             try:
@@ -346,7 +368,7 @@ class Broker:
                         await self._handle(proxy, check=check)
             log.debug("Grab cycle is complete")
             if self._server:
-                log.debug("fall asleep for %d seconds" % GRAB_PAUSE)
+                log.debug(f"fall asleep for {GRAB_PAUSE} seconds")
                 await asyncio.sleep(GRAB_PAUSE)
                 log.debug("awaked")
             else:
@@ -401,11 +423,9 @@ class Broker:
                 pass
 
         if self._server and not self._proxies.empty() and self._limit <= 0:
-            log.debug(
-                "pause. proxies: %s; limit: %s" % (self._proxies.qsize(), self._limit)
-            )
+            log.debug(f"pause. proxies: {self._proxies.qsize()}; limit: {self._limit}")
             await self._proxies.join()
-            log.debug("unpause. proxies: %s" % self._proxies.qsize())
+            log.debug(f"unpause. proxies: {self._proxies.qsize()}")
 
         await self._on_check.put(None)
         task = asyncio.create_task(self._checker.check(proxy))
@@ -413,7 +433,7 @@ class Broker:
         self._all_tasks.append(task)
 
     def _push_to_result(self, proxy):
-        log.debug("push to result: %r" % proxy)
+        log.debug(f"push to result: {proxy!r}")
         self._proxies.put_nowait(proxy)
         self._update_limit()
 
@@ -445,7 +465,7 @@ class Broker:
             if not task.done():
                 task.cancel()
         self._push_to_result(None)
-        log.info("Done! Total found proxies: %d" % len(self.unique_proxies))
+        log.info(f"Done! Total found proxies: {len(self.unique_proxies)}")
 
     def show_stats(self, verbose=False, **kwargs):
         """Show statistics on the found proxies.
@@ -512,7 +532,7 @@ class Broker:
                 for ngtr, events in sorted(
                     events_by_ngtr.items(), key=lambda item: item[0]
                 ):
-                    full_log.append("\t%s" % ngtr)
+                    full_log.append(f"\t{ngtr}")
                     for event, runtime in events:
                         if event.startswith("Initial connection"):
                             full_log.append("\t\t-------------------")
@@ -528,9 +548,9 @@ class Broker:
             print("Stats:")
             pprint(stat)
 
-        print("The number of working proxies: %d" % num_working_proxies)
+        print(f"The number of working proxies: {num_working_proxies}")
         for proto, proxies in proxies_by_type.items():
-            print("%s (%s): %s" % (proto, len(proxies), proxies))
+            print(f"{proto} ({len(proxies)}): {proxies}")
         print("Errors:", errors)
 
 

@@ -13,8 +13,12 @@ class TestCLI:
         """Run CLI command and return result."""
         cmd = [sys.executable, "-m", "proxybroker"] + args
         try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout
+            # sys.executable is trusted in test fixtures
+            result = subprocess.run(  # noqa: S603
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
             )
             return result
         except subprocess.TimeoutExpired:
@@ -270,3 +274,180 @@ class TestCLI:
         assert result.returncode == 0
         assert "usage:" in result.stdout.lower()
         assert command in result.stdout
+
+
+class TestProviderDirResolution:
+    """Test --provider-dir flag and PROXYBROKER_PROVIDER_DIR fallback resolution."""
+
+    def test_cli_flag_takes_priority(self, monkeypatch):
+        """--provider-dir on CLI overrides env var and /configs convention."""
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.setenv("PROXYBROKER_PROVIDER_DIR", "/from-env")
+
+        class NS:
+            provider_dirs = ["/from-cli-1", "/from-cli-2"]
+
+        assert _resolve_provider_dirs(NS()) == ["/from-cli-1", "/from-cli-2"]
+
+    def test_env_var_used_when_no_flag(self, monkeypatch):
+        """$PROXYBROKER_PROVIDER_DIR is used when --provider-dir is absent."""
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.setenv("PROXYBROKER_PROVIDER_DIR", "/from-env")
+
+        class NS:
+            provider_dirs = None
+
+        assert _resolve_provider_dirs(NS()) == ["/from-env"]
+
+    def test_returns_none_when_unset(self, monkeypatch):
+        """When nothing is configured and /configs does not exist, return None.
+
+        None preserves the Broker's default behaviour (use bundled providers
+        only). Returning [] would be wrong - it would imply 'no providers'.
+        """
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.delenv("PROXYBROKER_PROVIDER_DIR", raising=False)
+        # /configs is unlikely to exist on a dev machine, but be explicit.
+        monkeypatch.setattr(os.path, "isdir", lambda p: False)
+
+        class NS:
+            provider_dirs = None
+
+        assert _resolve_provider_dirs(NS()) is None
+
+    def test_configs_default_when_directory_exists(self, monkeypatch, tmp_path):
+        """If /configs exists in the container, use it as the default."""
+        from proxybroker.cli import _resolve_provider_dirs
+
+        monkeypatch.delenv("PROXYBROKER_PROVIDER_DIR", raising=False)
+        # Pretend /configs exists.
+        monkeypatch.setattr(os.path, "isdir", lambda p: p == "/configs")
+
+        class NS:
+            provider_dirs = None
+
+        assert _resolve_provider_dirs(NS()) == ["/configs"]
+
+
+class TestProviderDirParserPlacement:
+    """--provider-dir must be accepted before AND after the subcommand.
+
+    Argparse subparsers do not inherit top-level args by default. Without
+    a parent-parser, `proxybroker find --types HTTP --provider-dir X` would
+    fail with 'unrecognized arguments'. This test guards that fix.
+    """
+
+    def _parse(self, *args):
+        from proxybroker.cli import create_parser
+
+        return create_parser().parse_args(list(args))
+
+    def test_provider_dir_before_subcommand(self):
+        from proxybroker.cli import _resolve_provider_dirs
+
+        ns = self._parse("--provider-dir", "/before", "find", "--types", "HTTP")
+        # Top-level uses a separate dest; the resolver merges both.
+        assert _resolve_provider_dirs(ns) == ["/before"]
+        assert ns.command == "find"
+
+    def test_provider_dir_after_find_subcommand(self):
+        ns = self._parse("find", "--types", "HTTP", "--provider-dir", "/after")
+        assert ns.provider_dirs == ["/after"]
+        assert ns.command == "find"
+
+    def test_provider_dir_after_grab_subcommand(self):
+        ns = self._parse("grab", "--provider-dir", "/g")
+        assert ns.provider_dirs == ["/g"]
+        assert ns.command == "grab"
+
+    def test_provider_dir_after_serve_subcommand(self):
+        ns = self._parse("serve", "--types", "HTTP", "--provider-dir", "/s")
+        assert ns.provider_dirs == ["/s"]
+        assert ns.command == "serve"
+
+    def test_provider_dir_repeatable_after_subcommand(self):
+        ns = self._parse(
+            "find",
+            "--types",
+            "HTTP",
+            "--provider-dir",
+            "/a",
+            "--provider-dir",
+            "/b",
+        )
+        assert ns.provider_dirs == ["/a", "/b"]
+
+    def test_provider_dir_merges_top_and_sub_positions(self):
+        """When the user supplies --provider-dir on BOTH sides, both
+        values must be preserved. argparse's parents= pattern would
+        silently drop the top-level value; we work around it by using
+        different dests and merging in _resolve_provider_dirs.
+        """
+        from proxybroker.cli import _resolve_provider_dirs
+
+        ns = self._parse(
+            "--provider-dir",
+            "/before",
+            "find",
+            "--types",
+            "HTTP",
+            "--provider-dir",
+            "/after",
+        )
+        assert _resolve_provider_dirs(ns) == ["/before", "/after"]
+
+
+class TestOutputHandling:
+    """Cover the cli.handle() / outformat() output path used by find/grab."""
+
+    def test_outformat_json_brackets_added(self, tmp_path):
+        """JSON output mode wraps writes in [ ... ]."""
+        from proxybroker.cli import outformat
+
+        outfile = tmp_path / "out.json"
+        with outfile.open("w") as f:
+            with outformat(f, "json"):
+                f.write('{"host":"192.0.2.1"}')
+        text = outfile.read_text()
+        assert text.startswith("[\n")
+        assert text.endswith("\n]")
+
+    def test_outformat_txt_no_wrapping(self, tmp_path):
+        """Non-JSON formats do not add brackets."""
+        from proxybroker.cli import outformat
+
+        outfile = tmp_path / "out.txt"
+        with outfile.open("w") as f:
+            with outformat(f, "txt"):
+                f.write("192.0.2.1:8080\n")
+        text = outfile.read_text()
+        assert text == "192.0.2.1:8080\n"
+
+    @pytest.mark.asyncio
+    async def test_handle_consumes_proxies_from_queue(self, tmp_path):
+        """handle() reads from an asyncio.Queue and writes per-proxy lines
+        until it sees the None sentinel.
+        """
+        import asyncio
+        from unittest.mock import MagicMock
+
+        from proxybroker.cli import handle
+
+        proxies = asyncio.Queue()
+        # Two fake proxies + sentinel
+        for host in ("192.0.2.1", "198.51.100.1"):
+            p = MagicMock()
+            p.__repr__ = lambda self_, h=host: f"<Proxy {h}:8080>"
+            p.as_text = lambda h=host: f"{h}:8080\n"
+            await proxies.put(p)
+        await proxies.put(None)
+
+        outfile = tmp_path / "out.txt"
+        with outfile.open("w") as f:
+            await handle(proxies, outfile=f, format="txt")
+        text = outfile.read_text()
+        assert "192.0.2.1:8080" in text
+        assert "198.51.100.1:8080" in text
