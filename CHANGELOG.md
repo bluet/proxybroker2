@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0b3] - 2026-05-09
+
+🌐 **Full IPv6 support — first-class across the stack**
+
+This release makes IPv6 a peer of IPv4 across detection, validation, anonymity comparison, SOCKS5 proxying, HTTP CONNECT bracketing, provider parsing, and DNS resolution. Closes #201 (IPv6 epic) and #214 (test infra). Six follow-up tickets filed (#213, #215–#220) for the next-quarter roadmap.
+
+The previous IPv6 stubs scattered across the codebase were either non-functional (`IPv6Pattern` regex returned tuples; `Resolver.host_is_ip` was IPv4-only with a `# TODO` since 2017) or actively broken (a 2025 Cursor-agent attempt at `host_is_ip` rejected `::ffff:192.0.2.1` because it contained both `.` and `:`, and never made it to master). The root-cause fix in this release adopts **RFC 5952 canonical form** as the single in-process IP representation and threads it through every comparison site.
+
 ### Added
 - **Full IPv6 support across the stack** (#201). IPv6 is now first-class
   alongside IPv4 across detection, validation, anonymity comparison,
