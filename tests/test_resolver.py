@@ -185,6 +185,47 @@ async def test_resolve_happy_eyeballs_v6_only_when_a_fails(mocker, resolver):
 
 
 @pytest.mark.asyncio
+async def test_resolve_explicit_qtype_a_does_not_race(mocker, resolver):
+    """Caller passing qtype='A' explicitly gets legacy A-only path - no
+    AAAA query, no race. Without this, a caller that needs A-only
+    semantics could get an IPv6 answer back if AAAA wins the race,
+    breaking their downstream contract.
+    """
+    resolver._cached_hosts.clear()
+    from types import SimpleNamespace
+
+    calls = []
+
+    async def fake_resolve(host, qtype):
+        calls.append(qtype)
+        return [SimpleNamespace(host="192.0.2.10")]
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+    result = await resolver.resolve("a-only.example.com", qtype="A")
+    assert calls == ["A"]
+    assert result == "192.0.2.10"
+
+
+@pytest.mark.asyncio
+async def test_resolve_explicit_family_inet_does_not_race(mocker, resolver):
+    """Caller passing family=AF_INET expects only A records back. The
+    sentinel-default qtype lets us distinguish this from the racing path.
+    """
+    resolver._cached_hosts.clear()
+    from types import SimpleNamespace
+
+    calls = []
+
+    async def fake_resolve(host, qtype):
+        calls.append(qtype)
+        return [SimpleNamespace(host="192.0.2.20")]
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+    await resolver.resolve("v4-only.example.com", family=socket.AF_INET)
+    assert calls == ["A"]
+
+
+@pytest.mark.asyncio
 async def test_resolve_happy_eyeballs_both_fail_raises(mocker, resolver):
     """If both A and AAAA fail, ResolveError propagates (preserves the
     legacy "could not resolve" contract that callers rely on)."""
@@ -264,17 +305,17 @@ async def test_resolve_cache(mocker, resolver):
     mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
     await resolver.resolve("test.com")
     await resolver.resolve("test2.com", port=80, family=socket.AF_INET)
-    # Happy Eyeballs DNS fires both A and AAAA per resolve() call, so
-    # 2 fresh resolves => 4 underlying _resolve invocations (A + AAAA
-    # for each host). The AAAA half raises (per query_side_effect) and
-    # is gracefully discarded by _race_a_aaaa.
-    assert resolver._resolve.call_count == 4
+    # Resolve dispatch:
+    #   resolve("test.com") - no family pinned -> Happy Eyeballs (2 calls)
+    #   resolve("test2.com", family=AF_INET) - family pinned -> A-only (1 call)
+    # = 3 _resolve invocations.
+    assert resolver._resolve.call_count == 3
 
     assert await resolver.resolve("test.com") == "127.0.0.1"
     resp = await resolver.resolve("test2.com")
     assert resp[0]["host"] == "127.0.0.2"
-    # Cache hits short-circuit before _race_a_aaaa, so no new calls.
-    assert resolver._resolve.call_count == 4
+    # Cache hits short-circuit before any _resolve call.
+    assert resolver._resolve.call_count == 3
 
     # Mock an exception for test3.com
     mocker.patch(
@@ -283,6 +324,6 @@ async def test_resolve_cache(mocker, resolver):
     )
     with pytest.raises(ResolveError):
         await resolver.resolve("test3.com")
-    # Failed resolve still fires both A and AAAA in parallel; both
-    # raise -> 2 additional _resolve invocations.
-    assert resolver._resolve.call_count == 6
+    # No family pinned -> Happy Eyeballs race; both A and AAAA fail -> 2
+    # additional _resolve invocations -> 5 total.
+    assert resolver._resolve.call_count == 5

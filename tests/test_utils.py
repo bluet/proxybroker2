@@ -161,6 +161,28 @@ def test_find_proxy_pairs_mixed_v4_v6():
     assert {("2001:db8::1", "9090"), ("fe80::1", "1080")} <= set(pairs)
 
 
+def test_find_proxy_pairs_ipv6_with_zone_id():
+    """RFC 6874 zone IDs in bracketed v6 proxies must be accepted.
+
+    Without this, link-local proxies (fe80::1%eth0) silently never
+    parse, even though canonicalize_ip and Resolver.host_is_ip both
+    accept the form.
+    """
+    from proxybroker.utils import find_proxy_pairs
+
+    pairs = find_proxy_pairs("Try [fe80::1%eth0]:8080 for SOCKS")
+    assert ("fe80::1%eth0", "8080") in pairs
+
+
+def test_get_all_ip_strips_trailing_punctuation():
+    """A v6 literal at the end of a sentence (e.g., `Real IP: ::1.`)
+    should still parse - the tokenizer greedily includes trailing dots
+    but they must not break canonicalize_ip validation.
+    """
+    found = get_all_ip("Server says: 2001:db8::1. Cool!")
+    assert "2001:db8::1" in found
+
+
 def test_get_status_code():
     assert get_status_code("HTTP/1.1 200 OK\r\n") == 200
     assert get_status_code("<html>123</html>\r\n") == 400

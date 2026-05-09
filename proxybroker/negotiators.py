@@ -28,12 +28,20 @@ def _CONNECT_request(host, port, **kwargs):
     # URI authority components. Without brackets, "CONNECT 2001:db8::1:443"
     # is ambiguous (where does the host end and the port begin?) and
     # standards-compliant proxies will reject it.
-    if ":" in str(host):
-        authority = f"[{host}]:{port}"
-        host_header = f"[{host}]"
+    #
+    # Strip any caller-supplied brackets first so callers passing values
+    # straight from `urlparse('https://[2001:db8::1]/').netloc` (already
+    # bracketed) don't end up with double brackets like
+    # `[[2001:db8::1]]:443`.
+    host_str = str(host)
+    if host_str.startswith("[") and host_str.endswith("]"):
+        host_str = host_str[1:-1]
+    if ":" in host_str:
+        authority = f"[{host_str}]:{port}"
+        host_header = f"[{host_str}]"
     else:
-        authority = f"{host}:{port}"
-        host_header = f"{host}"
+        authority = f"{host_str}:{port}"
+        host_header = f"{host_str}"
     headers = "\r\n".join(f"{k}: {v}" for k, v in kwargs.items())
     return (
         f"CONNECT {authority} HTTP/1.1\r\n"

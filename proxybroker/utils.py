@@ -44,7 +44,10 @@ IPPortPatternGlobal = re.compile(
 # hex/colon/dot/percent characters inside brackets) - validation is
 # performed by `canonicalize_ip` afterwards, not by the regex grammar.
 # Provably ReDoS-free (no alternation, no nested quantifiers).
-IPv6BracketedPortPattern = re.compile(r"\[([0-9A-Fa-f:.%]+)\]:(\d{2,5})")
+# Bracketed [v6]:port. Char class includes alphanumeric+`_`+`-` to
+# accept link-local zone IDs (e.g., `[fe80::1%eth0]:8080`); validation
+# done by `canonicalize_ip` afterwards, not the regex grammar.
+IPv6BracketedPortPattern = re.compile(r"\[([0-9A-Za-z:.%_\-]+)\]:(\d{2,5})")
 
 
 def get_headers(rv=False):
@@ -124,7 +127,11 @@ def get_all_ip(page: str) -> set[str]:
         if ":" not in tok:
             # Pure IPv4 token (no colon) - already covered by IPPattern.
             continue
-        canonical = canonicalize_ip(tok)
+        # Strip trailing punctuation that the tokenizer greedily includes
+        # (e.g., "Real IP: 2001:db8::1." would otherwise fail validation
+        # silently). Leading dots are not allowed by IPv6 grammar so no
+        # left strip needed.
+        canonical = canonicalize_ip(tok.rstrip("."))
         if canonical is not None:
             found.add(canonical)
     return found

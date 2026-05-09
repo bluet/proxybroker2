@@ -161,21 +161,20 @@ class Provider:
         return page
 
     def find_proxies(self, page):
-        return self._find_proxies(page)
-
-    def _find_proxies(self, page):
-        # Default IPv4 extraction via the legacy pattern (subclasses may
-        # override `_pattern` for source-specific HTML quirks). IPv6
-        # entries in `[v6]:port` form are extracted in addition - they
-        # are validated and canonicalised via stdlib `ipaddress` so
-        # invalid bracketed garbage is silently dropped rather than
-        # surfacing as proxy candidates.
-        proxies = list(self._pattern.findall(page))
+        # Default IPv4 extraction via _find_proxies (subclasses may
+        # override `_pattern`), then add IPv6 `[v6]:port` entries here
+        # in the public method so subclasses that override `find_proxies`
+        # to do their own decoding (b64, custom parsing) aren't fed
+        # already-normalized (host, port) tuples they can't handle.
+        proxies = self._find_proxies(page)
         for raw_v6, port in IPv6BracketedPortPattern.findall(page):
             canonical = canonicalize_ip(raw_v6)
             if canonical is not None:
                 proxies.append((canonical, port))
         return proxies
+
+    def _find_proxies(self, page):
+        return list(self._pattern.findall(page))
 
 
 class Freeproxylists_com(Provider):

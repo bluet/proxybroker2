@@ -121,6 +121,20 @@ class TestConnectIPv6Authority:
             req = _CONNECT_request("fe80::abcd", port).decode()
             assert f"CONNECT [fe80::abcd]:{port} HTTP/1.1\r\n" in req
 
+    def test_connect_request_does_not_double_bracket(self):
+        """If caller passes an already-bracketed v6 host (e.g. from
+        urlparse('https://[2001:db8::1]/').netloc), don't emit
+        `CONNECT [[2001:db8::1]]:443` which standards-compliant proxies
+        will reject.
+        """
+        from proxybroker.negotiators import _CONNECT_request
+
+        req = _CONNECT_request("[2001:db8::1]", 443).decode()
+        assert "CONNECT [2001:db8::1]:443 HTTP/1.1\r\n" in req
+        assert "[[" not in req
+        assert "]]" not in req
+        assert "\r\nHost: [2001:db8::1]\r\n" in req
+
 
 class TestSocks5IPv6Wire:
     """Wire-level tests for SOCKS5 ATYP encoding (RFC 1928).

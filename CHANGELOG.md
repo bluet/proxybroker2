@@ -8,27 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Happy Eyeballs DNS** (RFC 8305 § 3) in `Resolver.resolve()` (#201).
-  When the caller doesn't pin `qtype`, A and AAAA queries fire in
-  parallel; the first non-empty answer wins; the slower task is
-  cancelled. Replaces sequential A→AAAA fallback - eliminates the
-  full DNS round-trip latency for v6-only hostnames and shaves the
-  worst-case latency for dual-stack hosts on broken networks.
-- **Modern type hints** on `canonicalize_ip`, `find_proxy_pairs`,
-  `_format_host_port` (PEP 604 union syntax). Better IDE/mypy
-  ergonomics for downstream consumers.
-
-### Changed
-- `find_proxy_pairs(text)` now canonicalises both IPv4 AND IPv6
-  entries (#201). IPv4 canonical form equals identity, so legacy
-  v4-only feeds see no behavior change - the contract is just
-  consistent now: every returned `(ip, port)` has a canonical IP.
-- `Socks4Ngtr.negotiate(ip=v6, ...)` raises `BadResponseError(
-  "SOCKS4 protocol does not support IPv6 destinations")` instead
-  of a cryptic `OSError` from `inet_aton` (#201). Logs point users
-  at SOCKS5 for IPv6.
-
-### Added
 - **Full IPv6 support across the stack** (#201). IPv6 is now first-class
   alongside IPv4 across detection, validation, anonymity comparison,
   SOCKS5 proxying, and `[v6]:port` provider parsing.
@@ -46,9 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     returning canonical form so equivalent encodings collapse to a
     single set element.
   - `IPv6BracketedPortPattern` and the new `find_proxy_pairs(text)`
-    helper extract `[v6]:port` proxy pairs from text. Wired into the
+    helper extract `[v6]:port` proxy pairs from text (including
+    link-local zone IDs like `[fe80::1%eth0]:8080`). Wired into the
     base `Provider._find_proxies` and into `Broker._load`'s file/raw
     string parsing so every provider feed can surface IPv6 proxies.
+    Bracketed IPv6 spans are masked from the IPv4 line regex to
+    prevent IPv4-mapped IPv6 addresses (`[::ffff:1.2.3.4]:8080`)
+    from spawning a phantom IPv4 entry.
   - `_get_anonymity_lvl` and `Judge.check` now use canonical-form set
     membership instead of raw substring matching, so v6 leaks are
     correctly classified regardless of how the judge formatted the
@@ -59,17 +42,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     output is unambiguous.
   - `Socks5Ngtr` emits `ATYP=0x04` + 16-byte address for IPv6
     destinations (`ATYP=0x01` + 4-byte for IPv4 unchanged), unblocking
-    SOCKS5 connections to IPv6 origins. SOCKS4 stays IPv4-only by spec
-    (RFC 1928 has no v6 ATYP).
-
-### Removed
-- **`IPv6Pattern` 700-character regex** (#201) and its
-  `# nosemgrep: regex_dos` suppression. The pattern carried many
-  capture groups so `re.findall` returned tuples (not strings) and
-  IPv6 entries silently never matched. Replaced by the narrow
-  `_IPV6_CANDIDATE_PATTERN` tokenizer + stdlib `ipaddress` validator.
+    SOCKS5 connections to IPv6 origins. Reply ATYP read from the
+    *response* (not the request) per RFC 1928 § 6 — dual-stack
+    proxies may bind a different family. SOCKS4 stays IPv4-only by
+    spec (the SOCKS4 protocol predates IPv6 and only defines a 4-byte
+    address field; ATYP=0x04 is a SOCKS5/RFC-1928-only construct).
+  - **Happy Eyeballs DNS** (RFC 8305 § 3) in `Resolver.resolve()`.
+    When the caller doesn't pin `qtype` or `family`, A and AAAA
+    queries fire in parallel; the first non-empty answer wins; the
+    slower task is cancelled. Callers that explicitly pass
+    `qtype="A"` or `family=socket.AF_INET[/INET6]` get the
+    single-family path, preserving the legacy A-only contract.
+- **Modern type hints** on `canonicalize_ip`, `find_proxy_pairs`,
+  `_format_host_port` (PEP 604 union syntax). Better IDE/mypy
+  ergonomics for downstream consumers.
 
 ### Changed
+- `find_proxy_pairs(text)` now canonicalises both IPv4 AND IPv6
+  entries (#201). IPv4 canonical form equals identity, so legacy
+  v4-only feeds see no behavior change — the contract is just
+  consistent now: every returned `(ip, port)` has a canonical IP.
+- `Socks4Ngtr.negotiate(ip=v6, ...)` raises `BadResponseError(
+  "SOCKS4 protocol does not support IPv6 destinations")` instead
+  of a cryptic `OSError` from `inet_aton` (#201). Logs point users
+  at SOCKS5 for IPv6.
 - `Resolver.host_is_ip` legacy behavior preserved for IPv4 with leading
   zeros (e.g. `127.0.0.001`); accepted by the wrapper even though
   CPython 3.9.5+ rejects them under CVE-2021-29921. Documented in the
@@ -77,6 +73,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `judge.py:Judge.check` and `checker.py:_get_anonymity_lvl` now log
   the boolean visibility result (rather than the substring expression)
   for symmetry with how the v6 set-membership comparison is done.
+
+### Removed
+- **`IPv6Pattern` 700-character regex** (#201) and its
+  `# nosemgrep: regex_dos` suppression. The pattern carried many
+  capture groups so `re.findall` returned tuples (not strings) and
+  IPv6 entries silently never matched. Replaced by the narrow
+  `_IPV6_CANDIDATE_PATTERN` tokenizer + stdlib `ipaddress` validator.
 
 ## [2.0.0b2] - 2026-05-08
 

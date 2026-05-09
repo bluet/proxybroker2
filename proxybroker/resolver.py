@@ -22,6 +22,14 @@ _geo_db = _citydb if os.path.exists(_citydb) else _countrydb
 
 _mmdb_reader = maxminddb.open_database(_geo_db)
 
+# Sentinel for `Resolver.resolve(qtype=...)` so we can tell apart
+# "caller didn't specify" (default → Happy Eyeballs A+AAAA race) from
+# "caller explicitly passed qtype='A'" (legacy A-only single-query).
+# Without the sentinel, the previous `qtype="A"` default would force
+# every default call into the dual-stack race even when the caller
+# wanted the legacy contract.
+_QTYPE_DEFAULT = object()
+
 
 class Resolver:
     """Async host resolver based on aiodns."""
@@ -146,20 +154,27 @@ class Resolver:
                     return canonical
         raise RuntimeError("Could not get the external IP")
 
-    async def resolve(self, host, port=80, family=None, qtype="A", logging=True):
+    async def resolve(
+        self, host, port=80, family=None, qtype=_QTYPE_DEFAULT, logging=True
+    ):
         """Resolve `host` to one or more IP addresses.
 
-        When the caller doesn't pin a specific record type (`qtype="A"`,
-        the default), A and AAAA queries fire in parallel per Happy
-        Eyeballs DNS (RFC 8305 § 3). The first non-empty answer wins;
-        the slower query is cancelled. If both fail, the most recent
-        error is re-raised to preserve the historical "could not
-        resolve" contract.
+        When the caller doesn't pin a specific record type or address
+        family, A and AAAA queries fire in parallel per Happy Eyeballs
+        DNS (RFC 8305 § 3). The first non-empty answer wins; the slower
+        query is cancelled. If both fail, the most recent error is
+        re-raised to preserve the historical "could not resolve" contract.
 
-        Sequential fallback would add a full DNS round-trip of latency
-        for v6-only hostnames; parallel race makes v4-only and v6-only
-        hosts resolve at roughly the same speed and shaves the worst-
-        case latency for dual-stack hosts on broken networks.
+        Callers that explicitly pass `qtype="A"`, `qtype="AAAA"`, or
+        `family=socket.AF_INET[/INET6]` get the legacy single-family
+        path and never see a result from the other family. This
+        preserves the contract for callers that need A-only (or
+        AAAA-only) results.
+
+        Sequential A→AAAA fallback would add a full DNS round-trip of
+        latency for v6-only hostnames; parallel race makes v4-only and
+        v6-only hosts resolve at roughly the same speed and shaves the
+        worst-case latency for dual-stack hosts on broken networks.
         """
         if self.host_is_ip(host):
             # Canonicalise the literal so callers downstream of resolve()
@@ -171,10 +186,7 @@ class Resolver:
         if _host:
             return _host
 
-        if qtype == "A":
-            resp = await self._race_a_aaaa(host)
-        else:
-            resp = await self._resolve(host, qtype)
+        resp = await self._fetch_records(host, family, qtype)
 
         if resp:
             hosts = [
@@ -202,6 +214,23 @@ class Resolver:
             if logging:
                 log.warning(f"{host}: Could not resolve host")
         return self._cached_hosts.get(host)
+
+    async def _fetch_records(self, host, family, qtype):
+        """Choose A-only / AAAA-only / parallel race based on caller intent.
+
+        Extracted from `resolve()` to keep that method below the
+        cognitive-complexity threshold (Sonar S3776) and to make the
+        family/qtype dispatch explicit in one place.
+        """
+        if qtype is not _QTYPE_DEFAULT:
+            # Caller pinned the query type - honor it without racing.
+            return await self._resolve(host, qtype)
+        if family == socket.AF_INET:
+            return await self._resolve(host, "A")
+        if family == socket.AF_INET6:
+            return await self._resolve(host, "AAAA")
+        # Default: Happy Eyeballs (race A and AAAA).
+        return await self._race_a_aaaa(host)
 
     async def _race_a_aaaa(self, host):
         """Race A and AAAA queries; return the first non-empty answer.
