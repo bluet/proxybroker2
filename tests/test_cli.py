@@ -456,12 +456,14 @@ class TestDeferredFileArguments:
 
         assert captured["data_text"] == "203.0.113.10:8080\n"
         assert captured["data"].closed
+        assert captured["data"].encoding
         assert captured["data"].encoding.lower() == "utf-8"
         assert captured["outfile"].line_buffering is True
+        assert captured["outfile"].encoding
         assert captured["outfile"].encoding.lower() == "utf-8"
         assert captured["outfile"].closed
 
-    def test_cli_uses_stdout_when_outfile_not_provided(self, monkeypatch):
+    def test_cli_uses_stdout_when_outfile_is_none(self, monkeypatch):
         import proxybroker.cli as cli_mod
 
         captured = {}
@@ -508,6 +510,7 @@ class TestDeferredFileArguments:
 
         assert captured["data"] is sys.stdin
         assert captured["outfile"] is sys.stdout
+        assert captured["outfile"].encoding
 
     @pytest.mark.parametrize(
         ("args", "expected_exception"),
