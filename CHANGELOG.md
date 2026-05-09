@@ -27,11 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `IPv6BracketedPortPattern` and the new `find_proxy_pairs(text)`
     helper extract `[v6]:port` proxy pairs from text (including
     link-local zone IDs like `[fe80::1%eth0]:8080`). Wired into the
-    base `Provider._find_proxies` and into `Broker._load`'s file/raw
-    string parsing so every provider feed can surface IPv6 proxies.
-    Bracketed IPv6 spans are masked from the IPv4 line regex to
-    prevent IPv4-mapped IPv6 addresses (`[::ffff:1.2.3.4]:8080`)
-    from spawning a phantom IPv4 entry.
+    public `Provider.find_proxies` (kept out of the lower-level
+    `_find_proxies` raw-regex helper so subclasses that pipe its
+    output through `b64decode`/custom decoders aren't fed
+    already-normalized `(host, port)` tuples) and into
+    `Broker._load`'s file/raw string parsing so every provider feed
+    can surface IPv6 proxies. Bracketed IPv6 spans are masked from
+    the IPv4 line regex in both paths to prevent IPv4-mapped IPv6
+    addresses (`[::ffff:1.2.3.4]:8080`) from spawning a phantom IPv4
+    entry.
   - `_get_anonymity_lvl` and `Judge.check` now use canonical-form set
     membership instead of raw substring matching, so v6 leaks are
     correctly classified regardless of how the judge formatted the
