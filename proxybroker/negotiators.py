@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import struct
 from abc import ABC, abstractmethod
 from socket import inet_aton
@@ -71,11 +72,25 @@ class Socks5Ngtr(BaseNegotiator):
             self._proxy.log("Failed (invalid data)", err=BadResponseError)
             raise BadResponseError
 
-        bip = inet_aton(kwargs.get("ip"))
+        # SOCKS5 (RFC 1928) supports IPv4 (ATYP=0x01, 4 bytes) and IPv6
+        # (ATYP=0x04, 16 bytes). We dispatch on `ipaddress.ip_address`
+        # rather than catching `inet_aton` failures so the encoding is
+        # explicit and v6-only callers don't pay an exception round-trip.
+        addr = ipaddress.ip_address(kwargs.get("ip"))
         port = kwargs.get("port", 80)
+        if isinstance(addr, ipaddress.IPv6Address):
+            atyp = 0x04
+        else:
+            atyp = 0x01
+        # VER(1) + CMD(1) + RSV(1) + ATYP(1) + ADDR(4 or 16) + PORT(2)
+        request = (
+            struct.pack(">4B", 5, 1, 0, atyp) + addr.packed + struct.pack(">H", port)
+        )
 
-        await self._proxy.send(struct.pack(">8BH", 5, 1, 0, 1, *bip, port))
-        resp = await self._proxy.recv(10)
+        await self._proxy.send(request)
+        # Reply size: VER(1)+REP(1)+RSV(1)+ATYP(1)+BND.ADDR(4 or 16)+BND.PORT(2)
+        reply_size = 22 if atyp == 0x04 else 10
+        resp = await self._proxy.recv(reply_size)
 
         if resp[0] != 0x05 or resp[1] != 0x00:
             self._proxy.log("Failed (invalid data)", err=BadResponseError)

@@ -12,7 +12,12 @@ from .providers import PROVIDERS, Provider
 from .proxy import Proxy
 from .resolver import Resolver
 from .server import Server
-from .utils import IPPortPatternLine, log
+from .utils import (
+    IPPortPatternLine,
+    IPv6BracketedPortPattern,
+    canonicalize_ip,
+    log,
+)
 
 # Pause between grabbing cycles; in seconds.
 GRAB_PAUSE = 180
@@ -374,7 +379,13 @@ class Broker:
         if isinstance(data, io.TextIOWrapper):
             data = data.read()
         if isinstance(data, str):
-            data = IPPortPatternLine.findall(data)
+            v4_pairs = IPPortPatternLine.findall(data)
+            v6_pairs = []
+            for raw_v6, port in IPv6BracketedPortPattern.findall(data):
+                canonical = canonicalize_ip(raw_v6)
+                if canonical is not None:
+                    v6_pairs.append((canonical, port))
+            data = v4_pairs + v6_pairs
         proxies = set(data)
         for proxy in proxies:
             await self._handle(proxy, check=check)

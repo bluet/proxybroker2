@@ -6,7 +6,7 @@ import aiohttp
 
 from .errors import ResolveError
 from .resolver import Resolver
-from .utils import get_headers, log
+from .utils import canonicalize_ip, get_all_ip, get_headers, log
 
 
 class Judge:
@@ -107,8 +107,16 @@ class Judge:
             return
 
         page = page.lower()
+        # Use canonical-form set membership instead of substring `in page`
+        # so we correctly recognise IPv6 echoes regardless of how the
+        # judge formatted them (uppercase, expanded, compressed). For
+        # IPv4, canonical form equals the raw form, so behavior is
+        # preserved for the legacy v4 path.
+        page_ips = get_all_ip(page)
+        real_canonical = canonicalize_ip(real_ext_ip) or real_ext_ip
+        real_ip_visible = real_canonical in page_ips
 
-        if resp.status == 200 and real_ext_ip in page and rv in page:
+        if resp.status == 200 and real_ip_visible and rv in page:
             self.marks["via"] = page.count("via")
             self.marks["proxy"] = page.count("proxy")
             self.is_working = True
@@ -118,7 +126,7 @@ class Judge:
         else:
             log.debug(
                 f"{self} is failed. HTTP status code: {resp.status}; "
-                f"Real IP on page: {real_ext_ip in page}; Version: {rv in page}; "
+                f"Real IP on page: {real_ip_visible}; Version: {rv in page}; "
                 f"Response: {page}"
             )
 

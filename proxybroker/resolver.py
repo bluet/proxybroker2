@@ -10,7 +10,7 @@ import aiohttp
 import maxminddb
 
 from .errors import ResolveError
-from .utils import DATA_DIR, log
+from .utils import DATA_DIR, canonicalize_ip, log
 
 GeoData = namedtuple(
     "GeoData", ["code", "name", "region_code", "region_name", "city_name"]
@@ -27,13 +27,18 @@ class Resolver:
     """Async host resolver based on aiodns."""
 
     _cached_hosts = {}
+    # External IP discovery endpoints. `api64.ipify.org` returns the IPv6
+    # address if the network supports it, otherwise IPv4 - so this list
+    # works for IPv4-only, IPv6-only, and dual-stack hosts. The remaining
+    # entries are IPv4-only by URL/hostname; they continue to function on
+    # dual-stack and act as fallbacks if api64 is unreachable.
     _ip_hosts = [
+        "https://api64.ipify.org/",
         "https://wtfismyip.com/text",
         "http://api.ipify.org/",
         "http://ipinfo.io/ip",
         "http://ipv4.icanhazip.com/",
         "http://myexternalip.com/raw",
-        "http://ipinfo.io/ip",
         "http://ifconfig.io/ip",
     ]
     # the list of resolvers will point a copy of original one
@@ -53,15 +58,31 @@ class Resolver:
 
     @staticmethod
     def host_is_ip(host):
-        """Check a host is IP address."""
-        # TODO: add IPv6 support
-        try:
-            host = ".".join(f"{int(n)}" for n in host.split("."))
-            ipaddress.IPv4Address(host)
-        except (ipaddress.AddressValueError, ValueError):
+        """Return True iff `host` is a valid IPv4 or IPv6 literal.
+
+        Both families use stdlib `ipaddress` for parsing. IPv4 addresses
+        with leading zeros (e.g. `"127.0.0.001"`) are also accepted by
+        normalizing octets - `ipaddress.IPv4Address` itself rejects them
+        since CPython 3.9.5 (CVE-2021-29921), but provider feeds in the
+        wild occasionally emit that form, and historical proxybroker
+        accepted it. Preserved here to avoid silently dropping proxies.
+        """
+        if not isinstance(host, str) or not host:
             return False
-        else:
+        try:
+            ipaddress.ip_address(host)
             return True
+        except ValueError:
+            pass
+        if "." in host and ":" not in host:
+            # Legacy IPv4-only normalization for octets with leading zeros.
+            try:
+                normalized = ".".join(f"{int(n)}" for n in host.split("."))
+                ipaddress.IPv4Address(normalized)
+                return True
+            except (ipaddress.AddressValueError, ValueError):
+                return False
+        return False
 
     @staticmethod
     def get_ip_info(ip):
@@ -119,12 +140,11 @@ class Resolver:
                 log.debug("Timeout getting external IP from service, trying next...")
             else:
                 ip = ip.strip()
-                if self.host_is_ip(ip):
-                    log.debug("Real external IP: %s", ip)
-                    break
-        else:
-            raise RuntimeError("Could not get the external IP")
-        return ip
+                canonical = canonicalize_ip(ip)
+                if canonical is not None:
+                    log.debug("Real external IP: %s", canonical)
+                    return canonical
+        raise RuntimeError("Could not get the external IP")
 
     async def resolve(self, host, port=80, family=None, qtype="A", logging=True):
         """Return resolving IP address(es) from host name."""

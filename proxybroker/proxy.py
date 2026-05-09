@@ -20,6 +20,20 @@ _HTTP_PROTOS = {"HTTP", "CONNECT:80", "SOCKS4", "SOCKS5"}
 _HTTPS_PROTOS = {"HTTPS", "SOCKS4", "SOCKS5"}
 
 
+def _format_host_port(host, port):
+    """Format `host:port` with RFC 3986 IPv6 bracketing.
+
+    IPv6 literals contain colons, which would ambiguate against the
+    port separator. RFC 3986 § 3.2.2 mandates `[host]:port` for IPv6
+    in URI authority components; we use the same form everywhere so
+    proxy strings paste cleanly into clients that expect URI syntax.
+    IPv4 hosts pass through unchanged.
+    """
+    if ":" in str(host):
+        return f"[{host}]:{port}"
+    return f"{host}:{port}"
+
+
 # nosemgrep: python.lang.security.unverified-ssl-context.unverified-ssl-context
 def _make_unverified_ssl_context_for_proxy_testing():
     """Build an SSL context that skips cert + hostname verification.
@@ -138,7 +152,7 @@ class Proxy:
             s = s.format(tp=tp, lvl=lvl)
             tpinfo.append(s)
         tpinfo = ", ".join(tpinfo)
-        return f"<Proxy {self._geo.code} {self.avg_resp_time:.2f}s [{tpinfo}] {self.host}:{self.port}>"
+        return f"<Proxy {self._geo.code} {self.avg_resp_time:.2f}s [{tpinfo}] {_format_host_port(self.host, self.port)}>"
 
     @property
     def types(self):
@@ -299,16 +313,19 @@ class Proxy:
 
     def as_text(self):
         """
-        Return proxy as host:port
+        Return proxy as host:port (IPv6 bracketed per RFC 3986).
 
         :rtype: str
         """
-        return f"{self.host}:{self.port}\n"
+        return f"{_format_host_port(self.host, self.port)}\n"
 
     def log(self, msg, stime=0, err=None):
         ngtr = self.ngtr.name if self.ngtr else "INFO"
         runtime = time.time() - stime if stime else 0
-        log.debug(f"{self.host}:{self.port} [{ngtr}]: {msg}; Runtime: {runtime:.2f}")
+        log.debug(
+            f"{_format_host_port(self.host, self.port)} [{ngtr}]: {msg}; "
+            f"Runtime: {runtime:.2f}"
+        )
         trunc = "..." if len(msg) > 58 else ""
         msg = f"{msg:.60s}{trunc}"
         self._log.append((ngtr, msg, runtime))

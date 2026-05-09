@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Full IPv6 support across the stack** (#201). IPv6 is now first-class
+  alongside IPv4 across detection, validation, anonymity comparison,
+  SOCKS5 proxying, and `[v6]:port` provider parsing.
+  - `Resolver.host_is_ip()` accepts both IPv4 and IPv6 literals
+    (loopback `::1`, documentation prefix `2001:db8::1`, IPv4-mapped
+    `::ffff:192.0.2.1`, link-local with zone IDs `fe80::1%eth0`).
+  - `Resolver.get_real_ext_ip()` returns RFC 5952 canonical form and
+    accepts IPv6 responses from upstream IP-detection services. Adds
+    `https://api64.ipify.org/` to the default endpoints so proxybroker
+    works on IPv6-only networks.
+  - `proxybroker/utils.py`: new `canonicalize_ip(s) -> str | None`
+    helper exposes the RFC 5952 canonical form via stdlib `ipaddress`.
+    `get_all_ip()` rewritten to extract IPv4 substrings (legacy
+    contract) plus IPv6 candidates validated through `ipaddress`,
+    returning canonical form so equivalent encodings collapse to a
+    single set element.
+  - `IPv6BracketedPortPattern` and the new `find_proxy_pairs(text)`
+    helper extract `[v6]:port` proxy pairs from text. Wired into the
+    base `Provider._find_proxies` and into `Broker._load`'s file/raw
+    string parsing so every provider feed can surface IPv6 proxies.
+  - `_get_anonymity_lvl` and `Judge.check` now use canonical-form set
+    membership instead of raw substring matching, so v6 leaks are
+    correctly classified regardless of how the judge formatted the
+    address (uppercase, expanded with leading zeros, with or without
+    `::` compression).
+  - `Proxy(host=...)` accepts IPv6 literals; `as_text()`, `__repr__()`
+    and `Proxy.log` bracket IPv6 hosts per RFC 3986 § 3.2.2 so the
+    output is unambiguous.
+  - `Socks5Ngtr` emits `ATYP=0x04` + 16-byte address for IPv6
+    destinations (`ATYP=0x01` + 4-byte for IPv4 unchanged), unblocking
+    SOCKS5 connections to IPv6 origins. SOCKS4 stays IPv4-only by spec
+    (RFC 1928 has no v6 ATYP).
+
+### Removed
+- **`IPv6Pattern` 700-character regex** (#201) and its
+  `# nosemgrep: regex_dos` suppression. The pattern carried many
+  capture groups so `re.findall` returned tuples (not strings) and
+  IPv6 entries silently never matched. Replaced by the narrow
+  `_IPV6_CANDIDATE_PATTERN` tokenizer + stdlib `ipaddress` validator.
+
+### Changed
+- `Resolver.host_is_ip` legacy behavior preserved for IPv4 with leading
+  zeros (e.g. `127.0.0.001`); accepted by the wrapper even though
+  CPython 3.9.5+ rejects them under CVE-2021-29921. Documented in the
+  docstring; some provider feeds in the wild still emit that form.
+- `judge.py:Judge.check` and `checker.py:_get_anonymity_lvl` now log
+  the boolean visibility result (rather than the substring expression)
+  for symmetry with how the v6 set-membership comparison is done.
+
 ## [2.0.0b2] - 2026-05-08
 
 🎯 **Custom Provider System & Quality Pass**

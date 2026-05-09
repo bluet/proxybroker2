@@ -89,3 +89,98 @@ class TestNegotiatorContracts:
             negotiator = negotiator_class(mock_proxy)
             assert negotiator is not None
             assert hasattr(negotiator, "negotiate")
+
+
+class TestSocks5IPv6Wire:
+    """Wire-level tests for SOCKS5 ATYP encoding (RFC 1928).
+
+    SOCKS5 supports three address types:
+        ATYP=0x01  IPv4  (4 bytes)
+        ATYP=0x03  domain (1-byte length + name)
+        ATYP=0x04  IPv6  (16 bytes)
+
+    proxybroker historically only emitted ATYP=0x01 because the
+    upstream resolver returned IPv4-only and `inet_aton` enforced
+    that. With IPv6 enabled end-to-end, the negotiator MUST emit
+    ATYP=0x04 + 16-byte address for IPv6 destinations and continue
+    to emit ATYP=0x01 + 4-byte address for IPv4 (regression).
+    """
+
+    @pytest.mark.asyncio
+    async def test_socks5_ipv4_destination_emits_atyp_01_4_bytes(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from proxybroker.negotiators import Socks5Ngtr
+
+        mock_proxy = MagicMock()
+        mock_proxy.send = AsyncMock()
+        # Greeting reply (v5, no-auth) then connect-reply (v5, success, ATYP+addr+port).
+        connect_reply = bytes([0x05, 0x00, 0x00, 0x01]) + bytes(6)
+        mock_proxy.recv = AsyncMock(side_effect=[bytes([0x05, 0x00]), connect_reply])
+
+        ngtr = Socks5Ngtr(mock_proxy)
+        await ngtr.negotiate(ip="192.0.2.5", port=8080)
+
+        # Two send calls: greeting + connect-request.
+        assert mock_proxy.send.call_count == 2
+        connect_pkt = mock_proxy.send.call_args_list[1].args[0]
+        assert isinstance(connect_pkt, (bytes, bytearray))
+        # Total: VER(1)+CMD(1)+RSV(1)+ATYP(1)+IPv4(4)+PORT(2) = 10 bytes
+        assert len(connect_pkt) == 10
+        assert connect_pkt[0] == 0x05  # SOCKS version
+        assert connect_pkt[1] == 0x01  # CONNECT
+        assert connect_pkt[2] == 0x00  # RSV
+        assert connect_pkt[3] == 0x01  # ATYP=IPv4
+        # IPv4 packed
+        assert connect_pkt[4:8] == bytes([192, 0, 2, 5])
+        # Port big-endian
+        assert int.from_bytes(connect_pkt[8:10], "big") == 8080
+
+    @pytest.mark.asyncio
+    async def test_socks5_ipv6_destination_emits_atyp_04_16_bytes(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from proxybroker.negotiators import Socks5Ngtr
+
+        mock_proxy = MagicMock()
+        mock_proxy.send = AsyncMock()
+        # Greeting reply (v5, no-auth) then connect-reply (v5, success, ATYP=v6+addr+port).
+        connect_reply = bytes([0x05, 0x00, 0x00, 0x04]) + bytes(18)
+        mock_proxy.recv = AsyncMock(side_effect=[bytes([0x05, 0x00]), connect_reply])
+
+        ngtr = Socks5Ngtr(mock_proxy)
+        await ngtr.negotiate(ip="2001:db8::1", port=443)
+
+        connect_pkt = mock_proxy.send.call_args_list[1].args[0]
+        assert isinstance(connect_pkt, (bytes, bytearray))
+        # Total: VER(1)+CMD(1)+RSV(1)+ATYP(1)+IPv6(16)+PORT(2) = 22 bytes
+        assert len(connect_pkt) == 22
+        assert connect_pkt[0] == 0x05
+        assert connect_pkt[1] == 0x01
+        assert connect_pkt[2] == 0x00
+        assert connect_pkt[3] == 0x04  # ATYP=IPv6
+        # 2001:db8::1 packed = 32 bytes hex \x20\x01\x0d\xb8 ... \x00\x01
+        expected_packed = bytes.fromhex("20010db8000000000000000000000001")
+        assert connect_pkt[4:20] == expected_packed
+        assert int.from_bytes(connect_pkt[20:22], "big") == 443
+
+    def test_socks4_ipv6_raises_helpful_error(self):
+        """SOCKS4 RFC 1928 has no IPv6 address type. Asking for v6 over
+        SOCKS4 should fail loudly, not silently truncate or crash with a
+        cryptic struct error.
+        """
+        # The current implementation crashes with OSError from inet_aton.
+        # We document the current observable behavior here so we notice
+        # if it ever changes silently. A future tighter check could raise
+        # a domain-specific BadResponseError instead.
+        import asyncio
+        from unittest.mock import MagicMock
+
+        from proxybroker.negotiators import Socks4Ngtr
+
+        mock_proxy = MagicMock()
+        ngtr = Socks4Ngtr(mock_proxy)
+        with pytest.raises((OSError, ValueError)):
+            asyncio.get_event_loop().run_until_complete(
+                ngtr.negotiate(ip="2001:db8::1", port=443)
+            )

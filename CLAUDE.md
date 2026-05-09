@@ -120,6 +120,24 @@ PROVIDERS if providers is None else providers
 ### Protocol Priority
 Deterministic order: SOCKS5 → SOCKS4 → CONNECT:80 → CONNECT:25 → HTTPS → HTTP
 
+### IPv6 Support
+First-class alongside IPv4 across the stack (PR for #201). Key invariants:
+- **Canonical form is RFC 5952** (`str(ipaddress.ip_address(...))`):
+  lowercase, leading-zeros stripped, longest zero-run as `::`. Use
+  `proxybroker.utils.canonicalize_ip(s) -> str | None` at every
+  boundary where IPs cross from text into comparison.
+- **IPv4 contracts are preserved**. `IPPattern.findall` still handles
+  the legacy substring extraction (e.g. `127.0.0.1` from `127.0.0.1:80`).
+  Canonical form for IPv4 is identity, so set membership behavior is
+  unchanged for the IPv4 path.
+- **IPv6 in URI authority MUST be bracketed** (RFC 3986). `Proxy.as_text`,
+  `Proxy.__repr__`, and proxy-list output all bracket v6 hosts.
+- **SOCKS5 `ATYP=0x04`** for IPv6 destinations; SOCKS4 stays IPv4-only
+  by spec (no v6 ATYP in RFC 1928).
+- **Provider feeds**: `[v6]:port` is parsed via `IPv6BracketedPortPattern`
+  + stdlib validation. Helper `find_proxy_pairs(text)` returns
+  `[(ip_canonical, port), ...]` for both v4 and v6.
+
 ### Signal Handler Cleanup
 `Broker.stop()` properly removes signal handlers to prevent memory leaks
 

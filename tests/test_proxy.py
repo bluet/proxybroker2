@@ -31,6 +31,46 @@ def test_ssl_context_verified_when_requested():
     assert p._ssl_context is True
 
 
+def test_proxy_accepts_ipv6_host_literal():
+    """Proxy(host=v6) must construct without raising.
+
+    Relies on Resolver.host_is_ip accepting v6 literals (L1).
+    Geo-info lookup tolerates absent v6 ranges in the bundled
+    GeoLite2 DB and falls back to "Unknown".
+    """
+    p = Proxy("2001:db8::1", "8080")
+    assert p.host == "2001:db8::1"
+    assert p.port == 8080
+
+
+def test_proxy_rejects_v6_with_brackets():
+    """Brackets are URI authority syntax (RFC 3986), not the literal
+    host - must NOT be accepted as a Proxy host. Caller should strip
+    brackets before constructing.
+    """
+    with pytest.raises(ValueError):
+        Proxy("[2001:db8::1]", "8080")
+
+
+def test_proxy_as_text_brackets_v6():
+    """as_text emits standard host:port form. For IPv6 hosts, RFC 3986
+    requires brackets so the colon doesn't ambiguate against the port.
+    """
+    v4 = Proxy("127.0.0.1", "80")
+    assert v4.as_text() == "127.0.0.1:80\n"
+
+    v6 = Proxy("2001:db8::1", "8080")
+    assert v6.as_text() == "[2001:db8::1]:8080\n"
+
+
+def test_proxy_repr_brackets_v6():
+    """repr() of a v6-host proxy must bracket the host so logs are
+    unambiguous.
+    """
+    p = Proxy("2001:db8::1", "8080")
+    assert "[2001:db8::1]:8080" in repr(p)
+
+
 @pytest.fixture
 async def proxy():
     # async fixture so pytest-asyncio sets up an event loop first.

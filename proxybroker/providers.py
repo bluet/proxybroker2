@@ -9,7 +9,14 @@ from urllib.parse import unquote, urlparse
 import aiohttp
 
 from .errors import BadStatusError
-from .utils import IPPattern, IPPortPatternGlobal, get_headers, log
+from .utils import (
+    IPPattern,
+    IPPortPatternGlobal,
+    IPv6BracketedPortPattern,
+    canonicalize_ip,
+    get_headers,
+    log,
+)
 
 
 class Provider:
@@ -157,7 +164,17 @@ class Provider:
         return self._find_proxies(page)
 
     def _find_proxies(self, page):
-        proxies = self._pattern.findall(page)
+        # Default IPv4 extraction via the legacy pattern (subclasses may
+        # override `_pattern` for source-specific HTML quirks). IPv6
+        # entries in `[v6]:port` form are extracted in addition - they
+        # are validated and canonicalised via stdlib `ipaddress` so
+        # invalid bracketed garbage is silently dropped rather than
+        # surfacing as proxy candidates.
+        proxies = list(self._pattern.findall(page))
+        for raw_v6, port in IPv6BracketedPortPattern.findall(page):
+            canonical = canonicalize_ip(raw_v6)
+            if canonical is not None:
+                proxies.append((canonical, port))
         return proxies
 
 

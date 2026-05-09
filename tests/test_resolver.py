@@ -20,6 +20,33 @@ def test_host_is_ip(resolver):
     assert resolver.host_is_ip("test.com") is False
 
 
+def test_host_is_ip_ipv6(resolver):
+    # IPv6 loopback, documentation prefix, IPv4-mapped, zone IDs.
+    assert resolver.host_is_ip("::1") is True
+    assert resolver.host_is_ip("2001:db8::1") is True
+    assert resolver.host_is_ip("2001:DB8::1") is True
+    assert resolver.host_is_ip("::ffff:192.0.2.1") is True
+    assert resolver.host_is_ip("fe80::1%eth0") is True
+
+
+def test_host_is_ip_rejects_garbage(resolver):
+    assert resolver.host_is_ip("not-an-ip") is False
+    assert resolver.host_is_ip("dead.beef.cafe") is False
+    assert resolver.host_is_ip(":::") is False
+    assert resolver.host_is_ip("") is False
+
+
+def test_host_is_ip_rejects_url_or_host_with_path(resolver):
+    # Defensive: things that look IP-ish but include extra characters
+    # (port, path, brackets) must not pass `is this an IP literal`.
+    assert resolver.host_is_ip("127.0.0.1:80") is False
+    assert resolver.host_is_ip("[2001:db8::1]") is False
+    assert (
+        resolver.host_is_ip("2001:db8::1:8080") is True
+    )  # last group "8080" — still a valid v6 by parser
+    assert resolver.host_is_ip("http://1.2.3.4") is False
+
+
 def test_get_ip_info(resolver):
     ip = resolver.get_ip_info("127.0.0.1")
     assert ip.code == "--"
@@ -37,6 +64,37 @@ async def test_get_real_ext_ip(event_loop, mocker, resolver):
     # Just mock the method itself to avoid complex aiohttp mocking
     mocker.patch.object(resolver, "get_real_ext_ip", return_value="127.0.0.1")
     assert await resolver.get_real_ext_ip() == "127.0.0.1"
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ip_canonicalises_ipv6(mocker):
+    """get_real_ext_ip must return RFC 5952 canonical form.
+
+    Regardless of how the upstream IP-detection service emits the
+    address, downstream comparison sites rely on canonical form for
+    correctness. Verifies via fully-faked aiohttp.ClientSession.
+    """
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock, MagicMock
+
+    resolver_inst = Resolver(timeout=1)
+
+    fake_resp = MagicMock()
+    fake_resp.text = AsyncMock(return_value="2001:DB8::1\n")
+
+    @asynccontextmanager
+    async def fake_get(_url):
+        yield fake_resp
+
+    @asynccontextmanager
+    async def fake_session(*_args, **_kwargs):
+        sess = MagicMock()
+        sess.get = fake_get
+        yield sess
+
+    mocker.patch("proxybroker.resolver.aiohttp.ClientSession", fake_session)
+
+    assert await resolver_inst.get_real_ext_ip() == "2001:db8::1"
 
 
 @pytest.mark.asyncio
