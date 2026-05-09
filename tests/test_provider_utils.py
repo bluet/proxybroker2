@@ -248,6 +248,15 @@ class TestAPIProvider:
         # is that this call does not raise AttributeError.
         assert isinstance(result, list)
 
+    def test_find_proxies_extracts_common_wrapped_list_key(self):
+        """JSON objects with common list keys should be parsed directly."""
+        provider = APIProvider(
+            "http://api.example.com/proxies",
+            response_format="json",
+        )
+        json_response = '{"results": [{"ip": "192.0.2.1", "port": 8080}]}'
+        assert provider.find_proxies(json_response) == [("192.0.2.1", "8080")]
+
 
 class TestConfigurableProvider:
     """Test ConfigurableProvider functionality."""
@@ -440,6 +449,18 @@ def test_underscore_prefix_yaml_files_are_skipped():
 
         providers = load_provider_configs_from_directory(tmpdir)
         assert len(providers) == 1
+
+
+def test_load_provider_configs_from_directory_continues_after_bad_file():
+    """One malformed file should not block loading valid configs."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _write_yaml_config(Path(tmpdir) / "good.yaml")
+        (Path(tmpdir) / "bad.yaml").write_text("type: [", encoding="utf-8")
+
+        providers = load_provider_configs_from_directory(tmpdir)
+
+        assert len(providers) == 1
+        assert isinstance(providers[0], SimpleProvider)
 
 
 def test_simple_provider_custom_pattern_normalises_strings():
