@@ -167,8 +167,12 @@ class Resolver:
         Returns the canonical IP string on success, or raises
         ``RuntimeError`` if no endpoint succeeds for this family.
         """
+        # Sequential trial in declared order. Randomising the candidate
+        # order would clear SonarCloud S2245 against the CSPRNG-backed
+        # shuffle, but discovery runs once per broker session — there's
+        # no real load-balancing benefit, and `_ip_hosts` is already
+        # ordered with the most reliable dual-stack endpoint first.
         candidates = list(self._ip_hosts)
-        secrets.SystemRandom().shuffle(candidates)
         connector = aiohttp.TCPConnector(family=family)
         timeout = aiohttp.ClientTimeout(total=self._timeout)
         try:
