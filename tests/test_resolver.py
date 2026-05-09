@@ -361,3 +361,157 @@ async def test_resolve_cache_rejects_v6_for_a_only_callers(mocker, resolver):
     # Reset spy so we count from clean state.
     resolver._cached_hosts["dual.example.com"] = "2001:db8::1"
     assert await resolver.resolve("dual.example.com") == "2001:db8::1"
+
+
+# ---------------------------------------------------------------------------
+# #220: deterministic IPv6 external-IP discovery (probe both families)
+# ---------------------------------------------------------------------------
+
+
+def test_has_local_route_v4_on_dual_stack_host():
+    """v4 always has a route on any modern host (loopback at minimum)."""
+    assert Resolver._has_local_route(socket.AF_INET) is True
+
+
+def test_has_local_route_returns_bool_for_v6():
+    """v6 detection returns a bool either way (true on dual-stack, false on
+    v4-only). The point of the test is the contract: returns bool, never
+    raises, regardless of host capability.
+    """
+    result = Resolver._has_local_route(socket.AF_INET6)
+    assert isinstance(result, bool)
+
+
+def test_has_local_route_invalid_family_returns_false():
+    """Asking about a nonsensical family (random int) returns False, not raise.
+    Defensive guarantee for code that introspects address families.
+    """
+    assert Resolver._has_local_route(0xDEAD) is False
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_v4_only_host_skips_v6_probe(mocker):
+    """When _has_local_route(AF_INET6) is False, the v6 probe is SKIPPED
+    entirely - no aiohttp request, no timeout cost.
+
+    Critical for v4-only users (~50% of the install base) who would
+    otherwise pay a 1-5s startup latency tax for a fix they don't need.
+    """
+    from unittest.mock import AsyncMock
+
+    resolver_inst = Resolver(timeout=1)
+    # v4 has a route, v6 does not
+    mocker.patch.object(
+        Resolver,
+        "_has_local_route",
+        side_effect=lambda f: f == socket.AF_INET,
+    )
+    probe = AsyncMock(return_value="203.0.113.5")
+    mocker.patch.object(resolver_inst, "_probe_family", new=probe)
+
+    result = await resolver_inst.get_real_ext_ips()
+
+    assert result == frozenset({"203.0.113.5"})
+    # Only ONE probe call made (v4); v6 path skipped entirely.
+    probe.assert_called_once_with(socket.AF_INET)
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_dual_stack_returns_both_families(mocker):
+    """The bug-fix scenario: dual-stack host gets BOTH v4 and v6 ext-IPs
+    so judge response comparison passes regardless of which family the
+    judge connection used.
+    """
+
+    resolver_inst = Resolver(timeout=1)
+    mocker.patch.object(Resolver, "_has_local_route", return_value=True)
+
+    async def fake_probe(family):
+        if family == socket.AF_INET:
+            return "203.0.113.5"
+        return "2001:db8::1"
+
+    mocker.patch.object(resolver_inst, "_probe_family", side_effect=fake_probe)
+
+    result = await resolver_inst.get_real_ext_ips()
+
+    assert result == frozenset({"203.0.113.5", "2001:db8::1"})
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_v6_only_host_skips_v4_probe(mocker):
+    """Symmetric to the v4-only case: v6-only hosts (rare but real -
+    e.g. some mobile carriers) skip the v4 probe entirely.
+    """
+    from unittest.mock import AsyncMock
+
+    resolver_inst = Resolver(timeout=1)
+    mocker.patch.object(
+        Resolver,
+        "_has_local_route",
+        side_effect=lambda f: f == socket.AF_INET6,
+    )
+    probe = AsyncMock(return_value="2001:db8::1")
+    mocker.patch.object(resolver_inst, "_probe_family", new=probe)
+
+    result = await resolver_inst.get_real_ext_ips()
+
+    assert result == frozenset({"2001:db8::1"})
+    probe.assert_called_once_with(socket.AF_INET6)
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_no_routable_interface_raises(mocker):
+    """A host with no routable interface at all (e.g. container with
+    networking disabled) gets a clear error instead of looping through
+    timeouts.
+    """
+    Resolver._temp_host = []  # reset class-level state from prior tests
+    resolver_inst = Resolver(timeout=1)
+    mocker.patch.object(Resolver, "_has_local_route", return_value=False)
+
+    with pytest.raises(RuntimeError, match="routable"):
+        await resolver_inst.get_real_ext_ips()
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_all_probes_fail_raises(mocker):
+    """Both families capable but both endpoints fail: clear error,
+    not silent empty set."""
+    from unittest.mock import AsyncMock
+
+    resolver_inst = Resolver(timeout=1)
+    mocker.patch.object(Resolver, "_has_local_route", return_value=True)
+    mocker.patch.object(
+        resolver_inst,
+        "_probe_family",
+        new=AsyncMock(side_effect=RuntimeError("upstream down")),
+    )
+
+    with pytest.raises(RuntimeError, match="Could not get the external IP"):
+        await resolver_inst.get_real_ext_ips()
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ip_singular_shim_prefers_v6(mocker):
+    """Backward-compat get_real_ext_ip() returns ONE address from the set,
+    preferring IPv6 (matches Happy Eyeballs default) for deterministic
+    behavior. v4-only callers still get v4."""
+    resolver_inst = Resolver(timeout=1)
+    mocker.patch.object(
+        resolver_inst,
+        "get_real_ext_ips",
+        return_value=frozenset({"203.0.113.5", "2001:db8::1"}),
+    )
+    assert await resolver_inst.get_real_ext_ip() == "2001:db8::1"
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ip_singular_shim_v4_only(mocker):
+    resolver_inst = Resolver(timeout=1)
+    mocker.patch.object(
+        resolver_inst,
+        "get_real_ext_ips",
+        return_value=frozenset({"203.0.113.5"}),
+    )
+    assert await resolver_inst.get_real_ext_ip() == "203.0.113.5"

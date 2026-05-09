@@ -70,8 +70,21 @@ class Judge:
         cls.ev["HTTPS"].clear()
         cls.ev["SMTP"].clear()
 
-    async def check(self, real_ext_ip):
+    async def check(self, real_ext_ips=None, real_ext_ip=None):
+        """Probe judge endpoint and verify it echoes a known real ext-IP.
+
+        ``real_ext_ips`` (set/iterable, preferred) accepts the FULL set
+        of host external IPs from ``Resolver.get_real_ext_ips()`` so the
+        comparison passes whichever family the judge connection used.
+        ``real_ext_ip`` (single string, legacy) is kept for backward
+        compatibility; if both are passed, ``real_ext_ips`` wins.
+        """
         # TODO: need refactoring
+        # Normalise legacy single-string input into the set-aware path.
+        if real_ext_ips is None and real_ext_ip is not None:
+            real_ext_ips = (real_ext_ip,)
+        real_ext_ips = frozenset(real_ext_ips or ())
+
         try:
             self.ip = await self._resolver.resolve(self.host)
         except ResolveError:
@@ -107,14 +120,13 @@ class Judge:
             return
 
         page = page.lower()
-        # Use canonical-form set membership instead of substring `in page`
-        # so we correctly recognise IPv6 echoes regardless of how the
-        # judge formatted them (uppercase, expanded, compressed). For
-        # IPv4, canonical form equals the raw form, so behavior is
-        # preserved for the legacy v4 path.
+        # Canonical-form set membership: judges may echo whichever family
+        # the connection used, and the host may have v4 OR v6 reachable
+        # (or both on dual-stack). Pass if ANY of the host's real ext-IPs
+        # appears in the page.
         page_ips = get_all_ip(page)
-        real_canonical = canonicalize_ip(real_ext_ip) or real_ext_ip
-        real_ip_visible = real_canonical in page_ips
+        real_canonicals = frozenset(canonicalize_ip(ip) or ip for ip in real_ext_ips)
+        real_ip_visible = bool(real_canonicals & page_ips)
 
         if resp.status == 200 and real_ip_visible and rv in page:
             self.marks["via"] = page.count("via")

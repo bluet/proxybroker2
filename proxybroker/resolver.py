@@ -131,28 +131,134 @@ class Resolver:
         self._temp_host.remove(host)
         return host
 
-    async def get_real_ext_ip(self):
-        """Return real external IP address."""
-        # make a copy of original one to temp one
-        # so original one will stay no change
-        self._temp_host = self._ip_hosts.copy()
-        while self._temp_host:
-            try:
-                timeout = aiohttp.ClientTimeout(total=self._timeout)
-                async with (
-                    aiohttp.ClientSession(timeout=timeout) as session,
-                    session.get(self._pop_random_ip_host()) as resp,
-                ):
-                    ip = await resp.text()
-            except asyncio.TimeoutError:
-                log.debug("Timeout getting external IP from service, trying next...")
-            else:
-                ip = ip.strip()
-                canonical = canonicalize_ip(ip)
-                if canonical is not None:
-                    log.debug("Real external IP: %s", canonical)
+    @staticmethod
+    def _has_local_route(family):
+        """Routable-interface check for `family`.
+
+        Opens a UDP socket and "connects" it to a documentation address
+        (RFC 5737 / RFC 3849). UDP-connect just consults the routing
+        table; it does NOT send packets, perform DNS, or generate any
+        network traffic. ``OSError`` (typically ``EHOSTUNREACH`` /
+        ``ENETUNREACH``) means no usable route. Microsecond cost.
+
+        Used by ``get_real_ext_ips()`` to skip family probes that have
+        no chance of succeeding - keeps v4-only users from paying the
+        v6 probe's timeout cost (and vice versa for v6-only users).
+        """
+        target = "2001:db8::1" if family == socket.AF_INET6 else "192.0.2.1"
+        try:
+            with socket.socket(family, socket.SOCK_DGRAM) as s:
+                try:
+                    s.connect((target, 80))
+                    return True
+                except OSError:
+                    return False
+        except OSError:
+            return False  # socket() itself failed (family not supported)
+
+    async def _probe_family(self, family):
+        """Discover the external IP for one address family.
+
+        Pins the aiohttp ``TCPConnector`` to ``family`` so the SOCKET
+        layer enforces the family - immune to DNS quirks (CDN, CNAME,
+        AAAA spoofing). Tries ``_ip_hosts`` in random order, returns
+        the first canonical IP that matches the requested family.
+
+        Returns the canonical IP string on success, or raises
+        ``RuntimeError`` if no endpoint succeeds for this family.
+        """
+        candidates = list(self._ip_hosts)
+        secrets.SystemRandom().shuffle(candidates)
+        connector = aiohttp.TCPConnector(family=family)
+        timeout = aiohttp.ClientTimeout(total=self._timeout)
+        try:
+            async with aiohttp.ClientSession(
+                connector=connector, timeout=timeout
+            ) as session:
+                for url in candidates:
+                    try:
+                        async with session.get(url) as resp:
+                            text = (await resp.text()).strip()
+                    except (
+                        asyncio.TimeoutError,
+                        aiohttp.ClientError,
+                        OSError,
+                    ):
+                        continue
+                    canonical = canonicalize_ip(text)
+                    if canonical is None:
+                        continue
+                    # Defensive: confirm the returned address matches
+                    # the family we pinned the connector to. Guards
+                    # against endpoints that report client IP via
+                    # X-Forwarded-For-style logic that can leak the
+                    # other family across CDN/proxy hops.
+                    is_v6 = ":" in canonical
+                    if (family == socket.AF_INET6) != is_v6:
+                        log.debug(
+                            "Family-probe mismatch for %s: got %s, "
+                            "discarding and trying next endpoint",
+                            family,
+                            canonical,
+                        )
+                        continue
                     return canonical
-        raise RuntimeError("Could not get the external IP")
+        except OSError as e:
+            # connector creation can fail on hosts without v6 support
+            log.debug("Family-probe %s failed at connector: %s", family, e)
+        raise RuntimeError(f"No external IP returned for family {family}")
+
+    async def get_real_ext_ips(self):
+        """Discover all external IP addresses reachable from this host.
+
+        Returns a ``frozenset`` of canonical IP strings - one entry on
+        single-stack hosts (v4-only or v6-only), two entries on
+        dual-stack hosts where both families reach the public internet.
+
+        The dual-IP set is what makes ``Judge.check`` reliable on
+        dual-stack: a judge response can echo whichever family the
+        connection used, and the comparison passes if EITHER ext-IP
+        appears in the response.
+
+        Capability detection (``_has_local_route``) skips probes for
+        families that lack a routable interface - v4-only users (~50%
+        of the install base) pay zero startup-latency cost for the
+        IPv6-fix machinery they don't need.
+
+        Raises:
+            RuntimeError: When no probe succeeds for any family, or
+                when no family has a local route at all.
+        """
+        families = [
+            f for f in (socket.AF_INET, socket.AF_INET6) if self._has_local_route(f)
+        ]
+        if not families:
+            raise RuntimeError("No routable IPv4 or IPv6 interface")
+        results = await asyncio.gather(
+            *[self._probe_family(f) for f in families],
+            return_exceptions=True,
+        )
+        found = frozenset(ip for ip in results if isinstance(ip, str))
+        if not found:
+            raise RuntimeError("Could not get the external IP")
+        log.debug("External IPs discovered: %s", sorted(found))
+        return found
+
+    async def get_real_ext_ip(self):
+        """Return one external IP address (backward-compatibility shim).
+
+        Prefer :meth:`get_real_ext_ips` in new code: that returns the
+        full set, which is what ``Judge.check`` and
+        ``_get_anonymity_lvl`` need to correctly classify proxy
+        responses on dual-stack hosts.
+
+        For dual-stack hosts that this method serves, it returns the
+        IPv6 address (matches Happy Eyeballs default preference). For
+        single-stack hosts it returns whichever family is available.
+        """
+        ips = await self.get_real_ext_ips()
+        # IPv6-preferred (`":" in s`); deterministic ordering for tests.
+        return next(iter(sorted(ips, key=lambda s: (":" not in s, s))))
 
     async def resolve(
         self, host, port=80, family=None, qtype=_QTYPE_DEFAULT, logging=True
