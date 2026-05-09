@@ -162,7 +162,10 @@ class Resolver:
         case latency for dual-stack hosts on broken networks.
         """
         if self.host_is_ip(host):
-            return host
+            # Canonicalise the literal so callers downstream of resolve()
+            # always see RFC 5952 canonical form, regardless of how the
+            # caller wrote the input ("2001:DB8::1" vs "2001:db8::1").
+            return canonicalize_ip(host) or host
 
         _host = self._cached_hosts.get(host)
         if _host:
@@ -177,7 +180,11 @@ class Resolver:
             hosts = [
                 {
                     "hostname": host,
-                    "host": r.host,
+                    # Canonicalise DNS-returned host strings too. aiodns
+                    # may emit different textual forms across resolvers/
+                    # platforms; downstream comparison logic relies on
+                    # canonical form to dedup equivalent addresses.
+                    "host": canonicalize_ip(r.host) or r.host,
                     "port": port,
                     "family": family,
                     "proto": socket.IPPROTO_IP,

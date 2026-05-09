@@ -10,7 +10,7 @@ from proxybroker.errors import ProxyConnError, ProxyTimeoutError, ResolveError
 from proxybroker.negotiators import HttpsNgtr
 from proxybroker.utils import log as logger
 
-from .utils import ResolveResult, future_iter
+from .utils import ResolveResult
 
 
 def test_ssl_context_unverified_by_default():

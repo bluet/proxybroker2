@@ -91,15 +91,30 @@ class Socks5Ngtr(BaseNegotiator):
         )
 
         await self._proxy.send(request)
-        # Reply size: VER(1)+REP(1)+RSV(1)+ATYP(1)+BND.ADDR(4 or 16)+BND.PORT(2)
-        reply_size = 22 if atyp == 0x04 else 10
-        resp = await self._proxy.recv(reply_size)
-
-        if resp[0] != 0x05 or resp[1] != 0x00:
+        # Per RFC 1928 § 6, the reply's BND.ADDR can be a different
+        # address family from the client's request - dual-stack proxies
+        # may bind to v6 even when the client requested v4 (or vice
+        # versa). So we must read the 4-byte fixed header first
+        # (VER+REP+RSV+ATYP), inspect the *response* ATYP, then read
+        # the variable-length BND.ADDR + BND.PORT.
+        header = await self._proxy.recv(4)
+        if header[0] != 0x05 or header[1] != 0x00:
             self._proxy.log("Failed (invalid data)", err=BadResponseError)
             raise BadResponseError
+        rep_atyp = header[3]
+        if rep_atyp == 0x01:  # IPv4
+            addr_len = 4
+        elif rep_atyp == 0x04:  # IPv6
+            addr_len = 16
+        elif rep_atyp == 0x03:  # Domain name (1-byte length prefix)
+            length = await self._proxy.recv(1)
+            addr_len = length[0]
         else:
-            self._proxy.log("Request is granted")
+            self._proxy.log("Failed (invalid data)", err=BadResponseError)
+            raise BadResponseError
+        # Drain BND.ADDR + BND.PORT (2 bytes); we don't use them.
+        await self._proxy.recv(addr_len + 2)
+        self._proxy.log("Request is granted")
 
 
 class Socks4Ngtr(BaseNegotiator):

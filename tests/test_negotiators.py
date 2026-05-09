@@ -138,6 +138,36 @@ class TestSocks5IPv6Wire:
     """
 
     @pytest.mark.asyncio
+    async def test_socks5_dual_stack_proxy_returns_v6_bnd_for_v4_request(self):
+        """RFC 1928 § 6: BND.ADDR can be a different family than the
+        client requested (dual-stack proxy may bind v6 even for a v4
+        request). Negotiator must parse reply ATYP from the response,
+        not assume it matches the request.
+        """
+        from unittest.mock import AsyncMock, MagicMock
+
+        from proxybroker.negotiators import Socks5Ngtr
+
+        mock_proxy = MagicMock()
+        mock_proxy.send = AsyncMock()
+        mock_proxy.recv = AsyncMock(
+            side_effect=[
+                bytes([0x05, 0x00]),
+                # Client requested v4 dest, but proxy bound v6 → ATYP=0x04.
+                # Old code that derived reply_size from the *request* atyp
+                # would under-read by 12 bytes and stall.
+                bytes([0x05, 0x00, 0x00, 0x04]),
+                bytes(18),
+            ]
+        )
+
+        ngtr = Socks5Ngtr(mock_proxy)
+        await ngtr.negotiate(ip="192.0.2.5", port=8080)
+        # Three recvs: greeting, header, body. The negotiator correctly
+        # noticed the response was v6 even though the request was v4.
+        assert mock_proxy.recv.call_count == 3
+
+    @pytest.mark.asyncio
     async def test_socks5_ipv4_destination_emits_atyp_01_4_bytes(self):
         from unittest.mock import AsyncMock, MagicMock
 
@@ -145,9 +175,16 @@ class TestSocks5IPv6Wire:
 
         mock_proxy = MagicMock()
         mock_proxy.send = AsyncMock()
-        # Greeting reply (v5, no-auth) then connect-reply (v5, success, ATYP+addr+port).
-        connect_reply = bytes([0x05, 0x00, 0x00, 0x01]) + bytes(6)
-        mock_proxy.recv = AsyncMock(side_effect=[bytes([0x05, 0x00]), connect_reply])
+        # Three recv calls: greeting reply, fixed 4-byte connect-reply
+        # header (VER+REP+RSV+ATYP), then variable BND.ADDR+BND.PORT.
+        # Negotiator parses ATYP from the response, not the request.
+        mock_proxy.recv = AsyncMock(
+            side_effect=[
+                bytes([0x05, 0x00]),  # greeting reply
+                bytes([0x05, 0x00, 0x00, 0x01]),  # connect-reply header (v4 BND)
+                bytes(6),  # 4-byte v4 BND.ADDR + 2-byte BND.PORT
+            ]
+        )
 
         ngtr = Socks5Ngtr(mock_proxy)
         await ngtr.negotiate(ip="192.0.2.5", port=8080)
@@ -175,9 +212,17 @@ class TestSocks5IPv6Wire:
 
         mock_proxy = MagicMock()
         mock_proxy.send = AsyncMock()
-        # Greeting reply (v5, no-auth) then connect-reply (v5, success, ATYP=v6+addr+port).
-        connect_reply = bytes([0x05, 0x00, 0x00, 0x04]) + bytes(18)
-        mock_proxy.recv = AsyncMock(side_effect=[bytes([0x05, 0x00]), connect_reply])
+        # Three recv calls: greeting reply, fixed 4-byte connect-reply
+        # header with ATYP=0x04 (v6), then 16-byte BND.ADDR + 2-byte
+        # BND.PORT. Confirms the negotiator reads in two stages and
+        # picks reply_size from the response ATYP, not the request ATYP.
+        mock_proxy.recv = AsyncMock(
+            side_effect=[
+                bytes([0x05, 0x00]),  # greeting reply
+                bytes([0x05, 0x00, 0x00, 0x04]),  # connect-reply header (v6 BND)
+                bytes(18),  # 16-byte v6 BND.ADDR + 2-byte BND.PORT
+            ]
+        )
 
         ngtr = Socks5Ngtr(mock_proxy)
         await ngtr.negotiate(ip="2001:db8::1", port=443)
