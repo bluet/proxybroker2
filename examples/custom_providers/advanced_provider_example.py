@@ -135,10 +135,11 @@ class AdvancedProvider(Provider):
         # Format 3: HTML table
         octet = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
         ip_address = rf"{octet}(?:\.{octet}){{3}}"
+        port = r"(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3})"
         table_pattern = (
             r"<[tT][rR][^>]*>\s*"
             rf"<[tT][dD][^>]*>\s*({ip_address})\s*</[tT][dD]>\s*"
-            r"<[tT][dD][^>]*>\s*(\d+)\s*</[tT][dD]>\s*"
+            rf"<[tT][dD][^>]*>\s*({port})\s*</[tT][dD]>\s*"
             r"</[tT][rR]>"
         )
         return re.findall(table_pattern, page)

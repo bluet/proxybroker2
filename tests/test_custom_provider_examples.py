@@ -11,6 +11,8 @@ def test_advanced_provider_html_table_parser_handles_simple_rows():
       <tr><td>198.51.100.1</td><td>3128</td></tr>
       <TR><TD>203.0.113.1</TD><TD>8888</TD></TR>
       <tr><td>999.999.999.999</td><td>1234</td></tr>
+      <tr><td>192.0.2.2</td><td>99999</td></tr>
+      <tr><td>192.0.2.3</td><td>0</td></tr>
     </table>
     """
 
