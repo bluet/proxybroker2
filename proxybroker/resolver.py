@@ -243,11 +243,21 @@ class Resolver:
         if not families:
             raise RuntimeError("No routable IPv4 or IPv6 interface")
 
-        # First-success + grace window pattern: don't let a blackholed
-        # family (default route present but packets dropped — common
-        # broken-IPv6 corp config) hold up the working family for the
-        # full timeout. Once one family responds, give the other ≤ 2 s
-        # to also complete; cancel afterwards.
+        # First-success + remaining-budget pattern: don't let a
+        # blackholed family (default route present but packets dropped —
+        # common broken-IPv6 corp config) hold up the working family.
+        # Once one family responds, give the other family the REMAINING
+        # portion of `self._timeout` (i.e. the user's explicit patience
+        # budget minus what we've already spent on the first family).
+        # This way:
+        #   * blackholed-extra-family: first probe succeeds fast,
+        #     remaining budget shrinks, second probe is cancelled when
+        #     budget exhausts. Bounded by user's setting.
+        #   * slow-but-reachable second family: as long as it completes
+        #     within the user's total timeout, it's preserved (codex
+        #     PR #225 review feedback).
+        loop = asyncio.get_running_loop()
+        start = loop.time()
         tasks = {asyncio.create_task(self._probe_family(f)) for f in families}
         found: set[str] = set()
         pending = set(tasks)
@@ -274,20 +284,22 @@ class Resolver:
                     # Single-family probe failure — keep trying others.
                     log.debug("Family probe failed: %s", e)
 
-        # Brief grace window for the remaining family (typically the
-        # one that also worked but was a hair slower; capped at 2 s so
-        # blackholed-extra-family doesn't regress startup latency).
+        # Grace window for remaining family: respect user's total
+        # timeout budget, NOT a fixed cap.
         if found and pending:
-            grace = min(self._timeout, 2.0)
-            done, still_pending = await asyncio.wait(pending, timeout=grace)
-            for task in done:
-                try:
-                    ip = task.result()
-                    if isinstance(ip, str):
-                        found.add(ip)
-                except Exception as e:
-                    log.debug("Grace-window family probe failed: %s", e)
-            for task in still_pending:
+            elapsed = loop.time() - start
+            grace = max(0.0, self._timeout - elapsed)
+            if grace > 0:
+                done, still_pending = await asyncio.wait(pending, timeout=grace)
+                for task in done:
+                    try:
+                        ip = task.result()
+                        if isinstance(ip, str):
+                            found.add(ip)
+                    except Exception as e:
+                        log.debug("Grace-window family probe failed: %s", e)
+                pending = still_pending
+            for task in pending:
                 task.cancel()
         elif pending:
             # No success yet AND nothing else pending of value — cancel.

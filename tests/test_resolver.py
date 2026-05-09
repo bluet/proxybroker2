@@ -522,15 +522,24 @@ async def test_get_real_ext_ip_singular_shim_v4_only(mocker):
 
 
 @pytest.mark.asyncio
-async def test_get_real_ext_ips_grace_window_when_v4_succeeds_v6_blackholed(mocker):
-    """When v4 succeeds and v6 is blackholed (probe never returns), the
-    grace window caps the wait at ~2s instead of blocking on full
-    timeout. Real-world: corporate networks with stale router
-    advertisements where v6 default route exists but packets disappear.
+async def test_get_real_ext_ips_grace_bounded_by_user_timeout(mocker):
+    """First-success + remaining-budget pattern: when v4 succeeds and
+    v6 is blackholed (probe never returns), the grace window respects
+    the user's `self._timeout` setting (NOT a fixed cap).
+
+    Bounded by user setting:
+      - timeout=2 → total wait ≤ ~2s (this test)
+      - timeout=10 → total wait ≤ ~10s (user's explicit patience)
+
+    This balances two concerns:
+      - Don't block forever on blackholed-extra-family (codex round 1)
+      - Don't drop slow-but-reachable second family within user's
+        configured patience (codex round 2)
     """
     import asyncio
+    import time
 
-    resolver_inst = Resolver(timeout=10)  # generous full timeout
+    resolver_inst = Resolver(timeout=2)  # tight user budget
     mocker.patch.object(Resolver, "_has_local_route", return_value=True)
 
     async def fake_probe(family):
@@ -542,15 +551,42 @@ async def test_get_real_ext_ips_grace_window_when_v4_succeeds_v6_blackholed(mock
 
     mocker.patch.object(resolver_inst, "_probe_family", side_effect=fake_probe)
 
-    import time
-
     start = time.monotonic()
     result = await resolver_inst.get_real_ext_ips()
     elapsed = time.monotonic() - start
 
     assert result == frozenset({"203.0.113.5"})
-    # Grace cap is min(self._timeout, 2.0) = 2.0 — give wide margin for CI scheduler.
-    assert elapsed < 4.0, f"Grace window not enforced; took {elapsed:.2f}s"
+    # Bounded by self._timeout=2 + small CI scheduler overhead.
+    assert elapsed < 4.0, f"Grace window not bounded; took {elapsed:.2f}s"
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_grace_preserves_slow_but_reachable_family(mocker):
+    """When the second family is slow-but-reachable (responds within
+    user's timeout), it MUST be preserved in the result set — not
+    dropped by an over-aggressive fixed grace cap.
+
+    Regression test for codex PR #225 review feedback against an
+    earlier 2s-fixed-cap implementation that would have lost the
+    slow-but-reachable second family.
+    """
+    import asyncio
+
+    resolver_inst = Resolver(timeout=5)
+    mocker.patch.object(Resolver, "_has_local_route", return_value=True)
+
+    async def fake_probe(family):
+        if family == socket.AF_INET:
+            return "203.0.113.5"
+        # Slow but reachable: completes well within user's timeout
+        await asyncio.sleep(0.3)
+        return "2001:db8::1"
+
+    mocker.patch.object(resolver_inst, "_probe_family", side_effect=fake_probe)
+
+    result = await resolver_inst.get_real_ext_ips()
+    # BOTH addresses must be in the set — slow second family preserved.
+    assert result == frozenset({"203.0.113.5", "2001:db8::1"})
 
 
 @pytest.mark.asyncio
