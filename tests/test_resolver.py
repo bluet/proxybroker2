@@ -252,12 +252,17 @@ async def test_resolve_cache(event_loop, mocker, resolver):
     mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
     await resolver.resolve("test.com")
     await resolver.resolve("test2.com", port=80, family=socket.AF_INET)
-    assert resolver._resolve.call_count == 2
+    # Happy Eyeballs DNS fires both A and AAAA per resolve() call, so
+    # 2 fresh resolves => 4 underlying _resolve invocations (A + AAAA
+    # for each host). The AAAA half raises (per query_side_effect) and
+    # is gracefully discarded by _race_a_aaaa.
+    assert resolver._resolve.call_count == 4
 
     assert await resolver.resolve("test.com") == "127.0.0.1"
     resp = await resolver.resolve("test2.com")
     assert resp[0]["host"] == "127.0.0.2"
-    assert resolver._resolve.call_count == 2
+    # Cache hits short-circuit before _race_a_aaaa, so no new calls.
+    assert resolver._resolve.call_count == 4
 
     # Mock an exception for test3.com
     mocker.patch(
@@ -266,4 +271,6 @@ async def test_resolve_cache(event_loop, mocker, resolver):
     )
     with pytest.raises(ResolveError):
         await resolver.resolve("test3.com")
-    assert resolver._resolve.call_count == 3
+    # Failed resolve still fires both A and AAAA in parallel; both
+    # raise -> 2 additional _resolve invocations.
+    assert resolver._resolve.call_count == 6
