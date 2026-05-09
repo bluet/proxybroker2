@@ -168,15 +168,31 @@ class Resolver:
             pick = secrets.choice(remaining)
             remaining.remove(pick)
             candidates.append(pick)
+
+        # Time-budget allocation. The ENTIRE family probe is bounded by
+        # `self._timeout` (the user's explicit patience setting). Within
+        # that, each candidate gets a per-request timeout sized so that
+        # roughly 3 candidates can be tried before the overall budget
+        # exhausts. A small floor (0.5s) keeps tests with very tight
+        # `Resolver(timeout=...)` from getting an unreasonably small
+        # per-request timeout. Tracking a deadline + checking remaining
+        # budget per candidate ensures we don't exceed the user's setting
+        # even if early candidates ate most of the budget.
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + self._timeout
+        per_candidate_timeout = min(self._timeout, max(0.5, self._timeout / 3))
         connector = aiohttp.TCPConnector(family=family)
-        timeout = aiohttp.ClientTimeout(total=self._timeout)
         try:
-            async with aiohttp.ClientSession(
-                connector=connector, timeout=timeout
-            ) as session:
+            async with aiohttp.ClientSession(connector=connector) as session:
                 for url in candidates:
+                    remaining_budget = deadline - loop.time()
+                    if remaining_budget <= 0:
+                        break  # out of budget — let outer code raise
+                    request_timeout = aiohttp.ClientTimeout(
+                        total=min(per_candidate_timeout, remaining_budget)
+                    )
                     try:
-                        async with session.get(url) as resp:
+                        async with session.get(url, timeout=request_timeout) as resp:
                             # Guard against error pages (5xx, 404, etc.)
                             # whose body might contain IP-like strings
                             # that pass canonicalize_ip but aren't the
@@ -294,19 +310,18 @@ class Resolver:
         found: set[str] = set()
         pending = set(tasks)
 
-        # Wait for first family to complete (success or failure)
+        # Wait for first family to complete (success or failure).
+        # NO outer timeout here — each `_probe_family` self-bounds by
+        # `self._timeout` via deadline tracking. Adding an outer
+        # timeout would race the inner one and cancel probes mid-
+        # candidate-loop (so a single blackholed endpoint at the front
+        # of the random order would kill the entire family probe
+        # before it could fall back to other candidates).
         while pending and not found:
             done, pending = await asyncio.wait(
                 pending,
                 return_when=asyncio.FIRST_COMPLETED,
-                timeout=self._timeout,
             )
-            if not done:
-                # Top-level timeout - cancel remaining and bail.
-                for task in pending:
-                    task.cancel()
-                pending = set()
-                break
             for task in done:
                 try:
                     ip = task.result()

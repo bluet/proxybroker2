@@ -636,7 +636,7 @@ async def test_probe_family_v6_rejects_v4_mapped_response(mocker):
     fake_resp.text = AsyncMock(return_value="::ffff:192.0.2.1\n")
 
     @asynccontextmanager
-    async def fake_get(_url):
+    async def fake_get(_url, **_kwargs):
         yield fake_resp
 
     @asynccontextmanager
@@ -674,7 +674,7 @@ async def test_probe_family_v4_normalises_v4_mapped_response(mocker):
     fake_resp.text = AsyncMock(return_value="::ffff:192.0.2.1\n")
 
     @asynccontextmanager
-    async def fake_get(_url):
+    async def fake_get(_url, **_kwargs):
         yield fake_resp
 
     @asynccontextmanager
@@ -688,3 +688,88 @@ async def test_probe_family_v4_normalises_v4_mapped_response(mocker):
 
     result = await resolver_inst._probe_family(socket.AF_INET)
     assert result == "192.0.2.1"  # normalised, NOT "::ffff:192.0.2.1"
+
+
+@pytest.mark.asyncio
+async def test_probe_family_falls_back_to_next_candidate_on_timeout(mocker):
+    """When the FIRST endpoint times out, _probe_family must fall back
+    to the NEXT candidate — NOT be killed mid-iteration.
+
+    Direct regression for codex PR #225 round 4: with the previous
+    `asyncio.wait(timeout=self._timeout)` wrapping in get_real_ext_ips,
+    a single blackholed endpoint at the front of the random order
+    cancelled the entire family probe before fallback candidates
+    could be tried.
+    """
+    import asyncio
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock, MagicMock
+
+    resolver_inst = Resolver(timeout=5)
+    call_log = []
+
+    @asynccontextmanager
+    async def fake_get(_url, **_kwargs):
+        call_log.append(_url)
+        if len(call_log) == 1:
+            # First candidate: simulate aiohttp's behavior on per-
+            # request timeout exhausting (raises asyncio.TimeoutError).
+            raise asyncio.TimeoutError()
+        # Subsequent candidates: succeed
+        resp = MagicMock()
+        resp.status = 200
+        resp.text = AsyncMock(return_value="203.0.113.50\n")
+        yield resp
+
+    @asynccontextmanager
+    async def fake_session(*_args, **_kwargs):
+        sess = MagicMock()
+        sess.get = fake_get
+        yield sess
+
+    mocker.patch("proxybroker.resolver.aiohttp.ClientSession", fake_session)
+    mocker.patch("proxybroker.resolver.aiohttp.TCPConnector", MagicMock())
+
+    result = await resolver_inst._probe_family(socket.AF_INET)
+
+    # MUST have tried more than one candidate (no mid-iteration kill).
+    assert len(call_log) >= 2, f"Only tried {len(call_log)} candidate(s)"
+    assert result == "203.0.113.50"
+
+
+@pytest.mark.asyncio
+async def test_probe_family_exhausts_all_candidates_before_raising(mocker):
+    """When ALL candidates time out, _probe_family must try each one
+    before raising RuntimeError — not bail after the first failure.
+    Verifies the per-request budget allocation lets the loop reach
+    every endpoint within self._timeout.
+    """
+    import asyncio
+    from contextlib import asynccontextmanager
+    from unittest.mock import MagicMock
+
+    resolver_inst = Resolver(timeout=3)
+    call_log = []
+
+    @asynccontextmanager
+    async def fake_get(_url, **_kwargs):
+        call_log.append(_url)
+        raise asyncio.TimeoutError()
+        yield None  # unreachable; keeps asynccontextmanager valid
+
+    @asynccontextmanager
+    async def fake_session(*_args, **_kwargs):
+        sess = MagicMock()
+        sess.get = fake_get
+        yield sess
+
+    mocker.patch("proxybroker.resolver.aiohttp.ClientSession", fake_session)
+    mocker.patch("proxybroker.resolver.aiohttp.TCPConnector", MagicMock())
+
+    with pytest.raises(RuntimeError):
+        await resolver_inst._probe_family(socket.AF_INET)
+
+    # All N endpoints in `_ip_hosts` were attempted (didn't bail early).
+    assert len(call_log) == len(Resolver._ip_hosts), (
+        f"Tried {len(call_log)} of {len(Resolver._ip_hosts)} candidates"
+    )
