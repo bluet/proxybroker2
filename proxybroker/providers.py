@@ -166,7 +166,13 @@ class Provider:
         # in the public method so subclasses that override `find_proxies`
         # to do their own decoding (b64, custom parsing) aren't fed
         # already-normalized (host, port) tuples they can't handle.
-        proxies = self._find_proxies(page)
+        #
+        # Mask bracketed IPv6 spans before the IPv4 pass so feeds carrying
+        # IPv4-mapped IPv6 entries like `[::ffff:192.0.2.1]:8080` don't
+        # *also* enqueue a phantom `192.0.2.1:8080` IPv4 entry that the
+        # provider never advertised.
+        masked = IPv6BracketedPortPattern.sub(lambda m: " " * len(m.group(0)), page)
+        proxies = self._find_proxies(masked)
         for raw_v6, port in IPv6BracketedPortPattern.findall(page):
             canonical = canonicalize_ip(raw_v6)
             if canonical is not None:

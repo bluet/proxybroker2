@@ -183,7 +183,7 @@ class Resolver:
             return canonicalize_ip(host) or host
 
         _host = self._cached_hosts.get(host)
-        if _host:
+        if _host and self._cache_compatible(_host, family, qtype):
             return _host
 
         resp = await self._fetch_records(host, family, qtype)
@@ -214,6 +214,31 @@ class Resolver:
             if logging:
                 log.warning(f"{host}: Could not resolve host")
         return self._cached_hosts.get(host)
+
+    @staticmethod
+    def _cache_compatible(cached, family, qtype):
+        """Return True iff `cached` matches the caller's family/qtype intent.
+
+        The cache key is the bare hostname, so a prior default
+        Happy-Eyeballs lookup may have stored an IPv6 winner under
+        `host`. A subsequent caller pinning `family=AF_INET` or
+        `qtype="A"` must not silently receive that v6 — we validate
+        the cached IP's family before short-circuiting.
+        """
+        if family is None and qtype is _QTYPE_DEFAULT:
+            return True  # default path accepts whatever was cached
+        cached_ip = cached if isinstance(cached, str) else cached[0]["host"]
+        try:
+            cached_addr = ipaddress.ip_address(cached_ip)
+        except (ValueError, TypeError):
+            return False
+        wants_v4 = family == socket.AF_INET or qtype == "A"
+        wants_v6 = family == socket.AF_INET6 or qtype == "AAAA"
+        if wants_v4:
+            return isinstance(cached_addr, ipaddress.IPv4Address)
+        if wants_v6:
+            return isinstance(cached_addr, ipaddress.IPv6Address)
+        return True
 
     async def _fetch_records(self, host, family, qtype):
         """Choose A-only / AAAA-only / parallel race based on caller intent.

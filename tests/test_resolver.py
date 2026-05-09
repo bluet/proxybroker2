@@ -327,3 +327,37 @@ async def test_resolve_cache(mocker, resolver):
     # No family pinned -> Happy Eyeballs race; both A and AAAA fail -> 2
     # additional _resolve invocations -> 5 total.
     assert resolver._resolve.call_count == 5
+
+
+@pytest.mark.asyncio
+async def test_resolve_cache_rejects_v6_for_a_only_callers(mocker, resolver):
+    """A prior default Happy-Eyeballs lookup may have cached an IPv6
+    winner for `host`. A later caller pinning `family=AF_INET` or
+    `qtype="A"` must NOT silently get that v6 back from the cache.
+
+    The fix: `_cache_compatible(cached, family, qtype)` validates the
+    cached IP against the requested family before short-circuiting.
+    """
+    # Pre-populate the cache as if a default lookup found IPv6.
+    resolver._cached_hosts.clear()
+    resolver._cached_hosts["dual.example.com"] = "2001:db8::1"
+
+    a_only_records = [ResolveResult("192.0.2.5", 0)]
+
+    async def fake_resolve(host, qtype):
+        if qtype == "A" and host == "dual.example.com":
+            return a_only_records
+        from aiodns.error import DNSError
+
+        raise DNSError(1, f"no {qtype} for {host} (test)")
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+
+    # family=AF_INET -> cache should reject the v6 entry and do fresh lookup
+    resp = await resolver.resolve("dual.example.com", port=80, family=socket.AF_INET)
+    assert resp[0]["host"] == "192.0.2.5"
+
+    # Default unpinned lookup still returns the cached v6 (any-family path).
+    # Reset spy so we count from clean state.
+    resolver._cached_hosts["dual.example.com"] = "2001:db8::1"
+    assert await resolver.resolve("dual.example.com") == "2001:db8::1"
