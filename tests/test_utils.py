@@ -6,7 +6,20 @@ from proxybroker.utils import (
     get_status_code,
     parse_headers,
     parse_status_line,
+    update_geoip_db,
 )
+
+
+def test_update_geoip_db_raises_runtime_error():
+    # MaxMind retired the unauthenticated GeoLite2 download endpoint on
+    # 2019-12-30. Until a replacement strategy is picked (tracking issue
+    # #200), `update-geo` must fail loudly with a pointer to the issue
+    # rather than silently NXDOMAIN. Locks in the PR #199 mitigation.
+    with pytest.raises(RuntimeError) as excinfo:
+        update_geoip_db()
+    msg = str(excinfo.value)
+    assert "update-geo" in msg
+    assert "https://github.com/bluet/proxybroker2/issues/200" in msg
 
 
 def test_get_all_ip():
