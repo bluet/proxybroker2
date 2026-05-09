@@ -230,11 +230,26 @@ async def test_resolve_cache(event_loop, mocker, resolver):
     assert resolver._resolve.call_count == 0
 
     resolver._cached_hosts.clear()
-    f = future_iter(
-        [ResolveResult("127.0.0.1", 0)],
-        [ResolveResult("127.0.0.2", 0)],
-    )
-    mocker.patch("aiodns.DNSResolver.query", side_effect=f)
+    # Resolver.resolve() races A+AAAA in parallel (Happy Eyeballs DNS,
+    # RFC 8305 § 3) when the caller doesn't pin qtype. Each resolve()
+    # call fires both queries; AAAA raises here so v4 wins
+    # deterministically per host. _resolve is still called twice (once
+    # per resolve() call - the helper doesn't double-count internally).
+    import aiodns
+
+    a_futures = {
+        "test.com": [ResolveResult("127.0.0.1", 0)],
+        "test2.com": [ResolveResult("127.0.0.2", 0)],
+    }
+
+    def query_side_effect(host, qtype):
+        if qtype == "A" and host in a_futures:
+            f = asyncio.Future()
+            f.set_result(a_futures[host])
+            return f
+        raise aiodns.error.DNSError(1, f"no {qtype} record for {host} (test)")
+
+    mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
     await resolver.resolve("test.com")
     await resolver.resolve("test2.com", port=80, family=socket.AF_INET)
     assert resolver._resolve.call_count == 2
