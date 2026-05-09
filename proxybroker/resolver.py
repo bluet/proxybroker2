@@ -49,8 +49,6 @@ class Resolver:
         "http://myexternalip.com/raw",
         "http://ifconfig.io/ip",
     ]
-    # the list of resolvers will point a copy of original one
-    _temp_host = []
 
     def __init__(self, timeout=5, loop=None):
         self._timeout = timeout
@@ -123,14 +121,6 @@ class Resolver:
             region_name = ipInfo["subdivisions"][0]["names"]["en"]
         return GeoData(code, name, region_code, region_name, city_name)
 
-    def _pop_random_ip_host(self):
-        # secrets.choice (CSPRNG) instead of random.choice for SonarCloud
-        # S2245. The selection isn't security-sensitive (just balances which
-        # ext-IP-detection URL we hit), but secrets is a drop-in here.
-        host = secrets.choice(self._temp_host)
-        self._temp_host.remove(host)
-        return host
-
     @staticmethod
     def _has_local_route(family):
         """Routable-interface check for `family`.
@@ -170,9 +160,8 @@ class Resolver:
         # CSPRNG-randomised trial order so we balance load across the
         # public ext-IP-detection services (good-citizen behaviour for
         # what could be many proxybroker instances on the internet).
-        # Built via `secrets.choice` per pick - matches the existing
-        # `_pop_random_ip_host` pattern and avoids SonarCloud's S2245
-        # false-positive against `random.shuffle` / `SystemRandom().shuffle`.
+        # Built via `secrets.choice` per pick to clear SonarCloud S2245
+        # against `random.shuffle` / `SystemRandom().shuffle`.
         remaining = list(self._ip_hosts)
         candidates = []
         while remaining:

@@ -461,7 +461,6 @@ async def test_get_real_ext_ips_no_routable_interface_raises(mocker):
     networking disabled) gets a clear error instead of looping through
     timeouts.
     """
-    Resolver._temp_host = []  # reset class-level state from prior tests
     resolver_inst = Resolver(timeout=1)
     mocker.patch.object(Resolver, "_has_local_route", return_value=False)
 
