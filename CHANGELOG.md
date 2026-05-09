@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Happy Eyeballs DNS** (RFC 8305 § 3) in `Resolver.resolve()` (#201).
+  When the caller doesn't pin `qtype`, A and AAAA queries fire in
+  parallel; the first non-empty answer wins; the slower task is
+  cancelled. Replaces sequential A→AAAA fallback - eliminates the
+  full DNS round-trip latency for v6-only hostnames and shaves the
+  worst-case latency for dual-stack hosts on broken networks.
+- **Modern type hints** on `canonicalize_ip`, `find_proxy_pairs`,
+  `_format_host_port` (PEP 604 union syntax). Better IDE/mypy
+  ergonomics for downstream consumers.
+
+### Changed
+- `find_proxy_pairs(text)` now canonicalises both IPv4 AND IPv6
+  entries (#201). IPv4 canonical form equals identity, so legacy
+  v4-only feeds see no behavior change - the contract is just
+  consistent now: every returned `(ip, port)` has a canonical IP.
+- `Socks4Ngtr.negotiate(ip=v6, ...)` raises `BadResponseError(
+  "SOCKS4 protocol does not support IPv6 destinations")` instead
+  of a cryptic `OSError` from `inet_aton` (#201). Logs point users
+  at SOCKS5 for IPv6.
+
+### Added
 - **Full IPv6 support across the stack** (#201). IPv6 is now first-class
   alongside IPv4 across detection, validation, anonymity comparison,
   SOCKS5 proxying, and `[v6]:port` provider parsing.

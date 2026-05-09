@@ -20,7 +20,7 @@ _HTTP_PROTOS = {"HTTP", "CONNECT:80", "SOCKS4", "SOCKS5"}
 _HTTPS_PROTOS = {"HTTPS", "SOCKS4", "SOCKS5"}
 
 
-def _format_host_port(host, port):
+def _format_host_port(host: str, port: int | str) -> str:
     """Format `host:port` with RFC 3986 IPv6 bracketing.
 
     IPv6 literals contain colons, which would ambiguate against the

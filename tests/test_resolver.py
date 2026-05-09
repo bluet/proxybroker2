@@ -111,36 +111,101 @@ async def test_resolve(event_loop, mocker, resolver):
 
 
 @pytest.mark.asyncio
-async def test_resolve_falls_back_to_aaaa_for_v6_only_host(mocker, resolver):
-    """When A query returns no records, resolve() must transparently
-    fall back to AAAA so v6-only hostnames (no A record) still resolve.
-    Without this, judges and proxy hosts with AAAA-only DNS silently
-    fail to be reachable.
-    """
-    from proxybroker.errors import ResolveError
+async def test_resolve_happy_eyeballs_v6_wins_when_faster(mocker, resolver):
+    """RFC 8305 § 3: A and AAAA fire in parallel; the faster one wins."""
+    resolver._cached_hosts.clear()
 
-    a_calls = []
+    from types import SimpleNamespace
+
+    calls = []
 
     async def fake_resolve(host, qtype):
-        a_calls.append(qtype)
+        calls.append(qtype)
+        if qtype == "AAAA":
+            await asyncio.sleep(0.001)  # faster
+            return [SimpleNamespace(host="2001:db8::5")]
+        await asyncio.sleep(0.05)  # slower
+        return [SimpleNamespace(host="192.0.2.5")]
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+    result = await resolver.resolve("dual-v6-wins.example.com")
+    # Both queries fired in parallel
+    assert set(calls) == {"A", "AAAA"}
+    assert result == "2001:db8::5"
+
+
+@pytest.mark.asyncio
+async def test_resolve_happy_eyeballs_v4_wins_when_faster(mocker, resolver):
+    # `_cached_hosts` is a class attribute; clear it so any prior test
+    # that resolved the same hostname doesn't return a stale entry
+    # before our mock fires.
+    resolver._cached_hosts.clear()
+
+    from types import SimpleNamespace
+
+    async def fake_resolve(host, qtype):
+        if qtype == "A":
+            await asyncio.sleep(0.001)
+            return [SimpleNamespace(host="192.0.2.5")]
+        await asyncio.sleep(0.05)
+        return [SimpleNamespace(host="2001:db8::5")]
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+    assert await resolver.resolve("dual-v4-wins.example.com") == "192.0.2.5"
+
+
+@pytest.mark.asyncio
+async def test_resolve_happy_eyeballs_v6_only_when_a_fails(mocker, resolver):
+    """v6-only hostnames (no A record) still resolve when A raises."""
+    resolver._cached_hosts.clear()
+
+    from types import SimpleNamespace
+
+    from proxybroker.errors import ResolveError
+
+    async def fake_resolve(host, qtype):
         if qtype == "A":
             raise ResolveError
-        # AAAA: return a fake aiodns-style record with .host
-        from types import SimpleNamespace
-
         return [SimpleNamespace(host="2001:db8::abcd")]
 
     mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
-    result = await resolver.resolve("v6only.example.com")
-    assert a_calls == ["A", "AAAA"]
-    assert result == "2001:db8::abcd"
+    assert await resolver.resolve("v6only.example.com") == "2001:db8::abcd"
+
+
+@pytest.mark.asyncio
+async def test_resolve_happy_eyeballs_both_fail_raises(mocker, resolver):
+    """If both A and AAAA fail, ResolveError propagates (preserves the
+    legacy "could not resolve" contract that callers rely on)."""
+    resolver._cached_hosts.clear()
+
+    from proxybroker.errors import ResolveError
+
+    async def fake_resolve(host, qtype):
+        raise ResolveError
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+    with pytest.raises(ResolveError):
+        await resolver.resolve("nonexistent.example.com")
 
 
 @pytest.mark.asyncio
 async def test_resolve_family(mocker, resolver):
-    f = future_iter([ResolveResult("127.0.0.2", 0)])
-    # https://github.com/pytest-dev/pytest-mock#note-about-usage-as-context-manager
-    mocker.patch("aiodns.DNSResolver.query", side_effect=f)
+    # Resolver.resolve() races A+AAAA in parallel (Happy Eyeballs DNS,
+    # RFC 8305 § 3) when the caller doesn't pin qtype. This mock lets
+    # the A query win deterministically by making AAAA raise so only
+    # the v4 record is returned, matching the test's intent
+    # (family=AF_INET expects a v4 record).
+    import aiodns
+
+    a_future = asyncio.Future()
+    a_future.set_result([ResolveResult("127.0.0.2", 0)])
+
+    def query_side_effect(host, qtype):
+        if qtype == "A":
+            return a_future
+        raise aiodns.error.DNSError(1, "no AAAA record (test)")
+
+    mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
     resp = [
         {
             "hostname": "test2.com",

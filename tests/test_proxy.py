@@ -1,3 +1,4 @@
+import asyncio
 import ssl
 import time
 from asyncio.streams import StreamReader
@@ -92,11 +93,20 @@ async def test_create_by_ip():
 
 @pytest.mark.asyncio
 async def test_create_by_domain(mocker):
-    f = future_iter([ResolveResult("127.0.0.1", 0)])
-    # pytest-mock teardonw is done when existing thr fixture object
-    # no need context manager
-    # https://github.com/pytest-dev/pytest-mock#note-about-usage-as-context-manager
-    mocker.patch("aiodns.DNSResolver.query", side_effect=f)
+    # Resolver.resolve() races A and AAAA in parallel (Happy Eyeballs DNS,
+    # RFC 8305 § 3). Mock provides a v4 record for A and explicitly fails
+    # AAAA so the v4 result wins deterministically.
+    import aiodns
+
+    a_future = asyncio.Future()
+    a_future.set_result([ResolveResult("127.0.0.1", 0)])
+
+    def query_side_effect(host, qtype):
+        if qtype == "A":
+            return a_future
+        raise aiodns.error.DNSError(1, "no AAAA record (test)")
+
+    mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
     proxy = await Proxy.create("testhost.com", "80")
     assert proxy.host == "127.0.0.1"
 

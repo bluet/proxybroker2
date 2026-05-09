@@ -149,12 +149,17 @@ class Resolver:
     async def resolve(self, host, port=80, family=None, qtype="A", logging=True):
         """Resolve `host` to one or more IP addresses.
 
-        `qtype` defaults to "A" for backwards compatibility. When the
-        caller doesn't request a specific record type and the A query
-        returns nothing, we transparently fall back to AAAA so that
-        IPv6-only hostnames (no A records) resolve too. This restores
-        end-to-end reachability for the increasing number of services
-        that publish AAAA-only records.
+        When the caller doesn't pin a specific record type (`qtype="A"`,
+        the default), A and AAAA queries fire in parallel per Happy
+        Eyeballs DNS (RFC 8305 § 3). The first non-empty answer wins;
+        the slower query is cancelled. If both fail, the most recent
+        error is re-raised to preserve the historical "could not
+        resolve" contract.
+
+        Sequential fallback would add a full DNS round-trip of latency
+        for v6-only hostnames; parallel race makes v4-only and v6-only
+        hosts resolve at roughly the same speed and shaves the worst-
+        case latency for dual-stack hosts on broken networks.
         """
         if self.host_is_ip(host):
             return host
@@ -163,23 +168,10 @@ class Resolver:
         if _host:
             return _host
 
-        # Transparent AAAA fallback for callers that didn't pin qtype.
-        # If A succeeds, use it. If A fails *and* the caller didn't pin
-        # qtype, try AAAA - so v6-only hostnames (no A record) resolve.
-        # If AAAA also fails, propagate ResolveError to preserve the
-        # original "could not resolve" contract.
-        try:
+        if qtype == "A":
+            resp = await self._race_a_aaaa(host)
+        else:
             resp = await self._resolve(host, qtype)
-        except ResolveError:
-            if qtype == "A":
-                resp = await self._resolve(host, "AAAA")
-            else:
-                raise
-        if not resp and qtype == "A":
-            try:
-                resp = await self._resolve(host, "AAAA")
-            except ResolveError:
-                resp = None
 
         if resp:
             hosts = [
@@ -203,6 +195,40 @@ class Resolver:
             if logging:
                 log.warning(f"{host}: Could not resolve host")
         return self._cached_hosts.get(host)
+
+    async def _race_a_aaaa(self, host):
+        """Race A and AAAA queries; return the first non-empty answer.
+
+        Implements Happy Eyeballs DNS (RFC 8305 § 3). Both queries are
+        scheduled concurrently. When the first one completes:
+          * Non-empty success: cancel the loser, return immediately.
+          * Empty result or `ResolveError`: keep waiting for the other.
+        If both fail, re-raise the most recent error so the surrounding
+        `resolve()` keeps its "could not resolve" contract intact.
+        """
+        a_task = asyncio.create_task(self._resolve(host, "A"))
+        aaaa_task = asyncio.create_task(self._resolve(host, "AAAA"))
+        pending = {a_task, aaaa_task}
+        last_error: Exception | None = None
+        try:
+            while pending:
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done:
+                    try:
+                        result = task.result()
+                    except ResolveError as exc:
+                        last_error = exc
+                        continue
+                    if result:
+                        return result
+        finally:
+            for task in pending:
+                task.cancel()
+        if last_error is not None:
+            raise last_error
+        return None
 
     async def _resolve(self, host, qtype):
         if self._resolver is None:

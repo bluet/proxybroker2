@@ -103,12 +103,31 @@ class Socks5Ngtr(BaseNegotiator):
 
 
 class Socks4Ngtr(BaseNegotiator):
-    """SOCKS4 Negotiator."""
+    """SOCKS4 Negotiator.
+
+    SOCKS4 (RFC 1928 lacks SOCKS4; original Ying-Da Lee spec) only
+    defines a 4-byte IPv4 address field - there is no ATYP byte and
+    no IPv6 address type. Callers attempting v6 destinations get a
+    domain-specific BadResponseError instead of a cryptic
+    `OSError: illegal IP address string passed to inet_aton`.
+    """
 
     name = "SOCKS4"
 
     async def negotiate(self, **kwargs):
-        bip = inet_aton(kwargs.get("ip"))
+        ip = kwargs.get("ip")
+        try:
+            addr = ipaddress.ip_address(ip) if ip else None
+        except ValueError:
+            addr = None
+        if isinstance(addr, ipaddress.IPv6Address):
+            self._proxy.log(
+                "Failed (SOCKS4 does not support IPv6 destinations; "
+                "use SOCKS5 for IPv6)",
+                err=BadResponseError,
+            )
+            raise BadResponseError("SOCKS4 protocol does not support IPv6 destinations")
+        bip = inet_aton(ip)
         port = kwargs.get("port", 80)
 
         await self._proxy.send(struct.pack(">2BH5B", 4, 1, port, *bip, 0))

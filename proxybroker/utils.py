@@ -64,7 +64,7 @@ def get_headers(rv=False):
     return headers if not rv else (headers, _rv)
 
 
-def canonicalize_ip(s):
+def canonicalize_ip(s: str | None) -> str | None:
     """Return RFC 5952 canonical textual form of `s`, or None if invalid.
 
     For IPv4 the canonical form equals the input (identity). For IPv6 the
@@ -78,21 +78,30 @@ def canonicalize_ip(s):
     must compare equal.
     """
     try:
-        return str(ipaddress.ip_address(s))
+        return str(ipaddress.ip_address(s))  # type: ignore[arg-type]
     except (ValueError, TypeError):
         return None
 
 
-def find_proxy_pairs(text):
+def find_proxy_pairs(text: str) -> list[tuple[str, str]]:
     """Extract `(ip, port)` proxy pairs from arbitrary text.
 
-    Returns a list of `(ip_canonical, port)` tuples. IPv4 entries use
-    the legacy `IPPortPatternGlobal` (so historical provider feeds parse
-    unchanged). IPv6 entries use the bracketed `[v6]:port` form per
-    RFC 3986; the v6 part is canonicalised via stdlib `ipaddress` and
-    bracketed garbage that doesn't validate is silently dropped.
+    Returns a list of `(ip_canonical, port)` tuples. Both IPv4 and IPv6
+    are canonicalised via stdlib `ipaddress` so callers get one
+    consistent textual form regardless of how the source feed encoded
+    the address (case, leading zeros, `::` placement). IPv4 canonical
+    form equals the input, so legacy v4-only feeds see no behavior
+    change.
+
+    Bracketed v6 entries (`[v6]:port`, RFC 3986) and bare v4 entries
+    are both recognised. Invalid bracketed garbage is silently
+    dropped.
     """
-    pairs = list(IPPortPatternGlobal.findall(text))
+    pairs: list[tuple[str, str]] = []
+    for raw_v4, port in IPPortPatternGlobal.findall(text):
+        canonical = canonicalize_ip(raw_v4)
+        if canonical is not None:
+            pairs.append((canonical, port))
     for raw_v6, port in IPv6BracketedPortPattern.findall(text):
         canonical = canonicalize_ip(raw_v6)
         if canonical is not None:
@@ -100,7 +109,7 @@ def find_proxy_pairs(text):
     return pairs
 
 
-def get_all_ip(page):
+def get_all_ip(page: str) -> set[str]:
     """Extract all IPv4 and IPv6 literals from `page`.
 
     IPv4 addresses are extracted greedily as substrings (so
@@ -110,7 +119,7 @@ def get_all_ip(page):
     that different textual encodings of the same address (case,
     leading zeros, `::` placement) collapse to one set element.
     """
-    found = set(IPPattern.findall(page))
+    found: set[str] = set(IPPattern.findall(page))
     for tok in _IPV6_CANDIDATE_PATTERN.findall(page):
         if ":" not in tok:
             # Pure IPv4 token (no colon) - already covered by IPPattern.

@@ -195,23 +195,19 @@ class TestSocks5IPv6Wire:
         assert connect_pkt[4:20] == expected_packed
         assert int.from_bytes(connect_pkt[20:22], "big") == 443
 
-    def test_socks4_ipv6_raises_helpful_error(self):
-        """SOCKS4 RFC 1928 has no IPv6 address type. Asking for v6 over
-        SOCKS4 should fail loudly, not silently truncate or crash with a
-        cryptic struct error.
+    @pytest.mark.asyncio
+    async def test_socks4_ipv6_raises_bad_response_with_clear_message(self):
+        """SOCKS4 has no v6 address type. Callers asking for v6 get a
+        domain-specific BadResponseError pointing them to SOCKS5 - not
+        a cryptic OSError from inet_aton.
         """
-        # The current implementation crashes with OSError from inet_aton.
-        # We document the current observable behavior here so we notice
-        # if it ever changes silently. A future tighter check could raise
-        # a domain-specific BadResponseError instead.
-        import asyncio
         from unittest.mock import MagicMock
 
+        from proxybroker.errors import BadResponseError
         from proxybroker.negotiators import Socks4Ngtr
 
         mock_proxy = MagicMock()
         ngtr = Socks4Ngtr(mock_proxy)
-        with pytest.raises((OSError, ValueError)):
-            asyncio.get_event_loop().run_until_complete(
-                ngtr.negotiate(ip="2001:db8::1", port=443)
-            )
+        with pytest.raises(BadResponseError) as exc_info:
+            await ngtr.negotiate(ip="2001:db8::1", port=443)
+        assert "IPv6" in str(exc_info.value)
