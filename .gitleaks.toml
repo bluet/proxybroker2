@@ -1,0 +1,24 @@
+# Gitleaks config: extend the default ruleset with an allowlist of
+# paths that contain known false positives. Same scope as
+# .gitignore / .semgrepignore additions in the IPv6 work (#212).
+
+[extend]
+# Inherit gitleaks' bundled default ruleset.
+useDefault = true
+
+[allowlist]
+description = "Paths excluded from gitleaks scans"
+paths = [
+    # Claude Code per-machine config. May contain short-lived AWS STS
+    # session tokens for tool integrations (Opsera S3 upload URLs etc.);
+    # never in repo, expires fast, not a real credential leak.
+    '''^\.claude/.*''',
+    # Local working scratch. Regenerated scan reports echo example
+    # AWS-key-shaped strings back at the scanner (recursive false
+    # positive).
+    '''^tmp/.*''',
+    # Stale local virtualenvs.
+    '''^\.venv/.*''',
+    '''^venv/.*''',
+    '''^venv_.*/.*''',
+]
