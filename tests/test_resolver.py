@@ -615,3 +615,40 @@ def test_checker_real_ext_ips_is_keyword_only():
     sig = inspect.signature(Checker.__init__)
     params = sig.parameters
     assert params["real_ext_ips"].kind == inspect.Parameter.KEYWORD_ONLY
+
+
+@pytest.mark.asyncio
+async def test_probe_family_v6_rejects_v4_mapped_response(mocker):
+    """v6-pinned probe that gets a v4-mapped IPv6 response (`::ffff:1.2.3.4`)
+    must reject it — the address is logically IPv4 (the underlying
+    connection used v4 via dual-stack socket). Substring `":" in canonical`
+    would have wrongly accepted it.
+
+    Regression for coderabbit PR #225 review using ipaddress.ipv4_mapped.
+    """
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock, MagicMock
+
+    resolver_inst = Resolver(timeout=1)
+
+    fake_resp = MagicMock()
+    fake_resp.status = 200
+    fake_resp.text = AsyncMock(return_value="::ffff:192.0.2.1\n")
+
+    @asynccontextmanager
+    async def fake_get(_url):
+        yield fake_resp
+
+    @asynccontextmanager
+    async def fake_session(*_args, **_kwargs):
+        sess = MagicMock()
+        sess.get = fake_get
+        yield sess
+
+    mocker.patch("proxybroker.resolver.aiohttp.ClientSession", fake_session)
+    mocker.patch("proxybroker.resolver.aiohttp.TCPConnector", MagicMock())
+
+    # v6 probe should reject the v4-mapped response and exhaust all
+    # endpoints (every one returns the same v4-mapped string), then raise.
+    with pytest.raises(RuntimeError, match="No external IP returned"):
+        await resolver_inst._probe_family(socket.AF_INET6)

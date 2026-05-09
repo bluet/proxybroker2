@@ -201,7 +201,17 @@ class Resolver:
                     # against endpoints that report client IP via
                     # X-Forwarded-For-style logic that can leak the
                     # other family across CDN/proxy hops.
-                    is_v6 = ":" in canonical
+                    #
+                    # Use stdlib `ipaddress` rather than substring `":"
+                    # in canonical` so v4-mapped IPv6 addresses
+                    # (`::ffff:1.2.3.4`) are correctly recognised as
+                    # logical IPv4 — the substring check would have
+                    # accepted them on the v6 probe even though they
+                    # represent v4 connectivity.
+                    addr = ipaddress.ip_address(canonical)
+                    is_v6 = (
+                        addr.version == 6 and getattr(addr, "ipv4_mapped", None) is None
+                    )
                     if (family == socket.AF_INET6) != is_v6:
                         log.debug(
                             "Family-probe mismatch for %s: got %s, "
