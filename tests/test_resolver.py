@@ -652,3 +652,39 @@ async def test_probe_family_v6_rejects_v4_mapped_response(mocker):
     # endpoints (every one returns the same v4-mapped string), then raise.
     with pytest.raises(RuntimeError, match="No external IP returned"):
         await resolver_inst._probe_family(socket.AF_INET6)
+
+
+@pytest.mark.asyncio
+async def test_probe_family_v4_normalises_v4_mapped_response(mocker):
+    """v4-pinned probe receiving a v4-mapped IPv6 (`::ffff:192.0.2.1`)
+    must NORMALIZE to pure IPv4 (`192.0.2.1`) so downstream comparison
+    against `get_all_ip(judge_page)` (which extracts pure v4 from
+    pages) intersects correctly. Otherwise valid judges echoing
+    `192.0.2.1` would be rejected.
+
+    Direct regression for codex PR #225 review.
+    """
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock, MagicMock
+
+    resolver_inst = Resolver(timeout=1)
+
+    fake_resp = MagicMock()
+    fake_resp.status = 200
+    fake_resp.text = AsyncMock(return_value="::ffff:192.0.2.1\n")
+
+    @asynccontextmanager
+    async def fake_get(_url):
+        yield fake_resp
+
+    @asynccontextmanager
+    async def fake_session(*_args, **_kwargs):
+        sess = MagicMock()
+        sess.get = fake_get
+        yield sess
+
+    mocker.patch("proxybroker.resolver.aiohttp.ClientSession", fake_session)
+    mocker.patch("proxybroker.resolver.aiohttp.TCPConnector", MagicMock())
+
+    result = await resolver_inst._probe_family(socket.AF_INET)
+    assert result == "192.0.2.1"  # normalised, NOT "::ffff:192.0.2.1"

@@ -208,10 +208,32 @@ class Resolver:
                     # logical IPv4 — the substring check would have
                     # accepted them on the v6 probe even though they
                     # represent v4 connectivity.
+                    # Two cases for v4-mapped IPv6 responses:
+                    #   * v6-pinned probe → REJECT (the underlying
+                    #     connection actually used v4 via the v6
+                    #     socket's dual-stack capability; we want
+                    #     true v6 here).
+                    #   * v4-pinned probe → NORMALIZE to pure v4
+                    #     (some endpoints report v4 client addresses
+                    #     in v4-mapped form when they listen on a
+                    #     dual-stack v6 socket). Without normalising,
+                    #     downstream `get_all_ip(judge_page)` extracts
+                    #     pure v4 from the page and set intersection
+                    #     with our `::ffff:1.2.3.4` would fail —
+                    #     valid judges/proxies would be rejected.
                     addr = ipaddress.ip_address(canonical)
-                    is_v6 = (
-                        addr.version == 6 and getattr(addr, "ipv4_mapped", None) is None
-                    )
+                    ipv4_mapped = getattr(addr, "ipv4_mapped", None)
+                    if ipv4_mapped is not None:
+                        if family == socket.AF_INET6:
+                            log.debug(
+                                "Family-probe mismatch for v6: got "
+                                "v4-mapped %s, discarding and trying "
+                                "next endpoint",
+                                canonical,
+                            )
+                            continue
+                        return str(ipv4_mapped)
+                    is_v6 = addr.version == 6
                     if (family == socket.AF_INET6) != is_v6:
                         log.debug(
                             "Family-probe mismatch for %s: got %s, "
