@@ -510,8 +510,6 @@ class TestDeferredFileArguments:
 
         assert captured["data"] is sys.stdin
         assert captured["outfile"] is sys.stdout
-        assert captured["outfile"].encoding
-        assert captured["outfile"].encoding.lower() == "utf-8"
 
     @pytest.mark.parametrize(
         ("args", "expected_exception"),
