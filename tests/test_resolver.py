@@ -6,7 +6,7 @@ import pytest
 from proxybroker.errors import ResolveError
 from proxybroker.resolver import Resolver
 
-from .utils import ResolveResult, future_iter
+from .utils import ResolveResult
 
 
 @pytest.fixture
@@ -104,9 +104,21 @@ async def test_resolve(event_loop, mocker, resolver):
     with pytest.raises(ResolveError):
         await resolver.resolve("256.0.0.1")
 
-    f = future_iter([ResolveResult("127.0.0.1", 0)])
-    # https://github.com/pytest-dev/pytest-mock#note-about-usage-as-context-manager
-    mocker.patch("aiodns.DNSResolver.query", side_effect=f)
+    # Resolver.resolve() races A+AAAA in parallel (Happy Eyeballs DNS).
+    # Mock provides v4 record for A queries; AAAA raises so v4 wins
+    # deterministically. Without this, future_iter([single_result])
+    # gets exhausted on the second call and surfaces as StopIteration.
+    import aiodns
+
+    a_future = asyncio.Future()
+    a_future.set_result([ResolveResult("127.0.0.1", 0)])
+
+    def query_side_effect(host, qtype):
+        if qtype == "A":
+            return a_future
+        raise aiodns.error.DNSError(1, "no AAAA record (test)")
+
+    mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
     assert await resolver.resolve("test.com") == "127.0.0.1"
 
 
