@@ -60,7 +60,7 @@ def test_get_ip_info(resolver):
 
 
 @pytest.mark.asyncio
-async def test_get_real_ext_ip(event_loop, mocker, resolver):
+async def test_get_real_ext_ip(mocker, resolver):
     # Just mock the method itself to avoid complex aiohttp mocking
     mocker.patch.object(resolver, "get_real_ext_ip", return_value="127.0.0.1")
     assert await resolver.get_real_ext_ip() == "127.0.0.1"
@@ -98,7 +98,7 @@ async def test_get_real_ext_ip_canonicalises_ipv6(mocker):
 
 
 @pytest.mark.asyncio
-async def test_resolve(event_loop, mocker, resolver):
+async def test_resolve(mocker, resolver):
     assert await resolver.resolve("127.0.0.1") == "127.0.0.1"
 
     with pytest.raises(ResolveError):
@@ -233,7 +233,7 @@ async def test_resolve_family(mocker, resolver):
 
 
 @pytest.mark.asyncio
-async def test_resolve_cache(event_loop, mocker, resolver):
+async def test_resolve_cache(mocker, resolver):
     # Pre-populate cache to test cache hit behavior
     resolver._cached_hosts["test.com"] = "127.0.0.1"
 
