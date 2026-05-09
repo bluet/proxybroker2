@@ -197,27 +197,26 @@ class Resolver:
             remaining.remove(pick)
             candidates.append(pick)
 
-        # Time-budget allocation. The ENTIRE family probe is bounded by
-        # `self._timeout`. Each candidate gets `~self._timeout/3` so
-        # roughly 3 attempts fit. A 0.5s floor keeps very tight test
-        # timeouts from getting an unreasonably small per-request
-        # value. Deadline tracking ensures the user's setting holds
-        # even if early candidates ate most of the budget.
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + self._timeout
-        per_candidate_timeout = min(self._timeout, max(0.5, self._timeout / 3))
+        # Per-request timeout = `self._timeout` (preserves the old
+        # `Resolver(timeout=...)` semantics: each request gets its
+        # full chance, NOT the whole-family budget).
+        #
+        # No overall family deadline: the probe iterates every
+        # candidate before giving up. With 7 candidates × 5s
+        # default each, worst case (all stalled) is ~35s per family —
+        # but that matches the original behavior and is what the
+        # codex review explicitly asked for: don't drop fallback
+        # candidates because of a top-level budget cap. Outer
+        # `get_real_ext_ips` keeps both families' probes parallel
+        # (max instead of sum) and uses a grace window so a fast-
+        # succeeding family doesn't have to wait the full slow-family
+        # worst case.
         connector = aiohttp.TCPConnector(family=family)
         try:
             async with aiohttp.ClientSession(connector=connector) as session:
                 for url in candidates:
-                    remaining_budget = deadline - loop.time()
-                    if remaining_budget <= 0:
-                        break  # out of budget — let outer code raise
                     canonical = await self._try_endpoint(
-                        session,
-                        url,
-                        family,
-                        min(per_candidate_timeout, remaining_budget),
+                        session, url, family, self._timeout
                     )
                     if canonical is not None:
                         return canonical
