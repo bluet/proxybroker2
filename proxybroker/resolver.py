@@ -146,6 +146,35 @@ class Resolver:
         except OSError:
             return False  # socket() itself failed (family not supported)
 
+    @staticmethod
+    def _validate_probe_response(canonical, family):
+        """Validate a probe response against the requested family.
+
+        Returns the canonical (possibly normalised) IP string if it
+        matches the pinned family, or ``None`` to reject + try next.
+
+        Six-cell decision matrix on (response_form × family):
+          (pure_v4, AF_INET)        → accept canonical
+          (pure_v4, AF_INET6)       → reject (family mismatch)
+          (pure_v6, AF_INET)        → reject (family mismatch)
+          (pure_v6, AF_INET6)       → accept canonical
+          (v4-mapped, AF_INET)      → normalise to pure v4 (so
+                                      downstream `get_all_ip(page)`
+                                      set intersection works)
+          (v4-mapped, AF_INET6)     → reject (underlying connection
+                                      actually used v4 via dual-stack)
+        """
+        addr = ipaddress.ip_address(canonical)
+        ipv4_mapped = getattr(addr, "ipv4_mapped", None)
+        if ipv4_mapped is not None:
+            if family == socket.AF_INET6:
+                return None  # v4-mapped on v6 probe → reject
+            return str(ipv4_mapped)  # v4-mapped on v4 probe → normalise
+        is_v6 = addr.version == 6
+        if (family == socket.AF_INET6) != is_v6:
+            return None  # pure-family mismatch → reject
+        return canonical
+
     async def _probe_family(self, family):
         """Discover the external IP for one address family.
 
@@ -160,8 +189,7 @@ class Resolver:
         # CSPRNG-randomised trial order so we balance load across the
         # public ext-IP-detection services (good-citizen behaviour for
         # what could be many proxybroker instances on the internet).
-        # Built via `secrets.choice` per pick to clear SonarCloud S2245
-        # against `random.shuffle` / `SystemRandom().shuffle`.
+        # Built via `secrets.choice` per pick to clear SonarCloud S2245.
         remaining = list(self._ip_hosts)
         candidates = []
         while remaining:
@@ -170,13 +198,10 @@ class Resolver:
             candidates.append(pick)
 
         # Time-budget allocation. The ENTIRE family probe is bounded by
-        # `self._timeout` (the user's explicit patience setting). Within
-        # that, each candidate gets a per-request timeout sized so that
-        # roughly 3 candidates can be tried before the overall budget
-        # exhausts. A small floor (0.5s) keeps tests with very tight
-        # `Resolver(timeout=...)` from getting an unreasonably small
-        # per-request timeout. Tracking a deadline + checking remaining
-        # budget per candidate ensures we don't exceed the user's setting
+        # `self._timeout`. Each candidate gets `~self._timeout/3` so
+        # roughly 3 attempts fit. A 0.5s floor keeps very tight test
+        # timeouts from getting an unreasonably small per-request
+        # value. Deadline tracking ensures the user's setting holds
         # even if early candidates ate most of the budget.
         loop = asyncio.get_running_loop()
         deadline = loop.time() + self._timeout
@@ -188,81 +213,57 @@ class Resolver:
                     remaining_budget = deadline - loop.time()
                     if remaining_budget <= 0:
                         break  # out of budget — let outer code raise
-                    request_timeout = aiohttp.ClientTimeout(
-                        total=min(per_candidate_timeout, remaining_budget)
+                    canonical = await self._try_endpoint(
+                        session,
+                        url,
+                        family,
+                        min(per_candidate_timeout, remaining_budget),
                     )
-                    try:
-                        async with session.get(url, timeout=request_timeout) as resp:
-                            # Guard against error pages (5xx, 404, etc.)
-                            # whose body might contain IP-like strings
-                            # that pass canonicalize_ip but aren't the
-                            # real ext-IP (false positive).
-                            if resp.status != 200:
-                                continue
-                            text = (await resp.text()).strip()
-                    except (
-                        asyncio.TimeoutError,
-                        aiohttp.ClientError,
-                        OSError,
-                        # Misconfigured / malicious endpoint serving
-                        # non-UTF-8 — skip rather than abort the family.
-                        UnicodeDecodeError,
-                    ):
-                        continue
-                    canonical = canonicalize_ip(text)
-                    if canonical is None:
-                        continue
-                    # Defensive: confirm the returned address matches
-                    # the family we pinned the connector to. Guards
-                    # against endpoints that report client IP via
-                    # X-Forwarded-For-style logic that can leak the
-                    # other family across CDN/proxy hops.
-                    #
-                    # Use stdlib `ipaddress` rather than substring `":"
-                    # in canonical` so v4-mapped IPv6 addresses
-                    # (`::ffff:1.2.3.4`) are correctly recognised as
-                    # logical IPv4 — the substring check would have
-                    # accepted them on the v6 probe even though they
-                    # represent v4 connectivity.
-                    # Two cases for v4-mapped IPv6 responses:
-                    #   * v6-pinned probe → REJECT (the underlying
-                    #     connection actually used v4 via the v6
-                    #     socket's dual-stack capability; we want
-                    #     true v6 here).
-                    #   * v4-pinned probe → NORMALIZE to pure v4
-                    #     (some endpoints report v4 client addresses
-                    #     in v4-mapped form when they listen on a
-                    #     dual-stack v6 socket). Without normalising,
-                    #     downstream `get_all_ip(judge_page)` extracts
-                    #     pure v4 from the page and set intersection
-                    #     with our `::ffff:1.2.3.4` would fail —
-                    #     valid judges/proxies would be rejected.
-                    addr = ipaddress.ip_address(canonical)
-                    ipv4_mapped = getattr(addr, "ipv4_mapped", None)
-                    if ipv4_mapped is not None:
-                        if family == socket.AF_INET6:
-                            log.debug(
-                                "Family-probe mismatch for v6: got "
-                                "v4-mapped %s, discarding and trying "
-                                "next endpoint",
-                                canonical,
-                            )
-                            continue
-                        return str(ipv4_mapped)
-                    is_v6 = addr.version == 6
-                    if (family == socket.AF_INET6) != is_v6:
-                        log.debug(
-                            "Family-probe mismatch for %s: got %s, "
-                            "discarding and trying next endpoint",
-                            family,
-                            canonical,
-                        )
-                        continue
-                    return canonical
+                    if canonical is not None:
+                        return canonical
         except OSError as e:
             # connector creation can fail on hosts without v6 support
             log.debug("Family-probe %s failed at connector: %s", family, e)
         raise RuntimeError(f"No external IP returned for family {family}")
+
+    async def _try_endpoint(self, session, url, family, timeout_seconds):
+        """Try one ext-IP endpoint with a given timeout budget.
+
+        Returns the validated canonical IP string on success, or
+        ``None`` for any failure mode (transport error, non-200
+        response, unparseable body, family mismatch). Callers then
+        proceed to the next candidate.
+
+        Extracted from ``_probe_family`` to keep that function below
+        the cognitive-complexity threshold (Sonar S3776) and isolate
+        the per-candidate decision logic for testability.
+        """
+        request_timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+        try:
+            async with session.get(url, timeout=request_timeout) as resp:
+                # Skip error pages (5xx/404) — their body may contain
+                # IP-like strings that aren't the real ext-IP.
+                if resp.status != 200:
+                    return None
+                text = (await resp.text()).strip()
+        except (
+            asyncio.TimeoutError,
+            aiohttp.ClientError,
+            OSError,
+            UnicodeDecodeError,  # non-UTF-8 endpoint
+        ):
+            return None
+        canonical = canonicalize_ip(text)
+        if canonical is None:
+            return None
+        validated = self._validate_probe_response(canonical, family)
+        if validated is None:
+            log.debug(
+                "Family-probe mismatch for %s: got %s, trying next endpoint",
+                family,
+                canonical,
+            )
+        return validated
 
     async def get_real_ext_ips(self):
         """Discover all external IP addresses reachable from this host.
@@ -308,19 +309,43 @@ class Resolver:
         start = loop.time()
         tasks = {asyncio.create_task(self._probe_family(f)) for f in families}
         found: set[str] = set()
-        pending = set(tasks)
 
-        # Wait for first family to complete (success or failure).
-        # NO outer timeout here — each `_probe_family` self-bounds by
-        # `self._timeout` via deadline tracking. Adding an outer
-        # timeout would race the inner one and cancel probes mid-
-        # candidate-loop (so a single blackholed endpoint at the front
-        # of the random order would kill the entire family probe
-        # before it could fall back to other candidates).
+        # Phase 1: wait for first family success (or all to fail).
+        pending = await self._wait_for_first_success(tasks, found)
+
+        # Phase 2: grace window for any still-pending family within
+        # the user's REMAINING timeout budget (codex review: don't
+        # drop slow-but-reachable second family; bound by user setting
+        # not by an arbitrary fixed cap).
+        if pending:
+            elapsed = loop.time() - start
+            grace = max(0.0, self._timeout - elapsed)
+            await self._drain_with_budget(pending, found, grace)
+
+        if not found:
+            raise RuntimeError("Could not get the external IP")
+        log.debug("External IPs discovered: %s", sorted(found))
+        return frozenset(found)
+
+    @staticmethod
+    async def _wait_for_first_success(tasks, found):
+        """Wait for first family probe to succeed (or all to fail).
+
+        Mutates `found` with each successful result. Returns the still-
+        pending set after the first success (so the caller can run a
+        grace window) — empty if all families completed before any
+        success accumulated.
+
+        NO outer timeout: each `_probe_family` self-bounds via its
+        own deadline tracking. Wrapping with a timeout here would
+        cancel probes mid-candidate-loop (so a single blackholed
+        endpoint at the front of a probe's random order would kill
+        the family before fallback candidates could be tried).
+        """
+        pending = set(tasks)
         while pending and not found:
             done, pending = await asyncio.wait(
-                pending,
-                return_when=asyncio.FIRST_COMPLETED,
+                pending, return_when=asyncio.FIRST_COMPLETED
             )
             for task in done:
                 try:
@@ -328,35 +353,30 @@ class Resolver:
                     if isinstance(ip, str):
                         found.add(ip)
                 except Exception as e:
-                    # Single-family probe failure — keep trying others.
                     log.debug("Family probe failed: %s", e)
+        return pending
 
-        # Grace window for remaining family: respect user's total
-        # timeout budget, NOT a fixed cap.
-        if found and pending:
-            elapsed = loop.time() - start
-            grace = max(0.0, self._timeout - elapsed)
-            if grace > 0:
-                done, still_pending = await asyncio.wait(pending, timeout=grace)
-                for task in done:
-                    try:
-                        ip = task.result()
-                        if isinstance(ip, str):
-                            found.add(ip)
-                    except Exception as e:
-                        log.debug("Grace-window family probe failed: %s", e)
-                pending = still_pending
-            for task in pending:
-                task.cancel()
-        elif pending:
-            # No success yet AND nothing else pending of value — cancel.
-            for task in pending:
-                task.cancel()
+    @staticmethod
+    async def _drain_with_budget(pending, found, grace_seconds):
+        """Give still-pending family probes the remaining timeout budget.
 
-        if not found:
-            raise RuntimeError("Could not get the external IP")
-        log.debug("External IPs discovered: %s", sorted(found))
-        return frozenset(found)
+        Mutates `found` with any additional successful results.
+        Cancels remaining tasks after the budget exhausts. Used after
+        the first family succeeds to preserve a slow-but-reachable
+        second family without making blackholed-extra-family hosts
+        wait the full `self._timeout`.
+        """
+        if grace_seconds > 0:
+            done, pending = await asyncio.wait(pending, timeout=grace_seconds)
+            for task in done:
+                try:
+                    ip = task.result()
+                    if isinstance(ip, str):
+                        found.add(ip)
+                except Exception as e:
+                    log.debug("Grace-window family probe failed: %s", e)
+        for task in pending:
+            task.cancel()
 
     async def get_real_ext_ip(self):
         """Return one external IP address (backward-compatibility shim).

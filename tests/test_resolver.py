@@ -751,11 +751,22 @@ async def test_probe_family_exhausts_all_candidates_before_raising(mocker):
     resolver_inst = Resolver(timeout=3)
     call_log = []
 
-    @asynccontextmanager
-    async def fake_get(_url, **_kwargs):
-        call_log.append(_url)
-        raise asyncio.TimeoutError()
-        yield None  # unreachable; keeps asynccontextmanager valid
+    class _RaisingCtx:
+        """Pure-class async context manager that raises on enter.
+
+        Avoids Sonar S1763 (unreachable code) that an
+        @asynccontextmanager + raise + unused yield triggers.
+        """
+
+        async def __aenter__(self):
+            raise asyncio.TimeoutError()
+
+        async def __aexit__(self, *_args):
+            return False
+
+    def fake_get(url, **_kwargs):
+        call_log.append(url)
+        return _RaisingCtx()
 
     @asynccontextmanager
     async def fake_session(*_args, **_kwargs):
