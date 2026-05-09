@@ -462,6 +462,28 @@ class TestDeferredFileArguments:
         assert captured["outfile"].line_buffering is True
         assert captured["outfile"].closed
 
+    def test_cli_uses_stdout_when_outfile_not_provided(self, monkeypatch):
+        import proxybroker.cli as cli_mod
+
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def find(self, **kwargs):
+                pass
+
+        async def fake_handle(proxies, outfile, format):
+            captured["outfile"] = outfile
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+        monkeypatch.setattr(cli_mod, "handle", fake_handle)
+
+        cli_mod.cli(["find", "--types", "HTTP", "--limit", "0"])
+
+        assert captured["outfile"] is sys.stdout
+
 
 class TestOutputHandling:
     """Cover the cli.handle() / outformat() output path used by find/grab."""
