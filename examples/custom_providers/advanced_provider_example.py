@@ -106,6 +106,7 @@ class AdvancedProvider(Provider):
 
     @staticmethod
     def _extract_proxies_from_json_objects(items):
+        """Extract ``(ip, port)`` tuples from JSON proxy objects."""
         # Format 1: {"proxies": [{"ip": "1.2.3.4", "port": 8080, ...}, ...]}
         proxies = []
         for proxy in items:
@@ -117,6 +118,7 @@ class AdvancedProvider(Provider):
 
     @staticmethod
     def _extract_proxies_from_strings(items):
+        """Extract ``(ip, port)`` tuples from ``['ip:port', ...]`` items."""
         # Format 2: {"data": ["1.2.3.4:8080", ...]}
         proxies = []
         for proxy_str in items:
@@ -127,12 +129,14 @@ class AdvancedProvider(Provider):
 
     @staticmethod
     def _extract_proxies_from_html_table(page):
+        """Extract proxies from ``<tr><td>IP</td><td>PORT</td></tr>`` rows."""
         # Format 3: HTML table
         table_pattern = r"<tr>.*?<td>(\d+\.\d+\.\d+\.\d+)</td>.*?<td>(\d+)</td>.*?</tr>"
         return re.findall(table_pattern, page, re.DOTALL)
 
     @staticmethod
     def _extract_proxies_from_js_array(page):
+        """Extract proxies from JavaScript ``proxies.push('ip:port')`` calls."""
         # Format 4: JavaScript array
         js_pattern = r'proxies\.push\(\s*["\'](\d+\.\d+\.\d+\.\d+):(\d+)["\']'
         return re.findall(js_pattern, page)

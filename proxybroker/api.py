@@ -122,6 +122,7 @@ class Broker:
 
     @staticmethod
     def _resolve_loop(loop):
+        """Return running loop when available, else fall back to ``loop``."""
         try:
             return loop or asyncio.get_running_loop()
         except RuntimeError:
@@ -130,6 +131,13 @@ class Broker:
 
     @staticmethod
     def _resolve_deprecated_limits(*, max_conn, max_tries, kwargs):
+        """Resolve deprecated limit kwargs into ``(max_conn, max_tries)``.
+
+        Supports ``max_concurrent_conn`` and ``attempts_conn`` legacy kwargs
+        while emitting deprecation warnings.
+
+        :return: Tuple of resolved ``(max_conn, max_tries)`` values
+        """
         max_concurrent_conn = kwargs.get("max_concurrent_conn")
         if max_concurrent_conn:
             warnings.warn(
@@ -154,6 +162,11 @@ class Broker:
 
     @staticmethod
     def _resolve_providers(*, providers, provider_dirs):
+        """Resolve final provider inputs from defaults, explicit list and dirs.
+
+        ``providers=None`` uses bundled defaults; an explicit empty list stays
+        empty. Any ``provider_dirs`` entries are appended to the selected base.
+        """
         base_providers = list(PROVIDERS) if providers is None else list(providers)
         if not provider_dirs:
             return base_providers

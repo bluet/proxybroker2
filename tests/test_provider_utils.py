@@ -257,6 +257,17 @@ class TestAPIProvider:
         json_response = '{"results": [{"ip": "192.0.2.1", "port": 8080}]}'
         assert provider.find_proxies(json_response) == [("192.0.2.1", "8080")]
 
+    @pytest.mark.parametrize("key", ["proxies", "data", "results", "items"])
+    def test_extract_common_proxy_list_keys(self, key):
+        provider = APIProvider("http://api.example.com/proxies")
+        payload = {key: [{"ip": "192.0.2.1", "port": 8080}]}
+        assert provider._extract_common_proxy_list(payload) == payload[key]
+
+    def test_extract_common_proxy_list_ignores_non_lists(self):
+        provider = APIProvider("http://api.example.com/proxies")
+        payload = {"proxies": "192.0.2.1:8080", "items": {"ip": "192.0.2.1"}}
+        assert provider._extract_common_proxy_list(payload) is None
+
 
 class TestConfigurableProvider:
     """Test ConfigurableProvider functionality."""

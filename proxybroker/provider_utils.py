@@ -100,6 +100,7 @@ class SimpleProvider(Provider):
     # an explicit `proxy_path` instead.
     _JSON_LIST_WRAPPER_KEYS = ("proxies", "data", "results", "items", "list")
     _JSON_IP_FIELDS = ("ip", "host", "address", "proxy")
+    # "p" is a short port field used by some compact proxy APIs.
     _JSON_PORT_FIELDS = ("port", "p")
 
     def _parse_json(self, content):
@@ -156,7 +157,13 @@ class SimpleProvider(Provider):
 
     @staticmethod
     def _extract_proxy_from_mapping(item, ip_fields, port_fields):
-        """Return first matching (ip, port) pair from mapping or None."""
+        """Return first matching ``(ip, port)`` pair from ``item``.
+
+        :param item: Mapping containing proxy-related fields
+        :param ip_fields: Candidate keys to read host/IP from
+        :param port_fields: Candidate keys to read port from
+        :return: First matched ``(ip, port)`` tuple, otherwise ``None``
+        """
         for ip_field in ip_fields:
             if ip_field not in item:
                 continue
@@ -206,6 +213,7 @@ class SimpleProvider(Provider):
 
     @staticmethod
     def _parse_colon_proxy_line(line):
+        """Parse one ``host:port...`` line into ``(host, port)`` or ``None``."""
         # Format: IP:PORT, with optional trailing junk like
         #   "1.2.3.4:8080"
         #   "1.2.3.4:8080 # US"
@@ -295,6 +303,14 @@ class PaginatedProvider(Provider):
 
     @staticmethod
     def _replace_query_param(*, params, param_name, param_value):
+        """Replace or append one query parameter in ``params``.
+
+        :param params: Sequence of ``(key, value)`` query tuples
+        :param param_name: Query parameter key to replace/add
+        :param param_value: Value to assign to ``param_name``
+        :return: New list of query tuples with updated parameter (including
+            the parameter when ``params`` is empty)
+        """
         replaced = False
         new_params = []
         for key, value in params:
@@ -383,6 +399,11 @@ class APIProvider(Provider):
 
     @staticmethod
     def _extract_common_proxy_list(data):
+        """Return first common proxy list field from a mapping.
+
+        Checks ``proxies``, ``data``, ``results``, ``items`` in that order
+        and returns the first value that is a list.
+        """
         for key in ("proxies", "data", "results", "items"):
             value = data.get(key)
             if isinstance(value, list):
@@ -523,6 +544,11 @@ def load_provider_configs_from_directory(
 
 
 def _iter_provider_config_paths(directory: Path):
+    """Return sorted YAML/JSON provider config paths for ``directory``.
+
+    Files starting with ``_`` are ignored so users can disable configs by
+    renaming them.
+    """
     # Files starting with "_" are skipped (mirrors the Python loader's
     # convention) so users can disable a config by renaming it.
     return sorted(
@@ -537,6 +563,11 @@ def _iter_provider_config_paths(directory: Path):
 
 
 def _load_provider_config(config_path: Path):
+    """Load one provider config path and return a Provider or ``None``.
+
+    Known parse/validation/filesystem errors are logged and converted to
+    ``None`` so loading can continue with other files.
+    """
     try:
         provider = ConfigurableProvider.from_config(str(config_path))
         log.info(f"Loaded provider from config: {config_path}")
