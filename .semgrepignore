@@ -1,0 +1,15 @@
+# Scan-output artifacts contain example AWS-key-shaped strings that
+# semgrep would otherwise flag as secrets — recursive false positive.
+tmp/
+*-report.json
+*-stderr.txt
+
+# Claude Code local config (per-machine; not in repo). May contain
+# placeholder credentials in example settings.
+.claude/
+
+# Stale local virtualenvs accumulate already-superseded dependency
+# metadata that's not in pyproject.toml.
+.venv/
+venv/
+venv_*/

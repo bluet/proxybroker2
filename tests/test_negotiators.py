@@ -91,6 +91,37 @@ class TestNegotiatorContracts:
             assert hasattr(negotiator, "negotiate")
 
 
+class TestConnectIPv6Authority:
+    """RFC 9112/9110 require IPv6 in URI authority + Host header to be
+    bracketed. Without brackets, `CONNECT 2001:db8::1:443` is ambiguous
+    and standards-compliant proxies will reject it.
+    """
+
+    def test_connect_request_ipv4_unbracketed(self):
+        from proxybroker.negotiators import _CONNECT_request
+
+        req = _CONNECT_request("198.51.100.1", 443).decode()
+        assert req.startswith("CONNECT 198.51.100.1:443 HTTP/1.1\r\n")
+        assert "\r\nHost: 198.51.100.1\r\n" in req
+
+    def test_connect_request_ipv6_brackets_authority_and_host(self):
+        from proxybroker.negotiators import _CONNECT_request
+
+        req = _CONNECT_request("2001:db8::1", 443).decode()
+        assert req.startswith("CONNECT [2001:db8::1]:443 HTTP/1.1\r\n")
+        assert "\r\nHost: [2001:db8::1]\r\n" in req
+
+    def test_connect_request_ipv6_bracket_25_443_80(self):
+        # All four CONNECT-using negotiators (CONNECT:80, CONNECT:25,
+        # HTTPS at 443, plus the SMTP variant) use _CONNECT_request, so
+        # this single helper test covers them all.
+        from proxybroker.negotiators import _CONNECT_request
+
+        for port in (80, 25, 443):
+            req = _CONNECT_request("fe80::abcd", port).decode()
+            assert f"CONNECT [fe80::abcd]:{port} HTTP/1.1\r\n" in req
+
+
 class TestSocks5IPv6Wire:
     """Wire-level tests for SOCKS5 ATYP encoding (RFC 1928).
 

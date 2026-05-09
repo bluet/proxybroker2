@@ -111,6 +111,32 @@ async def test_resolve(event_loop, mocker, resolver):
 
 
 @pytest.mark.asyncio
+async def test_resolve_falls_back_to_aaaa_for_v6_only_host(mocker, resolver):
+    """When A query returns no records, resolve() must transparently
+    fall back to AAAA so v6-only hostnames (no A record) still resolve.
+    Without this, judges and proxy hosts with AAAA-only DNS silently
+    fail to be reachable.
+    """
+    from proxybroker.errors import ResolveError
+
+    a_calls = []
+
+    async def fake_resolve(host, qtype):
+        a_calls.append(qtype)
+        if qtype == "A":
+            raise ResolveError
+        # AAAA: return a fake aiodns-style record with .host
+        from types import SimpleNamespace
+
+        return [SimpleNamespace(host="2001:db8::abcd")]
+
+    mocker.patch.object(resolver, "_resolve", side_effect=fake_resolve)
+    result = await resolver.resolve("v6only.example.com")
+    assert a_calls == ["A", "AAAA"]
+    assert result == "2001:db8::abcd"
+
+
+@pytest.mark.asyncio
 async def test_resolve_family(mocker, resolver):
     f = future_iter([ResolveResult("127.0.0.2", 0)])
     # https://github.com/pytest-dev/pytest-mock#note-about-usage-as-context-manager

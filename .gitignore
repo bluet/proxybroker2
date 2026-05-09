@@ -217,3 +217,23 @@ docs/source/_autosummary/
 *~
 *.swp
 *.swo
+
+# Local working scratch (debug docs, logs, scan reports). Excluded from
+# git so security scanners and contributors don't see false positives
+# from cached scan outputs left in the working tree.
+tmp/
+
+# Claude Code local config (per-machine; never in repo).
+.claude/
+
+# Local virtualenvs that aren't `.venv` (the canonical name). Older
+# branches sometimes leave `venv/`, `venv_py313_test/`, etc.; these
+# accumulate stale dependency metadata that pollutes vulnerability
+# scanners with already-superseded CVEs.
+venv/
+venv_*/
+
+# Security scan output artifacts (gitleaks/grype/semgrep/checkov/
+# hadolint). Sometimes committed accidentally; always regeneratable.
+*-report.json
+*-stderr.txt

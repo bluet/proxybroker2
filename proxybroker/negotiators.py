@@ -23,20 +23,23 @@ SMTP_READY = 220
 
 def _CONNECT_request(host, port, **kwargs):
     kwargs.setdefault("User-Agent", get_headers()["User-Agent"])
-    kw = {
-        "host": host,
-        "port": port,
-        "headers": "\r\n".join((f"{k}: {v}" for k, v in kwargs.items())),
-    }
-    req = (
-        (
-            "CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}\r\n"
-            "{headers}\r\nConnection: keep-alive\r\n\r\n"
-        )
-        .format(**kw)
-        .encode()
-    )
-    return req
+    # RFC 9112 § 3.2.3 (request-target authority-form) and RFC 9110 § 7.2
+    # (Host header field) both require IPv6 literals to be bracketed in
+    # URI authority components. Without brackets, "CONNECT 2001:db8::1:443"
+    # is ambiguous (where does the host end and the port begin?) and
+    # standards-compliant proxies will reject it.
+    if ":" in str(host):
+        authority = f"[{host}]:{port}"
+        host_header = f"[{host}]"
+    else:
+        authority = f"{host}:{port}"
+        host_header = f"{host}"
+    headers = "\r\n".join(f"{k}: {v}" for k, v in kwargs.items())
+    return (
+        f"CONNECT {authority} HTTP/1.1\r\n"
+        f"Host: {host_header}\r\n"
+        f"{headers}\r\nConnection: keep-alive\r\n\r\n"
+    ).encode()
 
 
 class BaseNegotiator(ABC):

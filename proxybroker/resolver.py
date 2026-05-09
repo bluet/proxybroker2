@@ -147,7 +147,15 @@ class Resolver:
         raise RuntimeError("Could not get the external IP")
 
     async def resolve(self, host, port=80, family=None, qtype="A", logging=True):
-        """Return resolving IP address(es) from host name."""
+        """Resolve `host` to one or more IP addresses.
+
+        `qtype` defaults to "A" for backwards compatibility. When the
+        caller doesn't request a specific record type and the A query
+        returns nothing, we transparently fall back to AAAA so that
+        IPv6-only hostnames (no A records) resolve too. This restores
+        end-to-end reachability for the increasing number of services
+        that publish AAAA-only records.
+        """
         if self.host_is_ip(host):
             return host
 
@@ -155,7 +163,23 @@ class Resolver:
         if _host:
             return _host
 
-        resp = await self._resolve(host, qtype)
+        # Transparent AAAA fallback for callers that didn't pin qtype.
+        # If A succeeds, use it. If A fails *and* the caller didn't pin
+        # qtype, try AAAA - so v6-only hostnames (no A record) resolve.
+        # If AAAA also fails, propagate ResolveError to preserve the
+        # original "could not resolve" contract.
+        try:
+            resp = await self._resolve(host, qtype)
+        except ResolveError:
+            if qtype == "A":
+                resp = await self._resolve(host, "AAAA")
+            else:
+                raise
+        if not resp and qtype == "A":
+            try:
+                resp = await self._resolve(host, "AAAA")
+            except ResolveError:
+                resp = None
 
         if resp:
             hosts = [
