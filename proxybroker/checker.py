@@ -16,7 +16,14 @@ from .errors import (
 from .judge import Judge, get_judges
 from .negotiators import NGTRS
 from .resolver import Resolver
-from .utils import get_all_ip, get_headers, get_status_code, log, parse_headers
+from .utils import (
+    canonicalize_ip,
+    get_all_ip,
+    get_headers,
+    get_status_code,
+    log,
+    parse_headers,
+)
 
 
 class Checker:
@@ -316,12 +323,17 @@ def _check_test_response(proxy, headers, content, rv):
 def _get_anonymity_lvl(real_ext_ip, proxy, judge, content):
     content = content.lower()
     foundIP = get_all_ip(content)
+    # Defense in depth: canonicalise the real IP even if the caller already
+    # passed canonical form. Comparison must be canonical-vs-canonical so
+    # IPv6 textual encodings (case, leading zeros, compression) compare
+    # equal. Falls back to the raw value only if canonicalisation fails.
+    real_canonical = canonicalize_ip(real_ext_ip) or real_ext_ip
 
     via = (content.count("via") > judge.marks["via"]) or (
         content.count("proxy") > judge.marks["proxy"]
     )
 
-    if real_ext_ip in foundIP:
+    if real_canonical in foundIP:
         lvl = "Transparent"
     elif via:
         lvl = "Anonymous"

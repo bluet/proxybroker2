@@ -96,6 +96,31 @@ class TestProviderFindProxies:
         p = Provider(url="http://example.com")
         assert p.find_proxies("just some prose without any proxies") == []
 
+    def test_ipv6_mapped_does_not_spawn_phantom_ipv4(self):
+        """IPv4-mapped IPv6 entries like `[::ffff:192.0.2.1]:8080` must
+        produce ONLY the v6 entry — not also a phantom `192.0.2.1:8080`
+        from the legacy IPv4 regex matching the embedded v4 octets.
+
+        Provider feeds in the wild occasionally emit v4-mapped form;
+        without masking the bracketed span before the v4 pass, every
+        such proxy spawns an additional invalid v4 endpoint that the
+        provider never advertised.
+        """
+        p = Provider(url="http://example.com")
+        page = "real proxy: [::ffff:192.0.2.1]:8080 trailer"
+        results = p.find_proxies(page)
+        assert ("::ffff:192.0.2.1", "8080") in results
+        assert not any(host == "192.0.2.1" for host, _port in results)
+
+    def test_ipv6_bracketed_alongside_v4_pairs(self):
+        """Mixed v4/v6 page: both forms extracted, no cross-pollination."""
+        p = Provider(url="http://example.com")
+        page = "v4: 192.0.2.5:3128 v6: [2001:db8::1]:9090 more v4: 198.51.100.10:8080"
+        results = p.find_proxies(page)
+        assert ("192.0.2.5", "3128") in results
+        assert ("198.51.100.10", "8080") in results
+        assert ("2001:db8::1", "9090") in results
+
 
 @pytest.mark.asyncio
 async def test_find_on_pages_handles_empty_url_list():

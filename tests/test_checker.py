@@ -118,6 +118,95 @@ class TestCheckerAPI:
         lvl = _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, high_anon_content)
         assert lvl == "High"
 
+    def test_anonymity_level_ipv6_transparent(self):
+        """IPv6 leak detection must collapse equivalent textual forms.
+
+        The judge response can render the leaked IPv6 address in any
+        encoding (uppercase, expanded with leading zeros, with or
+        without `::` compression). Anonymity classification must
+        canonicalise both sides via stdlib `ipaddress` so equivalent
+        addresses compare equal.
+        """
+        from unittest.mock import Mock
+
+        from proxybroker.checker import _get_anonymity_lvl
+
+        real_ip = "2001:db8::1"  # canonical form
+        mock_proxy = Mock()
+        mock_proxy.log = Mock()
+        mock_judge = Mock()
+        mock_judge.marks = {"via": 0, "proxy": 0}
+
+        # Page leaks the same address in uppercase form -> Transparent.
+        uppercase_leak = "Your IP: 2001:DB8::1 (debug)"
+        assert (
+            _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, uppercase_leak)
+            == "Transparent"
+        )
+
+        # Page leaks the same address in expanded form -> Transparent.
+        expanded_leak = "Your IP: 2001:0db8:0000:0000:0000:0000:0000:0001"
+        assert (
+            _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, expanded_leak)
+            == "Transparent"
+        )
+
+    def test_ipv6_pipeline_smoke(self):
+        """End-to-end mock smoke: a v6-leaking judge response flows
+        through `_check_test_response` (sees the IP at all) AND
+        `_get_anonymity_lvl` (classifies as Transparent).
+
+        Exercises L1+L2+L3 together with no live v6 dependency.
+        """
+        from unittest.mock import Mock
+
+        from proxybroker.checker import _check_test_response, _get_anonymity_lvl
+        from proxybroker.utils import get_headers
+
+        real_ip = "2001:db8::1"  # canonical, as Resolver.get_real_ext_ip emits it
+        headers, rv = get_headers(rv=True)
+
+        # Judge response: code echoed, headers/cookies pass-through, real
+        # v6 leaked in expanded uppercase form (the worst-case scenario
+        # for a substring-only comparison).
+        leaked_content = (
+            f"Your code: {rv} "
+            f"Real IP: 2001:0DB8:0000:0000:0000:0000:0000:0001 "
+            f"Referer: {headers['Referer']} "
+            f"Cookie: {headers['Cookie']}"
+        )
+        mock_proxy = Mock()
+        mock_proxy.log = Mock()
+        mock_judge = Mock()
+        mock_judge.marks = {"via": 0, "proxy": 0}
+
+        # _check_test_response sees an IP -> True
+        assert _check_test_response(mock_proxy, headers, leaked_content, rv) is True
+
+        # _get_anonymity_lvl correctly identifies the v6 leak as Transparent
+        assert (
+            _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, leaked_content)
+            == "Transparent"
+        )
+
+    def test_anonymity_level_ipv6_anonymous(self):
+        """IPv6 leak of a DIFFERENT address with proxy hint -> Anonymous."""
+        from unittest.mock import Mock
+
+        from proxybroker.checker import _get_anonymity_lvl
+
+        real_ip = "2001:db8::1"
+        mock_proxy = Mock()
+        mock_proxy.log = Mock()
+        mock_judge = Mock()
+        mock_judge.marks = {"via": 0, "proxy": 0}
+
+        # Different IPv6 address visible + via/proxy hint -> Anonymous.
+        content = '{"ip": "2001:db8::abcd", "via": "1.1 proxy"}'
+        assert (
+            _get_anonymity_lvl(real_ip, mock_proxy, mock_judge, content) == "Anonymous"
+        )
+
     def test_checker_response_validation_contract(self):
         """Test that response validation functions exist and work."""
         from unittest.mock import Mock

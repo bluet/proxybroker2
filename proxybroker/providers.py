@@ -9,7 +9,14 @@ from urllib.parse import unquote, urlparse
 import aiohttp
 
 from .errors import BadStatusError
-from .utils import IPPattern, IPPortPatternGlobal, get_headers, log
+from .utils import (
+    IPPattern,
+    IPPortPatternGlobal,
+    IPv6BracketedPortPattern,
+    canonicalize_ip,
+    get_headers,
+    log,
+)
 
 
 class Provider:
@@ -154,11 +161,26 @@ class Provider:
         return page
 
     def find_proxies(self, page):
-        return self._find_proxies(page)
+        # Default IPv4 extraction via _find_proxies (subclasses may
+        # override `_pattern`), then add IPv6 `[v6]:port` entries here
+        # in the public method so subclasses that override `find_proxies`
+        # to do their own decoding (b64, custom parsing) aren't fed
+        # already-normalized (host, port) tuples they can't handle.
+        #
+        # Mask bracketed IPv6 spans before the IPv4 pass so feeds carrying
+        # IPv4-mapped IPv6 entries like `[::ffff:192.0.2.1]:8080` don't
+        # *also* enqueue a phantom `192.0.2.1:8080` IPv4 entry that the
+        # provider never advertised.
+        masked = IPv6BracketedPortPattern.sub(lambda m: " " * len(m.group(0)), page)
+        proxies = self._find_proxies(masked)
+        for raw_v6, port in IPv6BracketedPortPattern.findall(page):
+            canonical = canonicalize_ip(raw_v6)
+            if canonical is not None:
+                proxies.append((canonical, port))
+        return proxies
 
     def _find_proxies(self, page):
-        proxies = self._pattern.findall(page)
-        return proxies
+        return list(self._pattern.findall(page))
 
 
 class Freeproxylists_com(Provider):
