@@ -72,27 +72,22 @@ async def test_get_real_ext_ip_canonicalises_ipv6(mocker):
 
     Regardless of how the upstream IP-detection service emits the
     address, downstream comparison sites rely on canonical form for
-    correctness. Verifies via fully-faked aiohttp.ClientSession.
+    correctness. Mocks _has_local_route + _probe_family to bypass the
+    network-layer machinery (those primitives have their own dedicated
+    tests below) and exercise just the canonicalisation contract.
     """
-    from contextlib import asynccontextmanager
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import AsyncMock
 
     resolver_inst = Resolver(timeout=1)
-
-    fake_resp = MagicMock()
-    fake_resp.text = AsyncMock(return_value="2001:DB8::1\n")
-
-    @asynccontextmanager
-    async def fake_get(_url):
-        yield fake_resp
-
-    @asynccontextmanager
-    async def fake_session(*_args, **_kwargs):
-        sess = MagicMock()
-        sess.get = fake_get
-        yield sess
-
-    mocker.patch("proxybroker.resolver.aiohttp.ClientSession", fake_session)
+    # Pretend only v6 has a route; probe returns canonical v6 form.
+    mocker.patch.object(
+        Resolver,
+        "_has_local_route",
+        side_effect=lambda f: f == socket.AF_INET6,
+    )
+    mocker.patch.object(
+        resolver_inst, "_probe_family", new=AsyncMock(return_value="2001:db8::1")
+    )
 
     assert await resolver_inst.get_real_ext_ip() == "2001:db8::1"
 
