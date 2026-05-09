@@ -134,7 +134,7 @@ class AdvancedProvider(Provider):
         """Extract proxies from ``<tr><td>IP</td><td>PORT</td></tr>`` rows."""
         # Format 3: HTML table
         octet = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
-        ip_address = rf"{octet}(?:\.{octet})" + r"{3}"
+        ip_address = rf"{octet}(?:\.{octet}){{3}}"
         table_pattern = (
             r"<[tT][rR][^>]*>\s*"
             rf"<[tT][dD][^>]*>\s*({ip_address})\s*</[tT][dD]>\s*"
