@@ -74,47 +74,11 @@ class AdvancedProvider(Provider):
 
     def find_proxies(self, page):
         """Advanced proxy extraction with multiple formats."""
-        proxies = []
-
         try:
-            # Try JSON format first
-            data = json.loads(page)
-
-            if "proxies" in data:
-                # Format 1: {"proxies": [{"ip": "1.2.3.4", "port": 8080, "type": "HTTP"}, ...]}
-                for proxy in data["proxies"]:
-                    ip = proxy.get("ip")
-                    port = str(proxy.get("port"))
-                    if ip and port:
-                        proxies.append((ip, port))
-
-            elif "data" in data:
-                # Format 2: {"data": ["1.2.3.4:8080", ...]}
-                for proxy_str in data["data"]:
-                    if ":" in proxy_str:
-                        ip, port = proxy_str.split(":", 1)
-                        proxies.append((ip, port))
+            proxies = self._parse_json_proxies(page)
 
         except json.JSONDecodeError:
-            # Not JSON, try other formats
-
-            # Format 3: HTML table
-            table_pattern = (
-                r"<tr>.*?<td>(\d+\.\d+\.\d+\.\d+)</td>.*?<td>(\d+)</td>.*?</tr>"
-            )
-            table_proxies = re.findall(table_pattern, page, re.DOTALL)
-            if table_proxies:
-                proxies.extend(table_proxies)
-
-            # Format 4: JavaScript array
-            js_pattern = r'proxies\.push\(\s*["\'](\d+\.\d+\.\d+\.\d+):(\d+)["\']'
-            js_proxies = re.findall(js_pattern, page)
-            if js_proxies:
-                proxies.extend(js_proxies)
-
-            # Format 5: Plain text as fallback
-            if not proxies:
-                proxies = self._find_proxies(page)
+            proxies = self._parse_non_json_proxies(page)
 
         # Log results for debugging
         if proxies:
@@ -123,6 +87,59 @@ class AdvancedProvider(Provider):
             log.warning(f"No proxies found on {self.domain}")
 
         return proxies
+
+    def _parse_json_proxies(self, page):
+        data = json.loads(page)
+        if "proxies" in data:
+            return self._extract_proxies_from_json_objects(data["proxies"])
+        if "data" in data:
+            return self._extract_proxies_from_strings(data["data"])
+        return []
+
+    def _parse_non_json_proxies(self, page):
+        proxies = []
+        proxies.extend(self._extract_proxies_from_html_table(page))
+        proxies.extend(self._extract_proxies_from_js_array(page))
+        if not proxies:
+            return self._find_proxies(page)
+        return proxies
+
+    @staticmethod
+    def _extract_proxies_from_json_objects(items):
+        """Extract ``(ip, port)`` tuples from JSON proxy objects."""
+        # Format 1: {"proxies": [{"ip": "1.2.3.4", "port": 8080, ...}, ...]}
+        proxies = []
+        for proxy in items:
+            ip = proxy.get("ip")
+            port = str(proxy.get("port"))
+            if ip and port:
+                proxies.append((ip, port))
+        return proxies
+
+    @staticmethod
+    def _extract_proxies_from_strings(items):
+        """Extract ``(ip, port)`` tuples from ``['ip:port', ...]`` items."""
+        # Format 2: {"data": ["1.2.3.4:8080", ...]}
+        proxies = []
+        for proxy_str in items:
+            if ":" in proxy_str:
+                ip, port = proxy_str.split(":", 1)
+                proxies.append((ip, port))
+        return proxies
+
+    @staticmethod
+    def _extract_proxies_from_html_table(page):
+        """Extract proxies from ``<tr><td>IP</td><td>PORT</td></tr>`` rows."""
+        # Format 3: HTML table
+        table_pattern = r"<tr>.*?<td>(\d+\.\d+\.\d+\.\d+)</td>.*?<td>(\d+)</td>.*?</tr>"
+        return re.findall(table_pattern, page, re.DOTALL)
+
+    @staticmethod
+    def _extract_proxies_from_js_array(page):
+        """Extract proxies from JavaScript ``proxies.push('ip:port')`` calls."""
+        # Format 4: JavaScript array
+        js_pattern = r'proxies\.push\(\s*["\'](\d+\.\d+\.\d+\.\d+):(\d+)["\']'
+        return re.findall(js_pattern, page)
 
 
 class RateLimitedProvider(Provider):

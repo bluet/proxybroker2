@@ -99,6 +99,9 @@ class SimpleProvider(Provider):
     # wins. Users with non-standard wrapper keys should use APIProvider with
     # an explicit `proxy_path` instead.
     _JSON_LIST_WRAPPER_KEYS = ("proxies", "data", "results", "items", "list")
+    _JSON_IP_FIELDS = ("ip", "host", "address", "proxy")
+    # "p" is a short port field used by some compact proxy APIs.
+    _JSON_PORT_FIELDS = ("port", "p")
 
     def _parse_json(self, content):
         """Parse JSON format proxy lists.
@@ -110,58 +113,64 @@ class SimpleProvider(Provider):
         """
         try:
             data = json.loads(content)
-            proxies = []
-
-            # Unwrap object-wrapped lists at one level. Keeps SimpleProvider
-            # useful for the common API shape `{"proxies": [...]}` without
-            # forcing users to switch to APIProvider for every wrapper key.
-            if isinstance(data, dict):
-                unwrapped = data
-                for key in self._JSON_LIST_WRAPPER_KEYS:
-                    if isinstance(data.get(key), list):
-                        unwrapped = data[key]
-                        break
-                if unwrapped is data:
-                    # No wrapper key matched - the response is an object
-                    # but proxies aren't under any of the known keys. Most
-                    # users hit this when their API uses a non-standard
-                    # wrapper like `{"payload": [...]}`; APIProvider with
-                    # an explicit `proxy_path` is the right tool there.
-                    log.debug(
-                        f"{self.domain}: JSON response is an object with no "
-                        f"recognized wrapper key {self._JSON_LIST_WRAPPER_KEYS}. "
-                        "Returning empty list. For non-standard wrappers, use "
-                        "APIProvider with `proxy_path: <key>` instead."
-                    )
-                data = unwrapped
-
-            # Handle different JSON structures
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict):
-                        # Try common field names. Take the FIRST (ip,port)
-                        # pair we find and stop - otherwise an item with
-                        # both 'ip' and 'host' would be added twice.
-                        matched = False
-                        for ip_field in ["ip", "host", "address", "proxy"]:
-                            for port_field in ["port", "p"]:
-                                if ip_field in item and port_field in item:
-                                    proxies.append(
-                                        (item[ip_field], str(item[port_field]))
-                                    )
-                                    matched = True
-                                    break
-                            if matched:
-                                break
-                    elif isinstance(item, str) and ":" in item:
-                        # Format: "IP:PORT"
-                        ip, port = item.split(":", 1)
-                        proxies.append((ip, port))
-
-            return proxies
+            data = self._unwrap_json_proxy_list(data)
+            if not isinstance(data, list):
+                return []
+            return self._extract_json_proxy_items(data)
         except Exception as e:
             log.error(f"Error parsing JSON from {self.domain}: {e}")
             return []
+
+    def _unwrap_json_proxy_list(self, data):
+        """Unwrap one level of known object wrapper keys to a list."""
+        if not isinstance(data, dict):
+            return data
+        for key in self._JSON_LIST_WRAPPER_KEYS:
+            wrapped = data.get(key)
+            if isinstance(wrapped, list):
+                return wrapped
+        log.debug(
+            f"{self.domain}: JSON response is an object with no "
+            f"recognized wrapper key {self._JSON_LIST_WRAPPER_KEYS}. "
+            "Returning empty list. For non-standard wrappers, use "
+            "APIProvider with `proxy_path: <key>` instead."
+        )
+        return data
+
+    def _extract_json_proxy_items(self, items):
+        """Extract ``(host, port)`` tuples from JSON list items."""
+        proxies = []
+        for item in items:
+            proxy = self._extract_json_proxy_item(item)
+            if proxy:
+                proxies.append(proxy)
+        return proxies
+
+    def _extract_json_proxy_item(self, item):
+        if isinstance(item, dict):
+            return self._extract_proxy_from_mapping(
+                item, self._JSON_IP_FIELDS, self._JSON_PORT_FIELDS
+            )
+        if isinstance(item, str) and ":" in item:
+            return tuple(item.split(":", 1))
+        return None
+
+    @staticmethod
+    def _extract_proxy_from_mapping(item, ip_fields, port_fields):
+        """Return first matching ``(ip, port)`` pair from ``item``.
+
+        :param item: Mapping containing proxy-related fields
+        :param ip_fields: Candidate keys to read host/IP from
+        :param port_fields: Candidate keys to read port from
+        :return: First matched ``(ip, port)`` tuple, otherwise ``None``
+        """
+        for ip_field in ip_fields:
+            if ip_field not in item:
+                continue
+            for port_field in port_fields:
+                if port_field in item:
+                    return item[ip_field], str(item[port_field])
+        return None
 
     def _parse_csv(self, content):
         """Parse CSV format proxy lists.
@@ -188,29 +197,40 @@ class SimpleProvider(Provider):
         proxies = []
         for line in content.strip().split("\n"):
             line = line.strip()
-            if ":" in line:
-                # Format: IP:PORT, with optional trailing junk like
-                #   "1.2.3.4:8080"
-                #   "1.2.3.4:8080 # US"
-                #   "1.2.3.4:8080:tag"
-                # Keep only the leading digit run after the FIRST `:` as
-                # the port. Without this guard the whole suffix becomes
-                # the port string and Proxy.create's int(port) crashes.
-                host, _, rest = line.partition(":")
-                port_chars = []
-                for ch in rest.lstrip():
-                    if ch.isdigit():
-                        port_chars.append(ch)
-                    else:
-                        break
-                if port_chars:
-                    proxies.append((host.strip(), "".join(port_chars)))
-            elif "\t" in line or " " in line:
-                # Format: IP PORT or IP\tPORT
-                parts = line.split()
-                if len(parts) >= 2:
-                    proxies.append((parts[0], parts[1]))
+            proxy = self._parse_text_proxy_line(line)
+            if proxy:
+                proxies.append(proxy)
         return proxies
+
+    def _parse_text_proxy_line(self, line):
+        if ":" in line:
+            return self._parse_colon_proxy_line(line)
+        if "\t" in line or " " in line:
+            parts = line.split()
+            if len(parts) >= 2:
+                return parts[0], parts[1]
+        return None
+
+    @staticmethod
+    def _parse_colon_proxy_line(line):
+        """Parse one ``host:port...`` line into ``(host, port)`` or ``None``."""
+        # Format: IP:PORT, with optional trailing junk like
+        #   "1.2.3.4:8080"
+        #   "1.2.3.4:8080 # US"
+        #   "1.2.3.4:8080:tag"
+        # Keep only the leading digit run after the FIRST `:` as
+        # the port. Without this guard the whole suffix becomes
+        # the port string and Proxy.create's int(port) crashes.
+        host, _, rest = line.partition(":")
+        port_chars = []
+        for ch in rest.lstrip():
+            if ch.isdigit():
+                port_chars.append(ch)
+            else:
+                break
+        if port_chars:
+            return host.strip(), "".join(port_chars)
+        return None
 
 
 class PaginatedProvider(Provider):
@@ -241,15 +261,16 @@ class PaginatedProvider(Provider):
 
     async def _pipe(self):
         """Fetch all pages."""
-        urls = []
-        for page in range(
+        await self._find_on_pages(
+            [self._build_page_url(page) for page in self._page_range()]
+        )
+
+    def _page_range(self):
+        return range(
             self.start_page,
             self.start_page + (self.max_pages * self.page_step),
             self.page_step,
-        ):
-            urls.append(self._build_page_url(page))
-
-        await self._find_on_pages(urls)
+        )
 
     def _build_page_url(self, page):
         """Substitute the page number into base_url cleanly.
@@ -267,18 +288,40 @@ class PaginatedProvider(Provider):
         parsed = urlparse(self.base_url)
         if parsed.query:
             params = parse_qsl(parsed.query, keep_blank_values=True)
-            replaced = False
-            new_params = []
-            for key, value in params:
-                if key == self.page_param:
-                    new_params.append((key, str(page)))
-                    replaced = True
-                else:
-                    new_params.append((key, value))
-            if not replaced:
-                new_params.append((self.page_param, str(page)))
-            return urlunparse(parsed._replace(query=urlencode(new_params)))
+            return urlunparse(
+                parsed._replace(
+                    query=urlencode(
+                        self._replace_query_param(
+                            params=params,
+                            param_name=self.page_param,
+                            param_value=str(page),
+                        )
+                    )
+                )
+            )
         return f"{self.base_url}?{self.page_param}={page}"
+
+    @staticmethod
+    def _replace_query_param(*, params, param_name, param_value):
+        """Replace or append one query parameter in ``params``.
+
+        :param params: Sequence of ``(key, value)`` query tuples
+        :param param_name: Query parameter key to replace/add
+        :param param_value: Value to assign to ``param_name``
+        :return: New list of query tuples with updated parameter (including
+            the parameter when ``params`` is empty)
+        """
+        replaced = False
+        new_params = []
+        for key, value in params:
+            if key == param_name:
+                new_params.append((key, param_value))
+                replaced = True
+            else:
+                new_params.append((key, value))
+        if not replaced:
+            new_params.append((param_name, param_value))
+        return new_params
 
 
 class APIProvider(Provider):
@@ -324,34 +367,55 @@ class APIProvider(Provider):
 
     def find_proxies(self, page):
         """Parse API response based on format."""
-        if self.response_format == "json":
-            try:
-                data = json.loads(page)
+        if self.response_format != "json":
+            return self._find_proxies(page)
 
-                # Navigate to proxy data using path. Stop walking once
-                # we hit a non-dict (list/scalar): calling .get on those
-                # would raise AttributeError and kill the provider.
-                if self.proxy_path:
-                    for key in self.proxy_path.split("."):
-                        if isinstance(data, dict):
-                            data = data.get(key, data)
-                        else:
-                            break
+        data = self._load_api_json(page)
+        if data is None:
+            return self._find_proxies(page)
 
-                # Extract proxies from data
-                if isinstance(data, list):
-                    return self._extract_from_list(data)
-                elif isinstance(data, dict):
-                    # Look for common proxy list keys
-                    for key in ["proxies", "data", "results", "items"]:
-                        if key in data and isinstance(data[key], list):
-                            return self._extract_from_list(data[key])
-
-            except Exception as e:
-                log.error(f"Error parsing API response from {self.domain}: {e}")
-
-        # Fallback to default pattern matching
+        data = self._walk_proxy_path(data)
+        proxy_items = self._resolve_proxy_items(data)
+        if proxy_items is not None:
+            return self._extract_from_list(proxy_items)
         return self._find_proxies(page)
+
+    def _load_api_json(self, page):
+        try:
+            return json.loads(page)
+        except Exception as e:
+            log.error(f"Error parsing API response from {self.domain}: {e}")
+            return None
+
+    def _walk_proxy_path(self, data):
+        if not self.proxy_path:
+            return data
+        for key in self.proxy_path.split("."):
+            if isinstance(data, dict):
+                data = data.get(key, data)
+            else:
+                break
+        return data
+
+    @staticmethod
+    def _extract_common_proxy_list(data):
+        """Return first common proxy list field from a mapping.
+
+        Checks ``proxies``, ``data``, ``results``, ``items`` in that order
+        and returns the first value that is a list.
+        """
+        for key in ("proxies", "data", "results", "items"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return value
+        return None
+
+    def _resolve_proxy_items(self, data):
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return self._extract_common_proxy_list(data)
+        return None
 
     def _extract_from_list(self, items):
         """Extract proxy info from a list of items."""
@@ -471,9 +535,23 @@ def load_provider_configs_from_directory(
         log.warning(f"Provider directory does not exist: {directory}")
         return providers
 
+    for config_path in _iter_provider_config_paths(directory):
+        provider = _load_provider_config(config_path)
+        if provider:
+            providers.append(provider)
+
+    return providers
+
+
+def _iter_provider_config_paths(directory: Path):
+    """Return sorted YAML/JSON provider config paths for ``directory``.
+
+    Files starting with ``_`` are ignored so users can disable configs by
+    renaming them.
+    """
     # Files starting with "_" are skipped (mirrors the Python loader's
     # convention) so users can disable a config by renaming it.
-    config_paths = sorted(
+    return sorted(
         p
         for p in (
             list(directory.glob("*.yaml"))
@@ -482,20 +560,26 @@ def load_provider_configs_from_directory(
         )
         if not p.name.startswith("_")
     )
-    for config_path in config_paths:
-        try:
-            provider = ConfigurableProvider.from_config(str(config_path))
-            providers.append(provider)
-            log.info(f"Loaded provider from config: {config_path}")
-        except (yaml.YAMLError, json.JSONDecodeError, ValueError, OSError) as e:
-            # Narrow catch: parse errors from yaml.safe_load / json.loads,
-            # validation errors from from_config (missing url, unknown type),
-            # filesystem errors from open(). Programming errors (TypeError,
-            # AttributeError, etc.) are not caught - they should propagate
-            # so we don't silently mask refactor bugs.
-            log.error(f"Error loading provider config {config_path}: {e}")
 
-    return providers
+
+def _load_provider_config(config_path: Path):
+    """Load one provider config path and return a Provider or ``None``.
+
+    Known parse/validation/filesystem errors are logged and converted to
+    ``None`` so loading can continue with other files.
+    """
+    try:
+        provider = ConfigurableProvider.from_config(str(config_path))
+        log.info(f"Loaded provider from config: {config_path}")
+        return provider
+    except (yaml.YAMLError, json.JSONDecodeError, ValueError, OSError) as e:
+        # Narrow catch: parse errors from yaml.safe_load / json.loads,
+        # validation errors from from_config (missing url, unknown type),
+        # filesystem errors from open(). Programming errors (TypeError,
+        # AttributeError, etc.) are not caught - they should propagate
+        # so we don't silently mask refactor bugs.
+        log.error(f"Error loading provider config {config_path}: {e}")
+        return None
 
 
 def load_python_providers_from_directory(
