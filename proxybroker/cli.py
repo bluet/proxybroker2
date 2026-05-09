@@ -455,13 +455,18 @@ def cli(args=sys.argv[1:]):
         ns.types.append(("HTTP", ns.anon_lvl))
 
     with ExitStack() as files:
-        if ns.command in ("find", "serve") and ns.data:
-            ns.data = files.enter_context(open(ns.data))
-        if ns.command in ("find", "grab"):
-            if ns.outfile:
-                ns.outfile = files.enter_context(open(ns.outfile, "w", buffering=1))
+        if ns.command in ("find", "serve") and ns.data is not None:
+            if ns.data == "-":
+                ns.data = sys.stdin
             else:
+                ns.data = files.enter_context(open(ns.data, encoding="utf-8"))
+        if ns.command in ("find", "grab"):
+            if ns.outfile is None or ns.outfile == "-":
                 ns.outfile = sys.stdout
+            else:
+                ns.outfile = files.enter_context(
+                    open(ns.outfile, "w", buffering=1, encoding="utf-8")
+                )
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

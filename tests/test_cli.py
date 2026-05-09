@@ -456,7 +456,9 @@ class TestDeferredFileArguments:
 
         assert captured["data_text"] == "203.0.113.10:8080\n"
         assert captured["data"].closed
+        assert captured["data"].encoding.lower() == "utf-8"
         assert captured["outfile"].line_buffering is True
+        assert captured["outfile"].encoding.lower() == "utf-8"
         assert captured["outfile"].closed
 
     def test_cli_uses_stdout_when_outfile_not_provided(self, monkeypatch):
@@ -481,6 +483,47 @@ class TestDeferredFileArguments:
 
         assert captured["find_called"] is True
         assert captured["outfile"] is sys.stdout
+
+    def test_cli_uses_stdio_when_dash_paths_provided(self, monkeypatch):
+        import proxybroker.cli as cli_mod
+
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def find(self, **kwargs):
+                captured["data"] = kwargs["data"]
+
+        async def fake_handle(proxies, outfile, format):
+            captured["outfile"] = outfile
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+        monkeypatch.setattr(cli_mod, "handle", fake_handle)
+
+        cli_mod.cli(
+            ["find", "--types", "HTTP", "--limit", "0", "--data", "-", "--outfile", "-"]
+        )
+
+        assert captured["data"] is sys.stdin
+        assert captured["outfile"] is sys.stdout
+
+    @pytest.mark.parametrize(
+        ("args", "expected_exception"),
+        [
+            (
+                ["find", "--types", "HTTP", "--limit", "0", "--data", ""],
+                FileNotFoundError,
+            ),
+            (["grab", "--limit", "0", "--outfile", ""], FileNotFoundError),
+        ],
+    )
+    def test_cli_empty_file_paths_raise(self, args, expected_exception):
+        from proxybroker.cli import cli
+
+        with pytest.raises(expected_exception):
+            cli(args)
 
 
 class TestOutputHandling:
