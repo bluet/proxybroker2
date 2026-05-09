@@ -363,15 +363,20 @@ async def test_resolve_cache_rejects_v6_for_a_only_callers(mocker, resolver):
 # ---------------------------------------------------------------------------
 
 
-def test_has_local_route_v4_on_dual_stack_host():
-    """v4 always has a route on any modern host (loopback at minimum)."""
-    assert Resolver._has_local_route(socket.AF_INET) is True
+def test_has_local_route_returns_bool_for_v4():
+    """v4 detection returns a bool. Some isolated CI environments
+    (containers with networking restricted to loopback only, sandboxed
+    runners) legitimately have NO routable AF_INET interface, so the
+    contract is "returns bool, never raises" — not "always True".
+    """
+    result = Resolver._has_local_route(socket.AF_INET)
+    assert isinstance(result, bool)
 
 
 def test_has_local_route_returns_bool_for_v6():
     """v6 detection returns a bool either way (true on dual-stack, false on
-    v4-only). The point of the test is the contract: returns bool, never
-    raises, regardless of host capability.
+    v4-only). Same contract as v4: returns bool, never raises, regardless
+    of host capability.
     """
     result = Resolver._has_local_route(socket.AF_INET6)
     assert isinstance(result, bool)
@@ -509,3 +514,68 @@ async def test_get_real_ext_ip_singular_shim_v4_only(mocker):
         return_value=frozenset({"203.0.113.5"}),
     )
     assert await resolver_inst.get_real_ext_ip() == "203.0.113.5"
+
+
+# ---------------------------------------------------------------------------
+# #220 PR review: defenses against str-input + non-200 + non-UTF-8
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_grace_window_when_v4_succeeds_v6_blackholed(mocker):
+    """When v4 succeeds and v6 is blackholed (probe never returns), the
+    grace window caps the wait at ~2s instead of blocking on full
+    timeout. Real-world: corporate networks with stale router
+    advertisements where v6 default route exists but packets disappear.
+    """
+    import asyncio
+
+    resolver_inst = Resolver(timeout=10)  # generous full timeout
+    mocker.patch.object(Resolver, "_has_local_route", return_value=True)
+
+    async def fake_probe(family):
+        if family == socket.AF_INET:
+            return "203.0.113.5"
+        # v6: simulate blackholed — never returns within the test window
+        await asyncio.sleep(60)
+        return "should-never-reach"
+
+    mocker.patch.object(resolver_inst, "_probe_family", side_effect=fake_probe)
+
+    import time
+
+    start = time.monotonic()
+    result = await resolver_inst.get_real_ext_ips()
+    elapsed = time.monotonic() - start
+
+    assert result == frozenset({"203.0.113.5"})
+    # Grace cap is min(self._timeout, 2.0) = 2.0 — give wide margin for CI scheduler.
+    assert elapsed < 4.0, f"Grace window not enforced; took {elapsed:.2f}s"
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_v4_str_input_to_checker_treated_as_one_ip():
+    """If a caller mistakenly passes a str to Checker(real_ext_ips=...),
+    detect and wrap into a single-IP frozenset rather than splitting
+    into individual characters.
+    """
+    from proxybroker.checker import Checker
+
+    c = Checker(judges=[], real_ext_ips="203.0.113.5")
+    assert c._real_ext_ips == frozenset({"203.0.113.5"})
+
+
+def test_checker_real_ext_ips_is_keyword_only():
+    """Public API regression: `real_ext_ips` MUST be keyword-only so
+    legacy positional callers like
+    `Checker(judges, 3, 8, False, False, None, ip, types_dict)`
+    don't get their `types`-and-after arguments silently shifted by
+    the new parameter.
+    """
+    import inspect
+
+    from proxybroker.checker import Checker
+
+    sig = inspect.signature(Checker.__init__)
+    params = sig.parameters
+    assert params["real_ext_ips"].kind == inspect.Parameter.KEYWORD_ONLY

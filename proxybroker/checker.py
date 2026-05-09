@@ -38,10 +38,11 @@ class Checker:
         strict=False,
         dnsbl=None,
         real_ext_ip=None,
-        real_ext_ips=None,
         types=None,
         post=False,
         loop=None,
+        *,
+        real_ext_ips=None,
     ):
         Judge.clear()
         self._judges = get_judges(judges, timeout, verify_ssl)
@@ -53,8 +54,16 @@ class Checker:
         # Backward-compat: legacy `real_ext_ip` (single string) is
         # accepted and wrapped into the set; if both args are passed the
         # newer plural argument wins.
+        # `real_ext_ips` is keyword-only so existing positional callers
+        # like `Checker(judges, 3, 8, False, False, None, ip, types)`
+        # don't get their `types`-and-after args silently shifted.
         if real_ext_ips is None and real_ext_ip is not None:
             real_ext_ips = (real_ext_ip,)
+        # Defensive: a caller passing a single str (e.g. misreading the
+        # plural arg name) gets it treated as one IP, not iterated into
+        # a set of individual characters.
+        if isinstance(real_ext_ips, str):
+            real_ext_ips = (real_ext_ips,)
         self._real_ext_ips = frozenset(real_ext_ips or ())
         # Legacy single-string accessor preserved for any external code.
         self._real_ext_ip = (

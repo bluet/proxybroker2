@@ -177,11 +177,20 @@ class Resolver:
                 for url in candidates:
                     try:
                         async with session.get(url) as resp:
+                            # Guard against error pages (5xx, 404, etc.)
+                            # whose body might contain IP-like strings
+                            # that pass canonicalize_ip but aren't the
+                            # real ext-IP (false positive).
+                            if resp.status != 200:
+                                continue
                             text = (await resp.text()).strip()
                     except (
                         asyncio.TimeoutError,
                         aiohttp.ClientError,
                         OSError,
+                        # Misconfigured / malicious endpoint serving
+                        # non-UTF-8 — skip rather than abort the family.
+                        UnicodeDecodeError,
                     ):
                         continue
                     canonical = canonicalize_ip(text)
@@ -233,15 +242,62 @@ class Resolver:
         ]
         if not families:
             raise RuntimeError("No routable IPv4 or IPv6 interface")
-        results = await asyncio.gather(
-            *[self._probe_family(f) for f in families],
-            return_exceptions=True,
-        )
-        found = frozenset(ip for ip in results if isinstance(ip, str))
+
+        # First-success + grace window pattern: don't let a blackholed
+        # family (default route present but packets dropped — common
+        # broken-IPv6 corp config) hold up the working family for the
+        # full timeout. Once one family responds, give the other ≤ 2 s
+        # to also complete; cancel afterwards.
+        tasks = {asyncio.create_task(self._probe_family(f)) for f in families}
+        found: set[str] = set()
+        pending = set(tasks)
+
+        # Wait for first family to complete (success or failure)
+        while pending and not found:
+            done, pending = await asyncio.wait(
+                pending,
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=self._timeout,
+            )
+            if not done:
+                # Top-level timeout - cancel remaining and bail.
+                for task in pending:
+                    task.cancel()
+                pending = set()
+                break
+            for task in done:
+                try:
+                    ip = task.result()
+                    if isinstance(ip, str):
+                        found.add(ip)
+                except Exception as e:
+                    # Single-family probe failure — keep trying others.
+                    log.debug("Family probe failed: %s", e)
+
+        # Brief grace window for the remaining family (typically the
+        # one that also worked but was a hair slower; capped at 2 s so
+        # blackholed-extra-family doesn't regress startup latency).
+        if found and pending:
+            grace = min(self._timeout, 2.0)
+            done, still_pending = await asyncio.wait(pending, timeout=grace)
+            for task in done:
+                try:
+                    ip = task.result()
+                    if isinstance(ip, str):
+                        found.add(ip)
+                except Exception as e:
+                    log.debug("Grace-window family probe failed: %s", e)
+            for task in still_pending:
+                task.cancel()
+        elif pending:
+            # No success yet AND nothing else pending of value — cancel.
+            for task in pending:
+                task.cancel()
+
         if not found:
             raise RuntimeError("Could not get the external IP")
         log.debug("External IPs discovered: %s", sorted(found))
-        return found
+        return frozenset(found)
 
     async def get_real_ext_ip(self):
         """Return one external IP address (backward-compatibility shim).

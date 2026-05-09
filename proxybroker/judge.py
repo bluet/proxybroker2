@@ -83,6 +83,12 @@ class Judge:
         # Normalise legacy single-string input into the set-aware path.
         if real_ext_ips is None and real_ext_ip is not None:
             real_ext_ips = (real_ext_ip,)
+        # Defensive: a caller passing a single str (e.g. via the OLD
+        # positional API `judge.check("203.0.113.5")` where the string
+        # now binds to `real_ext_ips`) gets it treated as one IP, not
+        # iterated into a set of individual characters.
+        if isinstance(real_ext_ips, str):
+            real_ext_ips = (real_ext_ips,)
         real_ext_ips = frozenset(real_ext_ips or ())
 
         try:
