@@ -134,13 +134,14 @@ class AdvancedProvider(Provider):
         """Extract proxies from ``<tr><td>IP</td><td>PORT</td></tr>`` rows."""
         # Format 3: HTML table
         octet = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+        ip_address = rf"{octet}(?:\.{octet})" + r"{3}"
         table_pattern = (
-            r"<tr[^>]*>\s*"
-            rf"<td[^>]*>\s*({octet}(?:\.{octet}){{3}})\s*</td>\s*"
-            r"<td[^>]*>\s*(\d+)\s*</td>\s*"
-            r"</tr>"
+            r"<[tT][rR][^>]*>\s*"
+            rf"<[tT][dD][^>]*>\s*({ip_address})\s*</[tT][dD]>\s*"
+            r"<[tT][dD][^>]*>\s*(\d+)\s*</[tT][dD]>\s*"
+            r"</[tT][rR]>"
         )
-        return re.findall(table_pattern, page, re.IGNORECASE)
+        return re.findall(table_pattern, page)
 
     @staticmethod
     def _extract_proxies_from_js_array(page):

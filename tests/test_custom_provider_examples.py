@@ -9,6 +9,7 @@ def test_advanced_provider_html_table_parser_handles_simple_rows():
     <table>
       <tr class="proxy"><td>192.0.2.1</td><td>8080</td></tr>
       <tr><td>198.51.100.1</td><td>3128</td></tr>
+      <TR><TD>203.0.113.1</TD><TD>8888</TD></TR>
       <tr><td>999.999.999.999</td><td>1234</td></tr>
     </table>
     """
@@ -16,6 +17,7 @@ def test_advanced_provider_html_table_parser_handles_simple_rows():
     assert provider.find_proxies(page) == [
         ("192.0.2.1", "8080"),
         ("198.51.100.1", "3128"),
+        ("203.0.113.1", "8888"),
     ]
 
 
