@@ -136,7 +136,8 @@ class AdvancedProvider(Provider):
         octet = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
         ip_address = rf"{octet}(?:\.{octet}){{3}}"
         port = (
-            r"(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3})"
+            r"(?:6553[0-5]|655[0-2]\d|65[0-4]\d{2}|6[0-4]\d{3}|"
+            r"[1-5]\d{4}|[1-9]\d{1,3}|[1-9])"
         )
         # This example parser expects simple, well-formed table markup.
         # Use an HTML parser for arbitrary malformed pages.
