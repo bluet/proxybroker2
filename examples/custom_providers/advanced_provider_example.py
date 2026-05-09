@@ -110,10 +110,12 @@ class AdvancedProvider(Provider):
         # Format 1: {"proxies": [{"ip": "1.2.3.4", "port": 8080, ...}, ...]}
         proxies = []
         for proxy in items:
+            if not isinstance(proxy, dict):
+                continue
             ip = proxy.get("ip")
-            port = str(proxy.get("port"))
-            if ip and port:
-                proxies.append((ip, port))
+            port = proxy.get("port")
+            if ip and port is not None:
+                proxies.append((ip, str(port)))
         return proxies
 
     @staticmethod
@@ -122,7 +124,7 @@ class AdvancedProvider(Provider):
         # Format 2: {"data": ["1.2.3.4:8080", ...]}
         proxies = []
         for proxy_str in items:
-            if ":" in proxy_str:
+            if isinstance(proxy_str, str) and ":" in proxy_str:
                 ip, port = proxy_str.split(":", 1)
                 proxies.append((ip, port))
         return proxies
@@ -131,8 +133,13 @@ class AdvancedProvider(Provider):
     def _extract_proxies_from_html_table(page):
         """Extract proxies from ``<tr><td>IP</td><td>PORT</td></tr>`` rows."""
         # Format 3: HTML table
-        table_pattern = r"<tr>.*?<td>(\d+\.\d+\.\d+\.\d+)</td>.*?<td>(\d+)</td>.*?</tr>"
-        return re.findall(table_pattern, page, re.DOTALL)
+        table_pattern = (
+            r"<tr[^>]*>\s*"
+            r"<td[^>]*>\s*(\d{1,3}(?:\.\d{1,3}){3})\s*</td>\s*"
+            r"<td[^>]*>\s*(\d+)\s*</td>\s*"
+            r"</tr>"
+        )
+        return re.findall(table_pattern, page, re.IGNORECASE)
 
     @staticmethod
     def _extract_proxies_from_js_array(page):
