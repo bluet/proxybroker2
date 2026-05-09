@@ -133,9 +133,10 @@ class AdvancedProvider(Provider):
     def _extract_proxies_from_html_table(page):
         """Extract proxies from ``<tr><td>IP</td><td>PORT</td></tr>`` rows."""
         # Format 3: HTML table
+        octet = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
         table_pattern = (
             r"<tr[^>]*>\s*"
-            r"<td[^>]*>\s*(\d{1,3}(?:\.\d{1,3}){3})\s*</td>\s*"
+            rf"<td[^>]*>\s*({octet}(?:\.{octet}){{3}})\s*</td>\s*"
             r"<td[^>]*>\s*(\d+)\s*</td>\s*"
             r"</tr>"
         )

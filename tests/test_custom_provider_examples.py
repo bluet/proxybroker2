@@ -4,28 +4,43 @@ from examples.custom_providers.advanced_provider_example import AdvancedProvider
 
 
 def test_advanced_provider_html_table_parser_handles_simple_rows():
+    provider = AdvancedProvider()
     page = """
     <table>
       <tr class="proxy"><td>192.0.2.1</td><td>8080</td></tr>
       <tr><td>198.51.100.1</td><td>3128</td></tr>
+      <tr><td>999.999.999.999</td><td>1234</td></tr>
     </table>
     """
 
-    assert AdvancedProvider._extract_proxies_from_html_table(page) == [
+    assert provider.find_proxies(page) == [
         ("192.0.2.1", "8080"),
         ("198.51.100.1", "3128"),
     ]
 
 
 def test_advanced_provider_json_helpers_skip_malformed_entries():
-    assert AdvancedProvider._extract_proxies_from_json_objects(
-        [
+    provider = AdvancedProvider()
+
+    assert provider.find_proxies(
+        """
+        {
+          "proxies": [
             {"ip": "192.0.2.1", "port": 8080},
             {"ip": "198.51.100.1"},
-            "203.0.113.1:8888",
-        ]
+            "203.0.113.1:8888"
+          ]
+        }
+        """
     ) == [("192.0.2.1", "8080")]
 
-    assert AdvancedProvider._extract_proxies_from_strings(
-        ["192.0.2.1:8080", {"ip": "198.51.100.1"}]
+    assert provider.find_proxies(
+        """
+        {
+          "data": [
+            "192.0.2.1:8080",
+            {"ip": "198.51.100.1"}
+          ]
+        }
+        """
     ) == [("192.0.2.1", "8080")]
