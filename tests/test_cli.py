@@ -400,6 +400,69 @@ class TestProviderDirParserPlacement:
         assert _resolve_provider_dirs(ns) == ["/before", "/after"]
 
 
+class TestDeferredFileArguments:
+    """CLI file arguments should parse as paths and open only during execution."""
+
+    def _parse(self, *args):
+        from proxybroker.cli import create_parser
+
+        return create_parser().parse_args(list(args))
+
+    def test_data_path_is_not_opened_during_parse(self):
+        missing_file = "/definitely-missing/proxies.txt"
+        ns = self._parse("find", "--types", "HTTP", "--data", missing_file)
+        assert ns.data == missing_file
+
+    def test_outfile_path_is_not_opened_during_parse(self):
+        unwritable_path = "/definitely-missing/out.txt"
+        ns = self._parse("grab", "--outfile", unwritable_path)
+        assert ns.outfile == unwritable_path
+
+    def test_cli_opens_data_and_outfile_during_execution(self, monkeypatch, tmp_path):
+        import proxybroker.cli as cli_mod
+
+        data_path = tmp_path / "data.txt"
+        out_path = tmp_path / "out.txt"
+        data_path.write_text("203.0.113.10:8080\n")
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def find(self, **kwargs):
+                captured["data"] = kwargs["data"]
+                captured["data_text"] = kwargs["data"].read()
+
+            def show_stats(self, verbose=True):  # pragma: no cover - not used
+                pass
+
+        async def fake_handle(proxies, outfile, format):
+            captured["outfile"] = outfile
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+        monkeypatch.setattr(cli_mod, "handle", fake_handle)
+
+        cli_mod.cli(
+            [
+                "find",
+                "--types",
+                "HTTP",
+                "--limit",
+                "0",
+                "--data",
+                str(data_path),
+                "--outfile",
+                str(out_path),
+            ]
+        )
+
+        assert captured["data_text"] == "203.0.113.10:8080\n"
+        assert captured["data"].closed
+        assert captured["outfile"].line_buffering is True
+        assert captured["outfile"].closed
+
+
 class TestOutputHandling:
     """Cover the cli.handle() / outformat() output path used by find/grab."""
 
