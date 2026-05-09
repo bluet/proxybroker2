@@ -434,9 +434,6 @@ class TestDeferredFileArguments:
                 captured["data"] = kwargs["data"]
                 captured["data_text"] = kwargs["data"].read()
 
-            def show_stats(self, verbose=True):  # pragma: no cover - not used
-                pass
-
         async def fake_handle(proxies, outfile, format):
             captured["outfile"] = outfile
 
@@ -472,7 +469,7 @@ class TestDeferredFileArguments:
                 pass
 
             async def find(self, **kwargs):
-                pass
+                captured["find_called"] = True
 
         async def fake_handle(proxies, outfile, format):
             captured["outfile"] = outfile
@@ -482,6 +479,7 @@ class TestDeferredFileArguments:
 
         cli_mod.cli(["find", "--types", "HTTP", "--limit", "0"])
 
+        assert captured["find_called"] is True
         assert captured["outfile"] is sys.stdout
 
 
