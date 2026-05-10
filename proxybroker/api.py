@@ -243,7 +243,7 @@ class Broker:
             Added: :attr:`post`, :attr:`strict`, :attr:`dnsbl`.
             Changed: :attr:`types` is required.
         """
-        ip = await self._resolver.get_real_ext_ip()
+        ips = await self._resolver.get_real_ext_ips()
         types = _update_types(types)
 
         if not types:
@@ -254,7 +254,7 @@ class Broker:
             timeout=self._timeout,
             verify_ssl=self._verify_ssl,
             max_tries=self._max_tries,
-            real_ext_ip=ip,
+            real_ext_ips=ips,
             types=types,
             post=post,
             strict=strict,
