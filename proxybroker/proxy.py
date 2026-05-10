@@ -359,7 +359,7 @@ class Proxy:
 
                 # Upgrade transport to SSL
                 ssl_transport = await asyncio.wait_for(
-                    asyncio.get_event_loop().start_tls(
+                    asyncio.get_running_loop().start_tls(
                         transport,
                         protocol,
                         self._ssl_context,
@@ -374,7 +374,7 @@ class Proxy:
                     ssl_transport,
                     protocol,
                     self._reader[_type],
-                    asyncio.get_event_loop(),
+                    asyncio.get_running_loop(),
                 )
             else:
                 _type = "conn"

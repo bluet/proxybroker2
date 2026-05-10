@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import sys
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -221,7 +221,7 @@ def add_find_args(group):
     )
     group.add_argument(
         "--data",
-        type=argparse.FileType("r"),
+        type=str,
         help="""Path to the file with proxies.
                 If specified, used instead of providers""",
     )
@@ -340,8 +340,8 @@ def add_outfile_arg(group):
     group.add_argument(
         "--outfile",
         "-o",
-        type=argparse.FileType("w", 1),
-        default=sys.stdout,
+        type=str,
+        default=None,
         help="Save found proxies to file. By default, output to console",
     )
 
@@ -454,68 +454,82 @@ def cli(args=sys.argv[1:]):
         ns.types.remove("HTTP")
         ns.types.append(("HTTP", ns.anon_lvl))
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    proxies = asyncio.Queue()
-    broker = Broker(
-        proxies,
-        max_conn=ns.max_conn,
-        max_tries=ns.max_tries,
-        timeout=ns.timeout,
-        judges=ns.judges,
-        providers=ns.providers,
-        provider_dirs=_resolve_provider_dirs(ns),
-        verify_ssl=ns.verify_ssl,
-        loop=loop,
-    )
+    with ExitStack() as files:
+        if ns.command in ("find", "serve") and ns.data is not None:
+            if ns.data == "-":
+                ns.data = sys.stdin
+            else:
+                ns.data = files.enter_context(open(ns.data, encoding="utf-8"))
+        if ns.command in ("find", "grab"):
+            if ns.outfile is None or ns.outfile == "-":
+                ns.outfile = sys.stdout
+            else:
+                ns.outfile = files.enter_context(
+                    open(ns.outfile, "w", buffering=1, encoding="utf-8")
+                )
 
-    if ns.command in ("find", "grab"):
-        tasks = [handle(proxies, outfile=ns.outfile, format=ns.format)]
-    else:
-        tasks = []
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        proxies = asyncio.Queue()
+        broker = Broker(
+            proxies,
+            max_conn=ns.max_conn,
+            max_tries=ns.max_tries,
+            timeout=ns.timeout,
+            judges=ns.judges,
+            providers=ns.providers,
+            provider_dirs=_resolve_provider_dirs(ns),
+            verify_ssl=ns.verify_ssl,
+            loop=loop,
+        )
 
-    if ns.command == "find":
-        tasks.append(
-            broker.find(
+        if ns.command in ("find", "grab"):
+            tasks = [handle(proxies, outfile=ns.outfile, format=ns.format)]
+        else:
+            tasks = []
+
+        if ns.command == "find":
+            tasks.append(
+                broker.find(
+                    data=ns.data,
+                    types=ns.types,
+                    countries=ns.countries,
+                    post=ns.post,
+                    strict=ns.strict,
+                    dnsbl=ns.dnsbl,
+                    limit=ns.limit,
+                )
+            )
+        elif ns.command == "grab":
+            tasks.append(broker.grab(countries=ns.countries, limit=ns.limit))
+        elif ns.command == "serve":
+            broker.serve(
+                host=ns.host,
+                port=ns.port,
+                limit=ns.limit,
+                min_queue=ns.min_queue,
+                strategy=ns.strategy,
+                min_req_proxy=ns.min_req_proxy,
+                max_error_rate=ns.max_error_rate,
+                max_resp_time=ns.max_resp_time,
+                prefer_connect=ns.prefer_connect,
+                http_allowed_codes=ns.http_allowed_codes,
+                backlog=ns.backlog,
                 data=ns.data,
                 types=ns.types,
                 countries=ns.countries,
                 post=ns.post,
                 strict=ns.strict,
                 dnsbl=ns.dnsbl,
-                limit=ns.limit,
             )
-        )
-    elif ns.command == "grab":
-        tasks.append(broker.grab(countries=ns.countries, limit=ns.limit))
-    elif ns.command == "serve":
-        broker.serve(
-            host=ns.host,
-            port=ns.port,
-            limit=ns.limit,
-            min_queue=ns.min_queue,
-            strategy=ns.strategy,
-            min_req_proxy=ns.min_req_proxy,
-            max_error_rate=ns.max_error_rate,
-            max_resp_time=ns.max_resp_time,
-            prefer_connect=ns.prefer_connect,
-            http_allowed_codes=ns.http_allowed_codes,
-            backlog=ns.backlog,
-            data=ns.data,
-            types=ns.types,
-            countries=ns.countries,
-            post=ns.post,
-            strict=ns.strict,
-            dnsbl=ns.dnsbl,
-        )
-        print(f"Server started at http://{ns.host}:{ns.port}")
+            print(f"Server started at http://{ns.host}:{ns.port}")
 
-    try:
-        if tasks:
-            loop.run_until_complete(asyncio.gather(*tasks))
-            if ns.show_stats:
-                broker.show_stats(verbose=True)
-        else:
-            loop.run_forever()
-    except KeyboardInterrupt:
-        broker.stop()
+        try:
+            if tasks:
+                loop.run_until_complete(asyncio.gather(*tasks))
+                if ns.show_stats:
+                    broker.show_stats(verbose=True)
+            else:
+                loop.run_forever()
+        except KeyboardInterrupt:
+            broker.stop()

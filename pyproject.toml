@@ -75,6 +75,17 @@ exclude = '''
 [tool.ruff]
 exclude = ["CRITICAL_FIXES.py"]
 
+[tool.ruff.lint]
+# Default selection is E4/E7/E9/F (pycodestyle errors + pyflakes). Add
+# PLW1514 to enforce encoding= on text-mode open() calls, preventing the
+# locale-encoding data-corruption class of bug caught reactively in PR #210.
+# PLW1514 is a preview rule, so preview must be enabled, but
+# explicit-preview-rules restricts preview-rule selection to only the rules
+# explicitly listed in extend-select.
+select = ["E4", "E7", "E9", "F", "PLW1514"]
+preview = true
+explicit-preview-rules = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
