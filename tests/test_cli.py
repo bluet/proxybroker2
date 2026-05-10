@@ -511,6 +511,46 @@ class TestDeferredFileArguments:
         assert captured["data"] is sys.stdin
         assert captured["outfile"] is sys.stdout
 
+    def test_cli_opens_data_during_serve_execution(self, monkeypatch, tmp_path):
+        """`serve --data path` must defer-open the file with UTF-8, just like find."""
+        import proxybroker.cli as cli_mod
+
+        data_path = tmp_path / "serve_data.txt"
+        data_path.write_text("198.51.100.7:3128\n")
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                self._loop = kwargs["loop"]
+
+            def serve(self, **kwargs):
+                captured["data"] = kwargs["data"]
+                captured["data_text"] = kwargs["data"].read()
+                self._loop.call_soon(self._loop.stop)
+
+            def stop(self):
+                pass
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+
+        cli_mod.cli(
+            [
+                "serve",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "0",
+                "--types",
+                "HTTP",
+                "--data",
+                str(data_path),
+            ]
+        )
+
+        assert captured["data_text"] == "198.51.100.7:3128\n"
+        assert captured["data"].closed
+        assert captured["data"].encoding.lower() == "utf-8"
+
     @pytest.mark.parametrize(
         ("args", "expected_exception"),
         [
