@@ -145,7 +145,9 @@ class TestCLI:
 
     def test_grab_output_file_creation(self):
         """Test grab command creates output file."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8", mode="w", suffix=".txt", delete=False
+        ) as f:
             temp_file = f.name
 
         try:
