@@ -309,17 +309,30 @@ class Resolver:
         tasks = {asyncio.create_task(self._probe_family(f)) for f in families}
         found: set[str] = set()
 
-        # Phase 1: wait for first family success (or all to fail).
-        pending = await self._wait_for_first_success(tasks, found)
-
-        # Phase 2: grace window for any still-pending family within
-        # the user's REMAINING timeout budget (codex review: don't
-        # drop slow-but-reachable second family; bound by user setting
-        # not by an arbitrary fixed cap).
-        if pending:
-            elapsed = loop.time() - start
-            grace = max(0.0, self._timeout - elapsed)
-            await self._drain_with_budget(pending, found, grace)
+        # try/finally guarantees task cleanup on every exit path:
+        #   * normal success (return frozenset(found))
+        #   * RuntimeError from no-success
+        #   * CancelledError when caller wraps us in asyncio.wait_for()
+        #     or otherwise cancels - asyncio cancellation does NOT
+        #     propagate from the awaiting coroutine to the awaited
+        #     tasks; if we don't cancel them here they leak HTTP
+        #     connectors and keep hitting endpoints after the caller
+        #     has given up. (codex PR #225 review)
+        try:
+            pending = await self._wait_for_first_success(tasks, found)
+            if pending:
+                elapsed = loop.time() - start
+                grace = max(0.0, self._timeout - elapsed)
+                await self._drain_with_budget(pending, found, grace)
+        finally:
+            # Cancel any task that's still running, then await all of
+            # them with return_exceptions=True so cancellation actually
+            # propagates and connectors close. Suppresses CancelledError
+            # / RuntimeError from individual tasks during cleanup.
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
         if not found:
             raise RuntimeError("Could not get the external IP")

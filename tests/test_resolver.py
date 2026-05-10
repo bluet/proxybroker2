@@ -784,3 +784,46 @@ async def test_probe_family_exhausts_all_candidates_before_raising(mocker):
     assert len(call_log) == len(Resolver._ip_hosts), (
         f"Tried {len(call_log)} of {len(Resolver._ip_hosts)} candidates"
     )
+
+
+@pytest.mark.asyncio
+async def test_get_real_ext_ips_cancellation_propagates_to_probes(mocker):
+    """Caller cancellation (e.g. `asyncio.wait_for(get_real_ext_ips(), 1.0)`)
+    must propagate to the spawned `_probe_family` tasks so they don't
+    leak HTTP connectors / keep hitting endpoints after the caller
+    has stopped waiting.
+
+    Regression for codex PR #225 round 7 (cleanup gap): asyncio
+    cancellation of an awaiting coroutine does NOT cascade into the
+    tasks it was awaiting. The try/finally in get_real_ext_ips must
+    explicitly cancel pending tasks.
+    """
+    import asyncio
+
+    resolver_inst = Resolver(timeout=10)
+    mocker.patch.object(Resolver, "_has_local_route", return_value=True)
+
+    probe_was_cancelled = {"v4": False, "v6": False}
+
+    async def fake_probe(family):
+        try:
+            await asyncio.sleep(60)  # would block forever
+            return "should-never-return"
+        except asyncio.CancelledError:
+            label = "v4" if family == socket.AF_INET else "v6"
+            probe_was_cancelled[label] = True
+            raise
+
+    mocker.patch.object(resolver_inst, "_probe_family", side_effect=fake_probe)
+
+    # Cancel after a brief delay (long enough for tasks to be spawned
+    # and start sleeping).
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(resolver_inst.get_real_ext_ips(), timeout=0.1)
+
+    # Both probes must have observed cancellation — proves the
+    # try/finally cleanup ran and propagated cancel.
+    # Brief await for cancellation to take effect.
+    await asyncio.sleep(0.05)
+    assert probe_was_cancelled["v4"], "v4 probe was leaked, never cancelled"
+    assert probe_was_cancelled["v6"], "v6 probe was leaked, never cancelled"
