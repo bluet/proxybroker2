@@ -19,14 +19,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-      - name: Install uv and set the Python version
+      # Install Python via setup-python to get the LATEST patch of the
+      # requested minor version. setup-uv's `python-version` input would
+      # otherwise pick up the runner's pre-installed Python (often older,
+      # e.g. 3.12.3 on ubuntu-latest as of May 2026), which breaks tests
+      # sensitive to bug fixes shipped in later patches (e.g. Python
+      # 3.12.4's IPv4-mapped IPv6 string format change in bpo-119891).
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           version: "0.11.13"
-          python-version: ${{ matrix.python-version }}
           enable-cache: true
       - name: Install project + dev dependencies (includes ruff)
-        run: uv sync --locked --dev
+        # `--python` pins uv to the python set up above (otherwise uv may
+        # resolve to a uv-managed install of a different patch).
+        run: uv sync --locked --dev --python ${{ matrix.python-version }}
       - name: Lint with ruff
         run: |
           # stop the build if there are Python syntax errors or undefined names
