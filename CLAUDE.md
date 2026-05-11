@@ -214,6 +214,7 @@ See `docs/custom_providers.md` for the full guide.
 ## Known Quirks
 
 - Build backend stays `poetry-core>=2.1.3` (poetry-core 2.x reads PEP 621 `[project]`); package management is uv (#105). PyPI publish uses `python -m build`.
+- `requirements.txt` is auto-generated from `uv.lock` via a pre-commit hook (`uv export --format requirements-txt --no-dev --no-emit-project`). It exists only because Snyk doesn't yet support uv.lock ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)). Don't edit by hand; touch `uv.lock` and let the hook regenerate it. Remove this workaround once Snyk ships uv support.
 - GeoIP database bundled in `proxybroker/data/`
 - Entry points: `__main__.py` (module), `py2exe_entrypoint.py` (executable)
 - ProxyPool.remove() is O(N log N) - acceptable for correctness
