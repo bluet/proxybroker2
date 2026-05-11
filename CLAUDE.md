@@ -14,30 +14,29 @@ ProxyBroker2 is an async proxy finder, checker, and server. It discovers public 
 
 ### Setup
 ```bash
-# Poetry (recommended)
-poetry install
-poetry shell
+# uv (recommended) — installs into .venv and locks via uv.lock
+uv sync --dev
 
-# Standard pip
+# Standard pip fallback (no lockfile, no dev deps)
 pip install -e .
 ```
 
 ### Testing
 ```bash
-# Run all tests
-pytest
+# Run all tests (use `uv run` to enter the project venv)
+uv run pytest
 
 # Single test with output
-pytest -xvs tests/test_api.py::TestBrokerAPI::test_broker_creation_without_queue
+uv run pytest -xvs tests/test_api.py::TestBrokerAPI::test_broker_creation_without_queue
 
 # With coverage
-pytest --cov=proxybroker --cov-report=term-missing
+uv run pytest --cov=proxybroker --cov-report=term-missing
 ```
 
 ### Code Quality
 ```bash
 # Format and fix issues
-ruff check . --fix && ruff format .
+uv run ruff check . --fix && uv run ruff format .
 ```
 
 ### Documentation
@@ -214,7 +213,7 @@ See `docs/custom_providers.md` for the full guide.
 
 ## Known Quirks
 
-- Uses both Poetry and setuptools for compatibility
+- Build backend stays `poetry-core>=2.1.3` (poetry-core 2.x reads PEP 621 `[project]`); package management is uv (#105). PyPI publish uses `python -m build`.
 - GeoIP database bundled in `proxybroker/data/`
 - Entry points: `__main__.py` (module), `py2exe_entrypoint.py` (executable)
 - ProxyPool.remove() is O(N log N) - acceptable for correctness

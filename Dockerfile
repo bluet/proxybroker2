@@ -19,17 +19,24 @@ FROM python:3.14-slim@sha256:5b3879b6f3cb77e712644d50262d05a7c146b7312d784a18eff
 # https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry
 LABEL org.opencontainers.image.source="https://github.com/bluet/proxybroker2"
 
+# Pull the uv binary from the official image (recommended pattern per
+# https://docs.astral.sh/uv/guides/integration/docker/). Same tag+digest
+# pinning rationale as the python:3.14-slim base above.
+#
+# Update procedure:
+#   docker pull ghcr.io/astral-sh/uv:0.11.13
+#   docker inspect --format '{{index .RepoDigests 0}}' ghcr.io/astral-sh/uv:0.11.13
+COPY --from=ghcr.io/astral-sh/uv:0.11.13@sha256:841c8e6fe30a8b07b4478d12d0c608cba6de66102d29d65d1cc423af86051563 /uv /uvx /bin/
+
 ENV \
     # Keeps Python from generating .pyc files in the container
     PYTHONDONTWRITEBYTECODE=1 \
     # Turns off buffering for easier container logging
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-#RUN apt-get update \
-#    && apt-get install -y --no-install-recommends gcc libc-dev libffi-dev \
-#    && apt-get clean
+    # uv writes .venv to /app/.venv and uses it as the project venv
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    # Don't bake a uv cache layer into the final image
+    UV_NO_CACHE=1
 
 RUN apt-get update -y &&\
         apt-get upgrade -y &&\
@@ -37,14 +44,9 @@ RUN apt-get update -y &&\
         apt-get clean &&\
         rm -rf /var/lib/lists/*
 
-RUN \
-    pip install poetry==2.1.3
-
 FROM base AS builder
 
 WORKDIR /app
-COPY poetry.lock pyproject.toml README.md ./
-COPY proxybroker proxybroker
 
 RUN apt-get update && \
     apt-get upgrade -y &&\
@@ -52,8 +54,19 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --without dev
+# Install runtime deps from the lockfile WITHOUT the project itself first
+# (separate layer = better cache hit rate when only project source changes).
+COPY uv.lock pyproject.toml README.md ./
+RUN uv sync --locked --no-install-project --no-dev
+
+# Copy source + install the project into the venv (incremental work over
+# the cached dependency layer above).
+COPY proxybroker proxybroker
+RUN uv sync --locked --no-dev
+
+# Make the project venv's binaries available without `uv run` prefix.
+ENV PATH="/app/.venv/bin:$PATH"
+
 EXPOSE 8888
 
-ENTRYPOINT ["python", "-m", "proxybroker" ]
+ENTRYPOINT ["python", "-m", "proxybroker"]
