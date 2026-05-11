@@ -68,11 +68,37 @@ dev = [
     "ruff>=0.15.12,<1.0.0",
 ]
 
-# Tells poetry-core which dirs ship in the wheel + sdist. Mirrors the prior
-# [tool.poetry] packages/include settings.
+# [tool.poetry] block exists for two reasons:
+#
+# 1. `packages` + `include` tell poetry-core (the build backend) which
+#    files to ship in the wheel + sdist.
+# 2. `[tool.poetry.dependencies]` is a snyk-compat shim. Snyk's GitHub PR
+#    app integration uses the legacy poetry parser even when the org has
+#    "uv preview" enabled (preview is CLI-only per docs:
+#    https://docs.snyk.io/supported-languages/supported-languages-list/python/cli-support-for-uv).
+#    Without [tool.poetry.dependencies] the scan fails with "pyproject.toml
+#    error Failed to detect issues" and never falls through to scan
+#    requirements.txt or uv.lock. Versions below MUST stay in sync with
+#    [project.dependencies] above.
+#
+# DO NOT run `poetry install/lock` against this file. If you `poetry add`
+# a dep it will write to [tool.poetry] only and silently drift from
+# [project]. uv reads [project.dependencies] (authoritative); this section
+# is read only by snyk. DELETE this whole [tool.poetry.dependencies]
+# section once snyk's PR app uses uv preview natively.
 [tool.poetry]
 packages = [{include = "proxybroker"}]
 include = ["proxybroker/data/*.mmdb"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiohttp = "^3.13.5"
+aiodns = "^3.6.1"
+attrs = ">=26.1.0"
+maxminddb = "^2.8.2"
+cachetools = "^5.5.2"
+click = "^8.3.3"
+pyyaml = "^6.0.3"
 
 [build-system]
 requires = ["poetry-core>=2.1.3"]
