@@ -49,6 +49,6 @@ repos:
             -   id: uv-export-requirements
                 name: uv export → requirements.txt (for Snyk)
                 language: system
-                entry: uv export --format requirements-txt --no-dev --no-emit-project --no-hashes --output-file requirements.txt
+                entry: uv export --quiet --format requirements-txt --no-dev --no-emit-project --no-hashes --output-file requirements.txt
                 files: ^(uv\.lock|pyproject\.toml)$
                 pass_filenames: false
