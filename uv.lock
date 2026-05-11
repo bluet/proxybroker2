@@ -962,22 +962,22 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiodns", specifier = ">=3.4.0,<4.0.0" },
-    { name = "aiohttp", specifier = ">=3.12.0,<4.0.0" },
-    { name = "attrs", specifier = ">=25.3.0" },
+    { name = "aiodns", specifier = ">=3.6.1,<4.0.0" },
+    { name = "aiohttp", specifier = ">=3.13.5,<4.0.0" },
+    { name = "attrs", specifier = ">=26.1.0" },
     { name = "cachetools", specifier = ">=5.5.2,<6.0.0" },
-    { name = "click", specifier = ">=8.2.1,<9.0.0" },
-    { name = "maxminddb", specifier = ">=2.7.0,<3.0.0" },
-    { name = "pyyaml", specifier = ">=6.0.2,<7.0.0" },
+    { name = "click", specifier = ">=8.3.3,<9.0.0" },
+    { name = "maxminddb", specifier = ">=2.8.2,<3.0.0" },
+    { name = "pyyaml", specifier = ">=6.0.3,<7.0.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "alabaster", specifier = ">=1.0.0,<2.0.0" },
-    { name = "pytest", specifier = ">=8.3.5,<9.0.0" },
+    { name = "pytest", specifier = ">=8.4.2,<9.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.26.0,<1.0.0" },
-    { name = "pytest-cov", specifier = ">=6.1.1,<7.0.0" },
-    { name = "pytest-mock", specifier = ">=3.14.0,<4.0.0" },
+    { name = "pytest-cov", specifier = ">=6.3.0,<7.0.0" },
+    { name = "pytest-mock", specifier = ">=3.15.1,<4.0.0" },
     { name = "ruff", specifier = ">=0.15.12,<1.0.0" },
 ]
 

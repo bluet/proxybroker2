@@ -9,14 +9,20 @@ authors = [
 license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
+# Lower bounds reflect what uv.lock currently resolves (= what's actually
+# tested in CI). Pin floors to known-safe versions so snyk doesn't flag
+# the constraint range as vulnerable. Notable required floors:
+# - click>=8.3.3 fixes SNYK-PYTHON-CLICK-16347201 (HIGH, command injection)
+# - aiohttp>=3.13.5 fixes multiple HIGH vulns (SSRF, memory exhaustion,
+#   request smuggling)
 dependencies = [
-    "aiohttp>=3.12.0,<4.0.0",
-    "aiodns>=3.4.0,<4.0.0",
-    "attrs>=25.3.0",
-    "maxminddb>=2.7.0,<3.0.0",
+    "aiohttp>=3.13.5,<4.0.0",
+    "aiodns>=3.6.1,<4.0.0",
+    "attrs>=26.1.0",
+    "maxminddb>=2.8.2,<3.0.0",
     "cachetools>=5.5.2,<6.0.0",
-    "click>=8.2.1,<9.0.0",
-    "pyyaml>=6.0.2,<7.0.0",
+    "click>=8.3.3,<9.0.0",
+    "pyyaml>=6.0.3,<7.0.0",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -47,11 +53,14 @@ proxybroker = "proxybroker.cli:cli"
 # PEP 735 dev-dependency group. Replaces the legacy
 # [tool.poetry.dev-dependencies] section. Activated by `uv sync --dev`.
 [dependency-groups]
+# Floors reflect uv.lock current resolution (= what's actually tested).
+# Same rationale as [project.dependencies] above — keep snyk happy and
+# match what CI runs.
 dev = [
-    "pytest>=8.3.5,<9.0.0",
+    "pytest>=8.4.2,<9.0.0",
     "pytest-asyncio>=0.26.0,<1.0.0",
-    "pytest-mock>=3.14.0,<4.0.0",
-    "pytest-cov>=6.1.1,<7.0.0",
+    "pytest-mock>=3.15.1,<4.0.0",
+    "pytest-cov>=6.3.0,<7.0.0",
     "alabaster>=1.0.0,<2.0.0",
     # ruff is also pinned in .pre-commit-config.yaml; keep these reasonably
     # in sync. Adding it here lets `uv run ruff ...` work locally and in CI
