@@ -6,7 +6,7 @@ import aiohttp
 
 from .errors import ResolveError
 from .resolver import Resolver
-from .utils import get_headers, log
+from .utils import canonicalize_ip, get_all_ip, get_headers, log
 
 
 class Judge:
@@ -70,8 +70,27 @@ class Judge:
         cls.ev["HTTPS"].clear()
         cls.ev["SMTP"].clear()
 
-    async def check(self, real_ext_ip):
+    async def check(self, real_ext_ips=None, real_ext_ip=None):
+        """Probe judge endpoint and verify it echoes a known real ext-IP.
+
+        ``real_ext_ips`` (set/iterable, preferred) accepts the FULL set
+        of host external IPs from ``Resolver.get_real_ext_ips()`` so the
+        comparison passes whichever family the judge connection used.
+        ``real_ext_ip`` (single string, legacy) is kept for backward
+        compatibility; if both are passed, ``real_ext_ips`` wins.
+        """
         # TODO: need refactoring
+        # Normalise legacy single-string input into the set-aware path.
+        if real_ext_ips is None and real_ext_ip is not None:
+            real_ext_ips = (real_ext_ip,)
+        # Defensive: a caller passing a single str (e.g. via the OLD
+        # positional API `judge.check("203.0.113.5")` where the string
+        # now binds to `real_ext_ips`) gets it treated as one IP, not
+        # iterated into a set of individual characters.
+        if isinstance(real_ext_ips, str):
+            real_ext_ips = (real_ext_ips,)
+        real_ext_ips = frozenset(real_ext_ips or ())
+
         try:
             self.ip = await self._resolver.resolve(self.host)
         except ResolveError:
@@ -107,8 +126,15 @@ class Judge:
             return
 
         page = page.lower()
+        # Canonical-form set membership: judges may echo whichever family
+        # the connection used, and the host may have v4 OR v6 reachable
+        # (or both on dual-stack). Pass if ANY of the host's real ext-IPs
+        # appears in the page.
+        page_ips = get_all_ip(page)
+        real_canonicals = frozenset(canonicalize_ip(ip) or ip for ip in real_ext_ips)
+        real_ip_visible = bool(real_canonicals & page_ips)
 
-        if resp.status == 200 and real_ext_ip in page and rv in page:
+        if resp.status == 200 and real_ip_visible and rv in page:
             self.marks["via"] = page.count("via")
             self.marks["proxy"] = page.count("proxy")
             self.is_working = True
@@ -118,7 +144,7 @@ class Judge:
         else:
             log.debug(
                 f"{self} is failed. HTTP status code: {resp.status}; "
-                f"Real IP on page: {real_ext_ip in page}; Version: {rv in page}; "
+                f"Real IP on page: {real_ip_visible}; Version: {rv in page}; "
                 f"Response: {page}"
             )
 

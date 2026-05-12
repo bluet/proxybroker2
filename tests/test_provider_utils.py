@@ -248,6 +248,26 @@ class TestAPIProvider:
         # is that this call does not raise AttributeError.
         assert isinstance(result, list)
 
+    def test_find_proxies_extracts_common_wrapped_list_key(self):
+        """JSON objects with common list keys should be parsed directly."""
+        provider = APIProvider(
+            "http://api.example.com/proxies",
+            response_format="json",
+        )
+        json_response = '{"results": [{"ip": "192.0.2.1", "port": 8080}]}'
+        assert provider.find_proxies(json_response) == [("192.0.2.1", "8080")]
+
+    @pytest.mark.parametrize("key", ["proxies", "data", "results", "items"])
+    def test_extract_common_proxy_list_keys(self, key):
+        provider = APIProvider("http://api.example.com/proxies")
+        payload = {key: [{"ip": "192.0.2.1", "port": 8080}]}
+        assert provider._extract_common_proxy_list(payload) == payload[key]
+
+    def test_extract_common_proxy_list_ignores_non_lists(self):
+        provider = APIProvider("http://api.example.com/proxies")
+        payload = {"proxies": "192.0.2.1:8080", "items": {"ip": "192.0.2.1"}}
+        assert provider._extract_common_proxy_list(payload) is None
+
 
 class TestConfigurableProvider:
     """Test ConfigurableProvider functionality."""
@@ -262,7 +282,9 @@ class TestConfigurableProvider:
             "protocols": ["HTTP", "HTTPS"],
         }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8", mode="w", suffix=".yaml", delete=False
+        ) as f:
             yaml.dump(config, f)
             f.flush()
 
@@ -283,7 +305,9 @@ class TestConfigurableProvider:
             "response_format": "json",
         }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8", mode="w", suffix=".json", delete=False
+        ) as f:
             json.dump(config, f)
             f.flush()
 
@@ -303,7 +327,7 @@ def test_create_provider_config_template():
         create_provider_config_template(yaml_path, "simple")
         assert yaml_path.exists()
 
-        with open(yaml_path) as f:
+        with open(yaml_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
             assert config["type"] == "simple"
             assert "url" in config
@@ -313,7 +337,7 @@ def test_create_provider_config_template():
         create_provider_config_template(json_path, "api")
         assert json_path.exists()
 
-        with open(json_path) as f:
+        with open(json_path, encoding="utf-8") as f:
             config = json.load(f)
             assert config["type"] == "api"
             assert "url" in config
@@ -326,7 +350,7 @@ def _write_yaml_config(path):
         "url": "http://example.com/proxies.txt",
         "format": "text",
     }
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         yaml.dump(config, f)
 
 
@@ -440,6 +464,18 @@ def test_underscore_prefix_yaml_files_are_skipped():
 
         providers = load_provider_configs_from_directory(tmpdir)
         assert len(providers) == 1
+
+
+def test_load_provider_configs_from_directory_continues_after_bad_file():
+    """One malformed file should not block loading valid configs."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _write_yaml_config(Path(tmpdir) / "good.yaml")
+        (Path(tmpdir) / "bad.yaml").write_text("type: [", encoding="utf-8")
+
+        providers = load_provider_configs_from_directory(tmpdir)
+
+        assert len(providers) == 1
+        assert isinstance(providers[0], SimpleProvider)
 
 
 def test_simple_provider_custom_pattern_normalises_strings():

@@ -145,7 +145,9 @@ class TestCLI:
 
     def test_grab_output_file_creation(self):
         """Test grab command creates output file."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8", mode="w", suffix=".txt", delete=False
+        ) as f:
             temp_file = f.name
 
         try:
@@ -398,6 +400,174 @@ class TestProviderDirParserPlacement:
             "/after",
         )
         assert _resolve_provider_dirs(ns) == ["/before", "/after"]
+
+
+class TestDeferredFileArguments:
+    """CLI file arguments should parse as paths and open only during execution."""
+
+    def _parse(self, *args):
+        from proxybroker.cli import create_parser
+
+        return create_parser().parse_args(list(args))
+
+    def test_data_path_is_not_opened_during_parse(self):
+        missing_file = "/definitely-missing/proxies.txt"
+        ns = self._parse("find", "--types", "HTTP", "--data", missing_file)
+        assert ns.data == missing_file
+
+    def test_outfile_path_is_not_opened_during_parse(self):
+        unwritable_path = "/definitely-missing/out.txt"
+        ns = self._parse("grab", "--outfile", unwritable_path)
+        assert ns.outfile == unwritable_path
+
+    def test_cli_opens_data_and_outfile_during_execution(self, monkeypatch, tmp_path):
+        import proxybroker.cli as cli_mod
+
+        data_path = tmp_path / "data.txt"
+        out_path = tmp_path / "out.txt"
+        data_path.write_text("203.0.113.10:8080\n")
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def find(self, **kwargs):
+                captured["data"] = kwargs["data"]
+                captured["data_text"] = kwargs["data"].read()
+
+        async def fake_handle(proxies, outfile, format):
+            captured["outfile"] = outfile
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+        monkeypatch.setattr(cli_mod, "handle", fake_handle)
+
+        cli_mod.cli(
+            [
+                "find",
+                "--types",
+                "HTTP",
+                "--limit",
+                "0",
+                "--data",
+                str(data_path),
+                "--outfile",
+                str(out_path),
+            ]
+        )
+
+        assert captured["data_text"] == "203.0.113.10:8080\n"
+        assert captured["data"].closed
+        assert captured["data"].encoding
+        assert captured["data"].encoding.lower() == "utf-8"
+        assert captured["outfile"].line_buffering is True
+        assert captured["outfile"].encoding
+        assert captured["outfile"].encoding.lower() == "utf-8"
+        assert captured["outfile"].closed
+
+    def test_cli_uses_stdout_when_outfile_not_provided(self, monkeypatch):
+        import proxybroker.cli as cli_mod
+
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def find(self, **kwargs):
+                captured["find_called"] = True
+
+        async def fake_handle(proxies, outfile, format):
+            captured["outfile"] = outfile
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+        monkeypatch.setattr(cli_mod, "handle", fake_handle)
+
+        cli_mod.cli(["find", "--types", "HTTP", "--limit", "0"])
+
+        assert captured["find_called"] is True
+        assert captured["outfile"] is sys.stdout
+
+    def test_cli_uses_stdio_when_dash_paths_provided(self, monkeypatch):
+        import proxybroker.cli as cli_mod
+
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def find(self, **kwargs):
+                captured["data"] = kwargs["data"]
+
+        async def fake_handle(proxies, outfile, format):
+            captured["outfile"] = outfile
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+        monkeypatch.setattr(cli_mod, "handle", fake_handle)
+
+        cli_mod.cli(
+            ["find", "--types", "HTTP", "--limit", "0", "--data", "-", "--outfile", "-"]
+        )
+
+        assert captured["data"] is sys.stdin
+        assert captured["outfile"] is sys.stdout
+
+    def test_cli_opens_data_during_serve_execution(self, monkeypatch, tmp_path):
+        """`serve --data path` must defer-open the file with UTF-8, just like find."""
+        import proxybroker.cli as cli_mod
+
+        data_path = tmp_path / "serve_data.txt"
+        data_path.write_text("198.51.100.7:3128\n")
+        captured = {}
+
+        class FakeBroker:
+            def __init__(self, *args, **kwargs):
+                self._loop = kwargs["loop"]
+
+            def serve(self, **kwargs):
+                captured["data"] = kwargs["data"]
+                captured["data_text"] = kwargs["data"].read()
+                self._loop.call_soon(self._loop.stop)
+
+            def stop(self):
+                pass
+
+        monkeypatch.setattr(cli_mod, "Broker", FakeBroker)
+
+        cli_mod.cli(
+            [
+                "serve",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "0",
+                "--types",
+                "HTTP",
+                "--data",
+                str(data_path),
+            ]
+        )
+
+        assert captured["data_text"] == "198.51.100.7:3128\n"
+        assert captured["data"].closed
+        assert captured["data"].encoding.lower() == "utf-8"
+
+    @pytest.mark.parametrize(
+        ("args", "expected_exception"),
+        [
+            (
+                ["find", "--types", "HTTP", "--limit", "0", "--data", ""],
+                FileNotFoundError,
+            ),
+            (["grab", "--limit", "0", "--outfile", ""], FileNotFoundError),
+        ],
+    )
+    def test_cli_empty_file_paths_raise(self, args, expected_exception):
+        from proxybroker.cli import cli
+
+        with pytest.raises(expected_exception):
+            cli(args)
 
 
 class TestOutputHandling:

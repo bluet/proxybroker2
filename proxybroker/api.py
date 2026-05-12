@@ -12,7 +12,12 @@ from .providers import PROVIDERS, Provider
 from .proxy import Proxy
 from .resolver import Resolver
 from .server import Server
-from .utils import IPPortPatternLine, log
+from .utils import (
+    IPPortPatternLine,
+    IPv6BracketedPortPattern,
+    canonicalize_ip,
+    log,
+)
 
 # Pause between grabbing cycles; in seconds.
 GRAB_PAUSE = 180
@@ -73,11 +78,7 @@ class Broker:
         provider_dirs=None,
         **kwargs,
     ):
-        try:
-            self._loop = loop or asyncio.get_running_loop()
-        except RuntimeError:
-            # No running event loop, will be set later
-            self._loop = loop
+        self._loop = self._resolve_loop(loop)
         self._proxies = queue or asyncio.Queue()
         self._resolver = Resolver(loop=self._loop)
         self._timeout = timeout
@@ -91,6 +92,57 @@ class Broker:
         self._limit = 0  # not limited
         self._countries = None
 
+        max_conn, max_tries = self._resolve_deprecated_limits(
+            max_conn=max_conn,
+            max_tries=max_tries,
+            kwargs=kwargs,
+        )
+
+        # The maximum number of concurrent checking proxies
+        self._on_check = asyncio.Queue(maxsize=max_conn)
+        self._max_tries = max_tries
+        self._judges = judges
+
+        # Resolve the provider list. Contract:
+        #   providers=None  -> use the bundled PROVIDERS defaults
+        #   providers=[...] -> use exactly that list (empty stays empty)
+        # provider_dirs entries are appended to whichever base was chosen,
+        # so passing providers=[] with provider_dirs=['/configs'] yields
+        # ONLY the directory-loaded providers.
+        base_providers = self._resolve_providers(
+            providers=providers, provider_dirs=provider_dirs
+        )
+
+        self._providers = [
+            p if isinstance(p, Provider) else Provider(p) for p in base_providers
+        ]
+        if stop_broker_on_sigint and self._loop:
+            try:
+                self._loop.add_signal_handler(signal.SIGINT, self.stop)
+                self._signal_handler_registered = True
+                # add_signal_handler() is not implemented on Win
+                # https://docs.python.org/3.5/library/asyncio-eventloops.html#windows
+            except NotImplementedError:
+                pass
+
+    @staticmethod
+    def _resolve_loop(loop):
+        """Return running loop when available, else fall back to ``loop``."""
+        try:
+            return loop or asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, will be set later
+            return loop
+
+    @staticmethod
+    def _resolve_deprecated_limits(*, max_conn, max_tries, kwargs):
+        """Resolve deprecated limit kwargs into ``(max_conn, max_tries)``.
+
+        Supports ``max_concurrent_conn`` and ``attempts_conn`` legacy kwargs
+        while emitting deprecation warnings.
+
+        :return: Tuple of resolved ``(max_conn, max_tries)`` values
+        """
         max_concurrent_conn = kwargs.get("max_concurrent_conn")
         if max_concurrent_conn:
             warnings.warn(
@@ -111,36 +163,24 @@ class Broker:
                 stacklevel=2,
             )
             max_tries = attempts_conn
+        return max_conn, max_tries
 
-        # The maximum number of concurrent checking proxies
-        self._on_check = asyncio.Queue(maxsize=max_conn)
-        self._max_tries = max_tries
-        self._judges = judges
+    @staticmethod
+    def _resolve_providers(*, providers, provider_dirs):
+        """Resolve final provider inputs from defaults, explicit list and dirs.
 
-        # Resolve the provider list. Contract:
-        #   providers=None  -> use the bundled PROVIDERS defaults
-        #   providers=[...] -> use exactly that list (empty stays empty)
-        # provider_dirs entries are appended to whichever base was chosen,
-        # so passing providers=[] with provider_dirs=['/configs'] yields
-        # ONLY the directory-loaded providers.
+        ``providers=None`` uses bundled defaults; an explicit empty list stays
+        empty. Any ``provider_dirs`` entries are appended to the selected base.
+        """
         base_providers = list(PROVIDERS) if providers is None else list(providers)
-        if provider_dirs:
-            from .provider_utils import load_provider_configs_from_directory
+        if not provider_dirs:
+            return base_providers
 
-            for directory in provider_dirs:
-                base_providers.extend(load_provider_configs_from_directory(directory))
+        from .provider_utils import load_provider_configs_from_directory
 
-        self._providers = [
-            p if isinstance(p, Provider) else Provider(p) for p in base_providers
-        ]
-        if stop_broker_on_sigint and self._loop:
-            try:
-                self._loop.add_signal_handler(signal.SIGINT, self.stop)
-                self._signal_handler_registered = True
-                # add_signal_handler() is not implemented on Win
-                # https://docs.python.org/3.5/library/asyncio-eventloops.html#windows
-            except NotImplementedError:
-                pass
+        for directory in provider_dirs:
+            base_providers.extend(load_provider_configs_from_directory(directory))
+        return base_providers
 
     async def grab(self, *, countries=None, limit=0):
         """Gather proxies from the providers without checking.
@@ -203,7 +243,7 @@ class Broker:
             Added: :attr:`post`, :attr:`strict`, :attr:`dnsbl`.
             Changed: :attr:`types` is required.
         """
-        ip = await self._resolver.get_real_ext_ip()
+        ips = await self._resolver.get_real_ext_ips()
         types = _update_types(types)
 
         if not types:
@@ -214,7 +254,7 @@ class Broker:
             timeout=self._timeout,
             verify_ssl=self._verify_ssl,
             max_tries=self._max_tries,
-            real_ext_ip=ip,
+            real_ext_ips=ips,
             types=types,
             post=post,
             strict=strict,
@@ -339,7 +379,22 @@ class Broker:
         if isinstance(data, io.TextIOWrapper):
             data = data.read()
         if isinstance(data, str):
-            data = IPPortPatternLine.findall(data)
+            # Extract bracketed v6 entries first, then mask their spans
+            # in the input before running the v4 line regex. Without
+            # masking, an IPv4-mapped v6 entry like `[::ffff:1.2.3.4]:8080`
+            # would also produce a phantom v4 entry `1.2.3.4:8080` from
+            # the embedded literal. RFC 6874 zone IDs in brackets are
+            # accepted by the regex; validation is via canonicalize_ip.
+            v6_pairs = []
+            for raw_v6, port in IPv6BracketedPortPattern.findall(data):
+                canonical = canonicalize_ip(raw_v6)
+                if canonical is not None:
+                    v6_pairs.append((canonical, port))
+            v4_input = IPv6BracketedPortPattern.sub(
+                lambda m: " " * len(m.group(0)), data
+            )
+            v4_pairs = IPPortPatternLine.findall(v4_input)
+            data = v4_pairs + v6_pairs
         proxies = set(data)
         for proxy in proxies:
             await self._handle(proxy, check=check)

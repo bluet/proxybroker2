@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import struct
 from abc import ABC, abstractmethod
 from socket import inet_aton
@@ -22,20 +23,31 @@ SMTP_READY = 220
 
 def _CONNECT_request(host, port, **kwargs):
     kwargs.setdefault("User-Agent", get_headers()["User-Agent"])
-    kw = {
-        "host": host,
-        "port": port,
-        "headers": "\r\n".join((f"{k}: {v}" for k, v in kwargs.items())),
-    }
-    req = (
-        (
-            "CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}\r\n"
-            "{headers}\r\nConnection: keep-alive\r\n\r\n"
-        )
-        .format(**kw)
-        .encode()
-    )
-    return req
+    # RFC 9112 § 3.2.3 (request-target authority-form) and RFC 9110 § 7.2
+    # (Host header field) both require IPv6 literals to be bracketed in
+    # URI authority components. Without brackets, "CONNECT 2001:db8::1:443"
+    # is ambiguous (where does the host end and the port begin?) and
+    # standards-compliant proxies will reject it.
+    #
+    # Strip any caller-supplied brackets first so callers passing values
+    # straight from `urlparse('https://[2001:db8::1]/').netloc` (already
+    # bracketed) don't end up with double brackets like
+    # `[[2001:db8::1]]:443`.
+    host_str = str(host)
+    if host_str.startswith("[") and host_str.endswith("]"):
+        host_str = host_str[1:-1]
+    if ":" in host_str:
+        authority = f"[{host_str}]:{port}"
+        host_header = f"[{host_str}]"
+    else:
+        authority = f"{host_str}:{port}"
+        host_header = f"{host_str}"
+    headers = "\r\n".join(f"{k}: {v}" for k, v in kwargs.items())
+    return (
+        f"CONNECT {authority} HTTP/1.1\r\n"
+        f"Host: {host_header}\r\n"
+        f"{headers}\r\nConnection: keep-alive\r\n\r\n"
+    ).encode()
 
 
 class BaseNegotiator(ABC):
@@ -71,26 +83,74 @@ class Socks5Ngtr(BaseNegotiator):
             self._proxy.log("Failed (invalid data)", err=BadResponseError)
             raise BadResponseError
 
-        bip = inet_aton(kwargs.get("ip"))
+        # SOCKS5 (RFC 1928) supports IPv4 (ATYP=0x01, 4 bytes) and IPv6
+        # (ATYP=0x04, 16 bytes). We dispatch on `ipaddress.ip_address`
+        # rather than catching `inet_aton` failures so the encoding is
+        # explicit and v6-only callers don't pay an exception round-trip.
+        addr = ipaddress.ip_address(kwargs.get("ip"))
         port = kwargs.get("port", 80)
+        if isinstance(addr, ipaddress.IPv6Address):
+            atyp = 0x04
+        else:
+            atyp = 0x01
+        # VER(1) + CMD(1) + RSV(1) + ATYP(1) + ADDR(4 or 16) + PORT(2)
+        request = (
+            struct.pack(">4B", 5, 1, 0, atyp) + addr.packed + struct.pack(">H", port)
+        )
 
-        await self._proxy.send(struct.pack(">8BH", 5, 1, 0, 1, *bip, port))
-        resp = await self._proxy.recv(10)
-
-        if resp[0] != 0x05 or resp[1] != 0x00:
+        await self._proxy.send(request)
+        # Per RFC 1928 § 6, the reply's BND.ADDR can be a different
+        # address family from the client's request - dual-stack proxies
+        # may bind to v6 even when the client requested v4 (or vice
+        # versa). So we must read the 4-byte fixed header first
+        # (VER+REP+RSV+ATYP), inspect the *response* ATYP, then read
+        # the variable-length BND.ADDR + BND.PORT.
+        header = await self._proxy.recv(4)
+        if header[0] != 0x05 or header[1] != 0x00:
             self._proxy.log("Failed (invalid data)", err=BadResponseError)
             raise BadResponseError
+        rep_atyp = header[3]
+        if rep_atyp == 0x01:  # IPv4
+            addr_len = 4
+        elif rep_atyp == 0x04:  # IPv6
+            addr_len = 16
+        elif rep_atyp == 0x03:  # Domain name (1-byte length prefix)
+            length = await self._proxy.recv(1)
+            addr_len = length[0]
         else:
-            self._proxy.log("Request is granted")
+            self._proxy.log("Failed (invalid data)", err=BadResponseError)
+            raise BadResponseError
+        # Drain BND.ADDR + BND.PORT (2 bytes); we don't use them.
+        await self._proxy.recv(addr_len + 2)
+        self._proxy.log("Request is granted")
 
 
 class Socks4Ngtr(BaseNegotiator):
-    """SOCKS4 Negotiator."""
+    """SOCKS4 Negotiator.
+
+    SOCKS4 (RFC 1928 lacks SOCKS4; original Ying-Da Lee spec) only
+    defines a 4-byte IPv4 address field - there is no ATYP byte and
+    no IPv6 address type. Callers attempting v6 destinations get a
+    domain-specific BadResponseError instead of a cryptic
+    `OSError: illegal IP address string passed to inet_aton`.
+    """
 
     name = "SOCKS4"
 
     async def negotiate(self, **kwargs):
-        bip = inet_aton(kwargs.get("ip"))
+        ip = kwargs.get("ip")
+        try:
+            addr = ipaddress.ip_address(ip) if ip else None
+        except ValueError:
+            addr = None
+        if isinstance(addr, ipaddress.IPv6Address):
+            self._proxy.log(
+                "Failed (SOCKS4 does not support IPv6 destinations; "
+                "use SOCKS5 for IPv6)",
+                err=BadResponseError,
+            )
+            raise BadResponseError("SOCKS4 protocol does not support IPv6 destinations")
+        bip = inet_aton(ip)
         port = kwargs.get("port", 80)
 
         await self._proxy.send(struct.pack(">2BH5B", 4, 1, port, *bip, 0))

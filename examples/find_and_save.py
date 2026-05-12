@@ -7,7 +7,7 @@ from proxybroker import Broker
 
 async def save(proxies, filename):
     """Save proxies to a file."""
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         while True:
             proxy = await proxies.get()
             if proxy is None:
