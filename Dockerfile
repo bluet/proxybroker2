@@ -48,9 +48,12 @@ FROM base AS builder
 
 WORKDIR /app
 
+# Install build deps for native Python extensions. No `apt-get upgrade`
+# here — the base stage already upgraded the system, so re-running just
+# adds time without changing state. `--no-install-recommends` keeps the
+# image tight by skipping suggested-but-not-required packages.
 RUN apt-get update && \
-    apt-get upgrade -y &&\
-    apt-get install -y gcc libc-dev libffi-dev && \
+    apt-get install -y --no-install-recommends gcc libc-dev libffi-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

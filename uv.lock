@@ -964,7 +964,7 @@ dev = [
 requires-dist = [
     { name = "aiodns", specifier = ">=3.6.1,<4.0.0" },
     { name = "aiohttp", specifier = ">=3.13.5,<4.0.0" },
-    { name = "attrs", specifier = ">=26.1.0" },
+    { name = "attrs", specifier = ">=26.1.0,<27.0.0" },
     { name = "cachetools", specifier = ">=5.5.2,<6.0.0" },
     { name = "click", specifier = ">=8.3.3,<9.0.0" },
     { name = "maxminddb", specifier = ">=2.8.2,<3.0.0" },

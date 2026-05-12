@@ -18,7 +18,7 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     "aiohttp>=3.13.5,<4.0.0",
     "aiodns>=3.6.1,<4.0.0",
-    "attrs>=26.1.0",
+    "attrs>=26.1.0,<27.0.0",
     "maxminddb>=2.8.2,<3.0.0",
     "cachetools>=5.5.2,<6.0.0",
     "click>=8.3.3,<9.0.0",
@@ -87,6 +87,15 @@ dev = [
 # is read only by snyk. DELETE this whole [tool.poetry.dependencies]
 # section once snyk's PR app uses uv preview natively.
 [tool.poetry]
+# name/version/description/authors are required Poetry fields — without
+# them snyk's poetry parser rejects the [tool.poetry] block as invalid
+# and reports "pyproject.toml error Failed to detect issues". Mirror the
+# values from [project] above. poetry-core 2.x prefers [project] when
+# both are present, so this duplication doesn't affect builds.
+name = "proxybroker2"
+version = "2.0.0b3"
+description = "The New (auto rotate) Proxy [Finder | Checker | Server]. HTTP(S) & SOCKS."
+authors = ["BlueT - Matthew Lien - 練喆明 <bluet@bluet.org>", "Denis Constverum <constverum@gmail.com>"]
 packages = [{include = "proxybroker"}]
 include = ["proxybroker/data/*.mmdb"]
 
@@ -94,7 +103,7 @@ include = ["proxybroker/data/*.mmdb"]
 python = "^3.10"
 aiohttp = "^3.13.5"
 aiodns = "^3.6.1"
-attrs = ">=26.1.0"
+attrs = ">=26.1.0,<27.0.0"
 maxminddb = "^2.8.2"
 cachetools = "^5.5.2"
 click = "^8.3.3"
