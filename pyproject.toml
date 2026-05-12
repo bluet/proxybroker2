@@ -1,59 +1,91 @@
-
-[tool.poetry]
+[project]
 name = "proxybroker2"
 version = "2.0.0b3"
 description = "The New (auto rotate) Proxy [Finder | Checker | Server]. HTTP(S) & SOCKS."
-authors = ["BlueT - Matthew Lien - 練喆明 <bluet@bluet.org>", "Denis Constverum <constverum@gmail.com>"]
-repository = "https://github.com/bluet/proxybroker2"
-homepage = "https://proxybroker2.readthedocs.io/"
-documentation = "https://proxybroker2.readthedocs.io/"
+authors = [
+    {name = "BlueT - Matthew Lien - 練喆明", email = "bluet@bluet.org"},
+    {name = "Denis Constverum", email = "constverum@gmail.com"},
+]
 license = "Apache-2.0"
 readme = "README.md"
-packages = [{include = "proxybroker"}]
-include = ["proxybroker/data/*.mmdb"]
+requires-python = ">=3.10,<4.0"
+# Lower bounds reflect what uv.lock currently resolves (= what's actually
+# tested in CI). Pin floors to known-safe versions so snyk doesn't flag
+# the constraint range as vulnerable. Notable required floors:
+# - click>=8.3.3 fixes SNYK-PYTHON-CLICK-16347201 (HIGH, command injection)
+# - aiohttp>=3.13.5 fixes multiple HIGH vulns (SSRF, memory exhaustion,
+#   request smuggling)
+dependencies = [
+    "aiohttp>=3.13.5,<4.0.0",
+    "aiodns>=3.6.1,<4.0.0",
+    "attrs>=26.1.0,<27.0.0",
+    "maxminddb>=2.8.2,<3.0.0",
+    "cachetools>=5.5.2,<6.0.0",
+    "click>=8.3.3,<9.0.0",
+    "pyyaml>=6.0.3,<7.0.0",
+]
 classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Environment :: Console',
-    'Environment :: Web Environment',
-    'Intended Audience :: Developers',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3.13',
-    'Programming Language :: Python :: 3.14',
-    'Operating System :: POSIX',
-    'Operating System :: MacOS :: MacOS X',
-    'Operating System :: Microsoft :: Windows',
-    'Topic :: Internet :: WWW/HTTP :: Indexing/Search',
-    'Topic :: Internet :: Proxy Servers',
-    'License :: OSI Approved :: Apache Software License',
-
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Internet :: Proxy Servers",
+    "License :: OSI Approved :: Apache Software License",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-aiohttp = "^3.12.0"
-aiodns = "^3.4.0"
-attrs = ">=25.3.0"
-maxminddb = "^2.7.0"
-cachetools = "^5.5.2"
-click = "^8.2.1"
-pyyaml = "^6.0.2"
+[project.urls]
+Homepage = "https://proxybroker2.readthedocs.io/"
+Documentation = "https://proxybroker2.readthedocs.io/"
+Repository = "https://github.com/bluet/proxybroker2"
 
-[tool.poetry.dev-dependencies]
-pytest = "^8.3.5"
-pytest-asyncio = "^0.26.0"
-pytest-runner = "^6.0.1"
-alabaster = "^1.0.0"
-pytest-mock = "^3.14.0"
-pytest-cov = "^6.1.1"
+[project.scripts]
+proxybroker = "proxybroker.cli:cli"
+
+# PEP 735 dev-dependency group. Replaces the legacy
+# [tool.poetry.dev-dependencies] section. Activated by `uv sync --dev`.
+[dependency-groups]
+# Floors reflect uv.lock current resolution (= what's actually tested).
+# Same rationale as [project.dependencies] above — keep snyk happy and
+# match what CI runs.
+dev = [
+    "pytest>=8.4.2,<9.0.0",
+    "pytest-asyncio>=0.26.0,<1.0.0",
+    "pytest-mock>=3.15.1,<4.0.0",
+    "pytest-cov>=6.3.0,<7.0.0",
+    "alabaster>=1.0.0,<2.0.0",
+    # ruff is also pinned in .pre-commit-config.yaml; keep these reasonably
+    # in sync. Adding it here lets `uv run ruff ...` work locally and in CI
+    # without an extra `uv pip install ruff` step.
+    "ruff>=0.15.12,<1.0.0",
+]
+
+# Tells poetry-core which dirs ship in the wheel + sdist. Mirrors the prior
+# [tool.poetry] packages/include settings.
+#
+# Note: deliberately keeping [tool.poetry.dependencies] OUT of this file.
+# At commit 51ed1f3 (no [tool.poetry.dependencies]) snyk successfully
+# parsed [project.dependencies] via its uv preview and reported a
+# vulnerability — proving snyk CAN read PEP 621 deps with preview enabled.
+# Adding [tool.poetry.dependencies] alongside [project.dependencies]
+# caused snyk to error with "Failed to detect issues" instead of using
+# either, presumably because two competing dep declarations confuse its
+# parser.
+[tool.poetry]
+packages = [{include = "proxybroker"}]
+include = ["proxybroker/data/*.mmdb"]
 
 [build-system]
 requires = ["poetry-core>=2.1.3"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
-proxybroker = "proxybroker.cli:cli"
 
 [tool.black]
 py36 = true

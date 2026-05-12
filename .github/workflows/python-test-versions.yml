@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# Enhanced with modern ruff toolchain while preserving original matrix testing approach
+# Install dependencies, lint, and run tests across the supported Python
+# matrix using uv (replaces Poetry as of #105).
 
 name: build & test
 
@@ -16,35 +16,35 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        poetry-version: ["2.3.2"]
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-      - name: Install and configure Poetry
-        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # v1.4.1
-        with:
-          version: ${{ matrix.poetry-version }}
-          virtualenvs-in-project: true
+      # Install Python via setup-python to get the LATEST patch of the
+      # requested minor version. setup-uv's `python-version` input would
+      # otherwise pick up the runner's pre-installed Python (often older,
+      # e.g. 3.12.3 on ubuntu-latest as of May 2026), which breaks tests
+      # sensitive to bug fixes shipped in later patches (e.g. Python
+      # 3.12.4's IPv4-mapped IPv6 string format change in bpo-119891).
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'poetry'
-      - name: Install library
-        run: poetry install --no-interaction
-      - name: Lint with ruff (modern replacement for flake8)
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          version: "0.11.13"
+          enable-cache: true
+      - name: Install project + dev dependencies (includes ruff)
+        # `--python` pins uv to the python set up above (otherwise uv may
+        # resolve to a uv-managed install of a different patch).
+        run: uv sync --locked --dev --python ${{ matrix.python-version }}
+      - name: Lint with ruff
         run: |
-          # Install ruff for fast, comprehensive linting
-          poetry run pip install ruff
           # stop the build if there are Python syntax errors or undefined names
-          poetry run ruff check . --select=E9,F63,F7,F82 --output-format=github
+          uv run ruff check . --select=E9,F63,F7,F82 --output-format=github
           # comprehensive linting with GitHub integration
-          poetry run ruff check . --output-format=github
+          uv run ruff check . --output-format=github
       - name: Check code formatting with ruff
-        run: |
-          # Verify code is properly formatted (replaces black/isort)
-          poetry run ruff format --check .
+        run: uv run ruff format --check .
       - name: Test with pytest
-        run: |
-          # Run full test suite with coverage
-          poetry run pytest tests/ -v --cov=proxybroker --cov-report=term-missing --cov-fail-under=60
+        run: uv run pytest tests/ -v --cov=proxybroker --cov-report=term-missing --cov-fail-under=60

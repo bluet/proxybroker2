@@ -237,7 +237,3 @@ venv_*/
 # hadolint). Sometimes committed accidentally; always regeneratable.
 *-report.json
 *-stderr.txt
-
-# uv-managed venv lockfile. Project uses poetry.lock as the canonical
-# lockfile; committing both creates ambiguity for contributors.
-uv.lock

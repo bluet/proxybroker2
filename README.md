@@ -570,35 +570,39 @@ We welcome contributions! The project has excellent test coverage and developmen
 
 ### Development Setup
 1. **Fork it**: <https://github.com/bluet/proxybroker2/fork>
-2. **Clone and setup**:
+2. **Install [uv](https://docs.astral.sh/uv/)** if you don't have it:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+3. **Clone and setup**:
    ```bash
    git clone https://github.com/yourusername/proxybroker2.git
    cd proxybroker2
-   poetry install  # Install dependencies
+   uv sync --dev  # Install runtime + dev deps into .venv
    ```
 
 ### Development Workflow
-3. **Create your feature branch**: `git checkout -b my-new-feature`
-4. **Make changes and format**:
+4. **Create your feature branch**: `git checkout -b my-new-feature`
+5. **Make changes and format**:
    ```bash
    # Auto-format code (required before commit)
-   ruff check . --fix && ruff format .
+   uv run ruff check . --fix && uv run ruff format .
 
    # Run tests to ensure everything works
-   pytest tests/ -v
+   uv run pytest tests/ -v
    ```
-5. **Commit with conventional format**:
+6. **Commit with conventional format**:
    ```bash
    # Use conventional commit format for better automation
    git commit -m "feat: add SOCKS5 authentication support"
    git commit -m "fix: resolve memory leak in proxy pool"
    git commit -m "docs: update installation instructions"
    ```
-6. **Push to the branch**: `git push origin my-new-feature`
-7. **Submit a pull request**!
+7. **Push to the branch**: `git push origin my-new-feature`
+8. **Submit a pull request**!
 
 ### Development Tools
-- **Poetry 2.1.3+**: Modern dependency management and virtual environments
+- **[uv](https://docs.astral.sh/uv/)**: Fast Python package manager (replaces Poetry as of #105)
 - **ruff**: Ultra-fast linting and formatting (replaces flake8/isort)
 - **pytest 8.3.5+**: Modern testing framework with async support
 - **pytest-asyncio 0.26.0+**: Enhanced async testing capabilities

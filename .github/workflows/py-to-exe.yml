@@ -1,6 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
+# Build standalone executables across Linux/Windows/macOS via PyInstaller,
+# using uv to manage the toolchain (replaces Poetry as of #105).
 # https://github.com/pyinstaller/pyinstaller/issues/6296#issuecomment-962446033
 
 name: Build Executable
@@ -18,24 +17,26 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.14"]  # Default to current Python; revert to 3.13 if PyInstaller breaks
-        poetry-version: ["2.3.2"]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      # See python-test-versions.yml for why setup-python is paired with
+      # setup-uv — TL;DR: avoid the runner's older pre-installed Python.
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install and configure Poetry
-        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # v1.4.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
-          version: ${{ matrix.poetry-version }}
-          virtualenvs-in-project: true
-      - name: Verify Poetry installation
-        run: poetry --version
-      - name: Install dependencies
+          version: "0.11.13"
+          enable-cache: true
+      - name: Install project + pyinstaller
+        # pyinstaller is build-only tooling, not a project runtime dep, so
+        # install it on top of the locked env via `uv pip install` rather
+        # than adding it to pyproject.toml.
         run: |
-          poetry install --no-interaction
-          poetry run pip install pyinstaller
+          uv sync --locked --python ${{ matrix.python-version }}
+          uv pip install pyinstaller
       - name: Compile python to exe
         run: |
           mkdir -p build;
@@ -45,7 +46,7 @@ jobs:
           else
             PATH_SEPARATOR=":"
           fi
-          poetry run pyinstaller --onefile --name proxybroker-${RUNNER_OS}-$(arch) --add-data "../proxybroker/data${PATH_SEPARATOR}data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py;
+          uv run pyinstaller --onefile --name proxybroker-${RUNNER_OS}-$(arch) --add-data "../proxybroker/data${PATH_SEPARATOR}data" --workpath ./tmp --distpath . --clean ../py2exe_entrypoint.py;
           rm -rf tmp *.spec;
       - name: Archive proxybroker artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

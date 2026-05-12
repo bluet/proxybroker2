@@ -39,3 +39,16 @@ repos:
             -   id: bandit
                 args: [-ll, -i, -x, tests]
                 name: bandit (security check)
+
+    # Auto-regenerate requirements.txt from uv.lock so Snyk (which doesn't
+    # yet support uv.lock — snyk/snyk-python-plugin#251) has a manifest it
+    # can scan. Local hook so it runs against whatever uv is on PATH.
+    # Only triggers when uv.lock or pyproject.toml changed.
+    -   repo: local
+        hooks:
+            -   id: uv-export-requirements
+                name: uv export → requirements.txt (for Snyk)
+                language: system
+                entry: uv export --quiet --format requirements-txt --no-dev --no-emit-project --no-hashes --output-file requirements.txt
+                files: ^(uv\.lock|pyproject\.toml)$
+                pass_filenames: false
