@@ -1,7 +1,7 @@
 ProxyBroker2
 ============
 
-*🚀 Production-Ready Async Proxy Management - v2.0.0b1*
+*🚀 Production-Ready Async Proxy Management - v2.0.0b3*
 
 **The modernized successor to ProxyBroker with Python 3.10-3.14 support, zero critical bugs, and 100% test coverage**
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
@@ -33,7 +33,7 @@ Features
 -   Automatically removes duplicate proxies.
 -   Is asynchronous.
 
-🎉 What's New in ProxyBroker2 v2.0.0b1
+🎉 What's New in ProxyBroker2 v2.0.0b3
 ---------------------------------------
 
 ## 🚀 Production-Ready Features
@@ -121,17 +121,17 @@ Requirements
 Installation
 ------------
 
-### 📦 Install v2.0.0b1 (Production Ready Beta)
+### 📦 Install v2.0.0b3 (Production Ready Beta)
 
-> 🎉 **ProxyBroker2 v2.0.0b1 is production-ready!** Zero critical bugs, 100% test coverage, and full Python 3.10-3.14 support.
+> 🎉 **ProxyBroker2 v2.0.0b3 is production-ready!** Zero critical bugs, 100% test coverage, and full Python 3.10-3.14 support.
 
 > ⚠️ **WARNING**: Do not install from PyPI. Both `proxybroker` (the abandoned v0.3.2) and the `proxybroker2` name on PyPI have been squatted by unrelated/unauthorized publishers (see [#186](https://github.com/bluet/proxybroker2/issues/186), [pypi/support#10315](https://github.com/pypi/support/issues/10315)). Install only from this GitHub repository.
 
 **Install the latest stable release (via pip):**
 
 ``` {.sourceCode .bash}
-# Install stable v2.0.0b1 release
-$ pip install -U git+https://github.com/bluet/proxybroker2.git@v2.0.0b1
+# Install stable v2.0.0b3 release
+$ pip install -U git+https://github.com/bluet/proxybroker2.git@v2.0.0b3
 
 # Or install latest development version
 $ pip install -U git+https://github.com/bluet/proxybroker2.git
@@ -144,14 +144,14 @@ uv reads the same git URL pip does — under the hood, uv invokes the project's 
 
 ``` {.sourceCode .bash}
 # Add to a uv-managed project
-uv add "proxybroker2 @ git+https://github.com/bluet/proxybroker2.git@v2.0.0b1"
+uv add "proxybroker2 @ git+https://github.com/bluet/proxybroker2.git@v2.0.0b3"
 
 # Or install into the current venv
-uv pip install git+https://github.com/bluet/proxybroker2.git@v2.0.0b1
+uv pip install git+https://github.com/bluet/proxybroker2.git@v2.0.0b3
 ```
 </details>
 
-**Why ProxyBroker2 v2.0.0b1?**
+**Why ProxyBroker2 v2.0.0b3?**
 - **🚀 Production Ready**: Zero critical bugs, thoroughly tested
 - **🐍 Modern Python**: Full Python 3.10-3.14 compatibility
 - **⚡ High Performance**: Modern async patterns and optimizations
