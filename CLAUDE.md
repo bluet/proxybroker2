@@ -14,29 +14,30 @@ ProxyBroker2 is an async proxy finder, checker, and server. It discovers public 
 
 ### Setup
 ```bash
-# uv (recommended) — installs into .venv and locks via uv.lock
-uv sync --dev
+# Poetry (recommended)
+poetry install
+poetry shell
 
-# Standard pip fallback (no lockfile, no dev deps)
+# Standard pip
 pip install -e .
 ```
 
 ### Testing
 ```bash
-# Run all tests (use `uv run` to enter the project venv)
-uv run pytest
+# Run all tests
+pytest
 
 # Single test with output
-uv run pytest -xvs tests/test_api.py::TestBrokerAPI::test_broker_creation_without_queue
+pytest -xvs tests/test_api.py::TestBrokerAPI::test_broker_creation_without_queue
 
 # With coverage
-uv run pytest --cov=proxybroker --cov-report=term-missing
+pytest --cov=proxybroker --cov-report=term-missing
 ```
 
 ### Code Quality
 ```bash
 # Format and fix issues
-uv run ruff check . --fix && uv run ruff format .
+ruff check . --fix && ruff format .
 ```
 
 ### Documentation
@@ -213,8 +214,7 @@ See `docs/custom_providers.md` for the full guide.
 
 ## Known Quirks
 
-- Build backend stays `poetry-core>=2.1.3` (poetry-core 2.x reads PEP 621 `[project]`); package management is uv (#105). PyPI publish uses `python -m build`.
-- `requirements.txt` is auto-generated from `uv.lock` via a pre-commit hook (`uv export --format requirements-txt --no-dev --no-emit-project`). It exists only because Snyk doesn't yet support uv.lock ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)). Don't edit by hand; touch `uv.lock` and let the hook regenerate it. Remove this workaround once Snyk ships uv support.
+- Uses both Poetry and setuptools for compatibility
 - GeoIP database bundled in `proxybroker/data/`
 - Entry points: `__main__.py` (module), `py2exe_entrypoint.py` (executable)
 - ProxyPool.remove() is O(N log N) - acceptable for correctness

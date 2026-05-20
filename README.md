@@ -125,9 +125,9 @@ Installation
 
 > 🎉 **ProxyBroker2 v2.0.0b1 is production-ready!** Zero critical bugs, 100% test coverage, and full Python 3.10-3.14 support.
 
-> ⚠️ **WARNING**: The PyPI package `proxybroker` is outdated (v0.3.2) and no longer maintained. Use ProxyBroker2 from GitHub for the latest production-ready version.
+> ⚠️ **WARNING**: Do not install from PyPI. Both `proxybroker` (the abandoned v0.3.2) and the `proxybroker2` name on PyPI have been squatted by unrelated/unauthorized publishers (see [#186](https://github.com/bluet/proxybroker2/issues/186), [pypi/support#10315](https://github.com/pypi/support/issues/10315)). Install only from this GitHub repository.
 
-**Install the latest stable release:**
+**Install the latest stable release (via pip):**
 
 ``` {.sourceCode .bash}
 # Install stable v2.0.0b1 release
@@ -136,6 +136,20 @@ $ pip install -U git+https://github.com/bluet/proxybroker2.git@v2.0.0b1
 # Or install latest development version
 $ pip install -U git+https://github.com/bluet/proxybroker2.git
 ```
+
+<details>
+<summary><b>Or install with <a href="https://docs.astral.sh/uv/">uv</a> (supported as alternative)</b></summary>
+
+uv reads the same git URL pip does — under the hood, uv invokes the project's build backend (poetry-core) to produce a wheel with full PEP 621 metadata:
+
+``` {.sourceCode .bash}
+# Add to a uv-managed project
+uv add "proxybroker2 @ git+https://github.com/bluet/proxybroker2.git@v2.0.0b1"
+
+# Or install into the current venv
+uv pip install git+https://github.com/bluet/proxybroker2.git@v2.0.0b1
+```
+</details>
 
 **Why ProxyBroker2 v2.0.0b1?**
 - **🚀 Production Ready**: Zero critical bugs, thoroughly tested
@@ -570,39 +584,45 @@ We welcome contributions! The project has excellent test coverage and developmen
 
 ### Development Setup
 1. **Fork it**: <https://github.com/bluet/proxybroker2/fork>
-2. **Install [uv](https://docs.astral.sh/uv/)** if you don't have it:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-3. **Clone and setup**:
+2. **Clone and setup with [Poetry](https://python-poetry.org/) (canonical)**:
    ```bash
    git clone https://github.com/yourusername/proxybroker2.git
    cd proxybroker2
-   uv sync --dev  # Install runtime + dev deps into .venv
+   poetry install  # Installs runtime + dev deps into .venv
    ```
+   <details>
+   <summary><b>Alternative: develop with <a href="https://docs.astral.sh/uv/">uv</a> (best-effort supported)</b></summary>
+
+   Poetry remains the canonical dev tool — `poetry.lock` is the lockfile CI tests against. uv is supported as an alternative for contributors who prefer it:
+   ```bash
+   uv sync  # Reads pyproject.toml deps, builds a transient uv.lock (gitignored)
+   uv run pytest
+   ```
+   Caveat: the transient `uv.lock` is not committed (avoids drift with `poetry.lock`), so your resolved versions may differ from what CI tests. Full uv migration deferred until snyk supports `uv.lock` natively ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)).
+   </details>
 
 ### Development Workflow
-4. **Create your feature branch**: `git checkout -b my-new-feature`
-5. **Make changes and format**:
+3. **Create your feature branch**: `git checkout -b my-new-feature`
+4. **Make changes and format**:
    ```bash
    # Auto-format code (required before commit)
-   uv run ruff check . --fix && uv run ruff format .
+   poetry run ruff check . --fix && poetry run ruff format .
 
    # Run tests to ensure everything works
-   uv run pytest tests/ -v
+   poetry run pytest tests/ -v
    ```
-6. **Commit with conventional format**:
+5. **Commit with conventional format**:
    ```bash
    # Use conventional commit format for better automation
    git commit -m "feat: add SOCKS5 authentication support"
    git commit -m "fix: resolve memory leak in proxy pool"
    git commit -m "docs: update installation instructions"
    ```
-7. **Push to the branch**: `git push origin my-new-feature`
-8. **Submit a pull request**!
+6. **Push to the branch**: `git push origin my-new-feature`
+7. **Submit a pull request**!
 
 ### Development Tools
-- **[uv](https://docs.astral.sh/uv/)**: Fast Python package manager (replaces Poetry as of #105)
+- **[Poetry](https://python-poetry.org/) 2.x**: Primary dependency manager (uv supported as alternative, see #105)
 - **ruff**: Ultra-fast linting and formatting (replaces flake8/isort)
 - **pytest 8.3.5+**: Modern testing framework with async support
 - **pytest-asyncio 0.26.0+**: Enhanced async testing capabilities
