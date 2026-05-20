@@ -54,6 +54,12 @@ pytest-asyncio = "^0.26.0"
 pytest-mock = "^3.15.1"
 pytest-cov = "^6.3.0"
 alabaster = "^1.0.0"
+# ruff also pinned in .pre-commit-config.yaml; the README's contributor
+# workflow uses `poetry run ruff check / format`, so it must be installable
+# via `poetry install`. Without this, the CI workflow falls back to
+# `poetry run pip install ruff` ad-hoc, but contributors get
+# "command not found" on a clean checkout.
+ruff = "^0.15.12"
 
 [build-system]
 requires = ["poetry-core>=2.1.3"]
