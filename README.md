@@ -1,9 +1,9 @@
 ProxyBroker2
 ============
 
-*🚀 Production-Ready Async Proxy Management - v2.0.0b1*
+*🚀 Production-Ready Async Proxy Management*
 
-**The modernized successor to ProxyBroker with Python 3.10-3.14 support, zero critical bugs, and 100% test coverage**
+**The modernized, actively-maintained successor to ProxyBroker (v0.3.2, abandoned 2018) — Python 3.10-3.14, comprehensive test coverage, first-class IPv6.**
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_shield)
@@ -33,116 +33,84 @@ Features
 -   Automatically removes duplicate proxies.
 -   Is asynchronous.
 
-🎉 What's New in ProxyBroker2 v2.0.0b1
----------------------------------------
+What's New in ProxyBroker2
+--------------------------
 
-## 🚀 Production-Ready Features
+ProxyBroker2 is the actively-maintained successor to the original ProxyBroker (v0.3.2), which was abandoned in 2018. We've modernized the stack and added significant new capabilities while keeping the Python API compatible.
 
--   **✅ Zero Critical Bugs** - Fixed all signal handler leaks, deadlocks, and heap corruption
--   **✅ 100% Test Coverage** - All 131 tests passing with comprehensive validation
--   **✅ Modern Async Patterns** - Updated from deprecated asyncio patterns for Python 3.10-3.14
--   **✅ Type Safety** - Enhanced API with proper type validation and error handling
--   **✅ Resource Management** - Comprehensive cleanup and connection management
--   **✅ Cache Optimization** - Smart scheme caching with proper invalidation
+### 🚀 What you get over v0.3.2
 
-## 🛠️ Core Capabilities
+- **Active maintenance** — regular security updates and feature work
+- **Modern Python support** — Python 3.10-3.14 (v0.3.2 was Python 3.5+ only)
+- **Zero critical bugs** — fixed deadlocks, memory leaks, signal handler leaks, race conditions that existed in v0.3.2
+- **First-class IPv6** — RFC 5952 canonical form, SOCKS5 `ATYP=0x04`, bracketed URI authority. v0.3.2 was IPv4-only.
+- **Custom providers** — drop YAML/JSON config files into a folder, no code required (see [Custom Proxy Providers](#-custom-proxy-providers) below)
+- **Modern async patterns** — updated from deprecated asyncio APIs; uses `asyncio.run`, `get_running_loop`, etc.
+- **Comprehensive testing** — contract-based test suite that protects user-visible behavior across refactors (v0.3.2 had minimal testing)
+- **Better documentation** — auto-generated API reference + hand-written guides on [ReadTheDocs](https://proxybroker2.readthedocs.io/)
 
--   **🔄 Asynchronous Operations** - Built on asyncio for high-performance concurrent processing
--   **🌐 Protocol Support** - HTTP, HTTPS, SOCKS4, SOCKS5, CONNECT:80, CONNECT:25
--   **🕵️ Anonymity Detection** - Transparent, Anonymous, and High anonymity validation
--   **📡 50+ Proxy Sources** - Automatically discovers and validates from multiple providers
--   **🖥️ Proxy Server Mode** - Deploy your own rotating proxy server with automatic failover
--   **🎯 Smart Filtering** - Filter by country, protocol, anonymity level, response time
--   **🐍 Modern Python** - Full support for Python 3.10, 3.11, 3.12, 3.13, and 3.14
+### 🛠️ Core capabilities
 
-
-
+- **Protocols**: HTTP, HTTPS, SOCKS4, SOCKS5, CONNECT:80, CONNECT:25
+- **Anonymity detection**: Transparent / Anonymous / High
+- **50+ proxy sources** discovered asynchronously
+- **Proxy server mode** with automatic rotation and failover
+- **Smart filtering** by country, protocol, anonymity level, response time, DNSBL
 
 Docker
 ------
-Docker Hub https://hub.docker.com/r/bluet/proxybroker2
+Docker Hub <https://hub.docker.com/r/bluet/proxybroker2>
 
-```
+```bash
+# Pull the image
+$ docker pull bluet/proxybroker2
+
+# Run with --help to see all options
 $ docker run --rm bluet/proxybroker2 --help
-  usage: proxybroker [--max-conn MAX_CONN] [--max-tries MAX_TRIES]
-                     [--timeout SECONDS] [--judge JUDGES] [--provider PROVIDERS]
-                     [--verify-ssl]
-                     [--log [{NOTSET,DEBUG,INFO,WARNING,ERROR,CRITICAL}]]
-                     [--min-queue MINIMUM_PROXIES_IN_QUEUE]
-                     [--version] [--help]
-                     {find,grab,serve,update-geo} ...
-
-  Proxy [Finder | Checker | Server]
-
-  Commands:
-    These are common commands used in various situations
-
-    {find,grab,serve,update-geo}
-      find                Find and check proxies
-      grab                Find proxies without a check
-      serve               Run a local proxy server
-      update-geo          Download and use a detailed GeoIP database
-
-  Options:
-    --max-conn MAX_CONN   The maximum number of concurrent checks of proxies
-    --max-tries MAX_TRIES
-                          The maximum number of attempts to check a proxy
-    --timeout SECONDS, -t SECONDS
-                          Timeout of a request in seconds. The default value is
-                          8 seconds
-    --judge JUDGES        Urls of pages that show HTTP headers and IP address
-    --provider PROVIDERS  Urls of pages where to find proxies
-    --verify-ssl, -ssl    Flag indicating whether to check the SSL certificates
-    --min-queue MINIMUM_PROXIES_IN_QUEUE   The minimum number of proxies in the queue for checking connectivity
-    --log [{NOTSET,DEBUG,INFO,WARNING,ERROR,CRITICAL}]
-                          Logging level
-    --version, -v         Show program's version number and exit
-    --help, -h            Show this help message and exit
-
-  Run 'proxybroker <command> --help' for more information on a command.
-  Suggestions and bug reports are greatly appreciated:
-  <https://github.com/bluet/proxybroker2/issues>
-
 ```
-
 
 Requirements
 ------------
 
--   **Python 3.10-3.14** (latest stable versions supported)
--   **Core Dependencies** (automatically installed):
-    -   [aiohttp](https://pypi.python.org/pypi/aiohttp) 3.12.0+ (modern asyncio HTTP client/server)
-    -   [aiodns](https://pypi.python.org/pypi/aiodns) 3.4.0+ (fast async DNS resolution)
-    -   [maxminddb](https://pypi.python.org/pypi/maxminddb) 2.7.0+ (GeoIP database reader)
-    -   [attrs](https://pypi.python.org/pypi/attrs) 25.3.0+ (modern data classes)
-    -   [cachetools](https://pypi.python.org/pypi/cachetools) 5.5.2+ (caching utilities)
-    -   [click](https://pypi.python.org/pypi/click) 8.2.1+ (CLI framework)
+- **Python 3.10-3.14**
+
+That's it — all Python dependencies are installed automatically by pip / Poetry / uv.
+
+For building the standalone executable (see [pyinstaller build](#build-bundled-one-file-executable-with-pyinstaller)), you'll also need `upx` and `binutils`.
 
 Installation
 ------------
 
-### 📦 Install v2.0.0b1 (Production Ready Beta)
+> ⚠️ **WARNING**: Do not install from PyPI. Both `proxybroker` (the abandoned v0.3.2) and the `proxybroker2` name on PyPI have been squatted by unrelated/unauthorized publishers (see [#186](https://github.com/bluet/proxybroker2/issues/186), [pypi/support#10315](https://github.com/pypi/support/issues/10315)). Install only from this GitHub repository.
 
-> 🎉 **ProxyBroker2 v2.0.0b1 is production-ready!** Zero critical bugs, 100% test coverage, and full Python 3.10-3.14 support.
+### 📦 Install ProxyBroker2
 
-> ⚠️ **WARNING**: The PyPI package `proxybroker` is outdated (v0.3.2) and no longer maintained. Use ProxyBroker2 from GitHub for the latest production-ready version.
-
-**Install the latest stable release:**
+**Install the latest version (via pip):**
 
 ``` {.sourceCode .bash}
-# Install stable v2.0.0b1 release
-$ pip install -U git+https://github.com/bluet/proxybroker2.git@v2.0.0b1
-
-# Or install latest development version
+# Install latest from default branch
 $ pip install -U git+https://github.com/bluet/proxybroker2.git
 ```
 
-**Why ProxyBroker2 v2.0.0b1?**
-- **🚀 Production Ready**: Zero critical bugs, thoroughly tested
-- **🐍 Modern Python**: Full Python 3.10-3.14 compatibility
-- **⚡ High Performance**: Modern async patterns and optimizations
-- **🛡️ Stable API**: Contract-based testing ensures backward compatibility
-- **📚 Great Docs**: Comprehensive guides and API documentation
+For a specific stable release, append `@<tag>` from the [Releases page](https://github.com/bluet/proxybroker2/releases) — e.g.:
+
+``` {.sourceCode .bash}
+$ pip install -U git+https://github.com/bluet/proxybroker2.git@<tag>
+```
+
+<details>
+<summary><b>Or install with <a href="https://docs.astral.sh/uv/">uv</a> (supported as alternative)</b></summary>
+
+uv reads the same git URL pip does — under the hood, uv invokes the project's build backend (poetry-core) to produce a wheel with full PEP 621 metadata:
+
+``` {.sourceCode .bash}
+# Add to a uv-managed project
+uv add "proxybroker2 @ git+https://github.com/bluet/proxybroker2.git"
+
+# Or install into the current venv
+uv pip install git+https://github.com/bluet/proxybroker2.git
+```
+</details>
 
 ### Use pre-built Docker image
 
@@ -192,6 +160,8 @@ $ python -m proxybroker find --types HTTP --countries US --limit 10
 # Run local proxy server on port 8888
 $ python -m proxybroker serve --host 127.0.0.1 --port 8888 --types HTTP HTTPS
 ```
+
+Run `python -m proxybroker --help` for full options.
 
 Usage
 -----
@@ -500,7 +470,7 @@ python --version  # Must be 3.10+
 **Installation**
 ```bash
 # v0.3.2: pip install proxybroker
-# v2.0.0+: Install from GitHub (original is abandoned)
+# v2.0.0+: Install from GitHub (original is abandoned, PyPI name is squatted)
 pip uninstall proxybroker  # Remove old version if installed
 pip install git+https://github.com/bluet/proxybroker2.git
 ```
@@ -513,7 +483,7 @@ pip install git+https://github.com/bluet/proxybroker2.git
 
 ### ✅ API Compatibility
 
-The Python API remains **100% compatible**:
+The Python API remains largely compatible:
 ```python
 # This code works in both versions
 import asyncio
@@ -527,99 +497,97 @@ async def main():
 asyncio.run(main())  # Modern async pattern
 ```
 
-### ✅ What's Improved vs v0.3.2
-
-- **Zero critical bugs** - Fixed deadlocks, memory leaks, and race conditions that existed in v0.3.2
-- **Active maintenance** - Regular updates vs abandoned original project
-- **Better performance** - Modern async patterns and optimizations
-- **Python 3.10-3.14 support** - Latest Python features and compatibility
-- **Comprehensive testing** - Reliable test suite vs limited testing in v0.3.2
-- **Better documentation** - Updated examples and comprehensive guides
+For what ProxyBroker2 adds over v0.3.2, see [What's New in ProxyBroker2](#whats-new-in-proxybroker2) above.
 
 Documentation
 -------------
 
 **📚 Complete Documentation**: <https://proxybroker2.readthedocs.io/>
 
-Our documentation uses a modern approach:
-- **Auto-generated API reference** - Always current with source code
-- **Hand-written guides** - Installation, tutorials, architecture
-- **Enhanced Sphinx setup** - MyST-Parser, auto-linking, cross-references
-
-### Documentation Features
-- **Live API docs** - Generated from docstrings (19.6% coverage, high quality)
-- **Multiple formats** - HTML, PDF, downloadable archives
-- **Modern Markdown** - Enhanced syntax with MyST-Parser
-- **Cross-references** - Links to Python and aiohttp documentation
+- Auto-generated API reference (from docstrings)
+- Hand-written guides: installation, tutorials, architecture
+- Hosted on ReadTheDocs in HTML / PDF / downloadable formats
 
 TODO
 ----
 
--   Check the ping, response time and speed of data transfer
--   Check site access (Google, Twitter, etc) and even your own custom URL's
--   Information about uptime
--   Checksum of data returned
--   Support for proxy authentication
--   Finding outgoing IP for cascading proxy
--   The ability to specify the address of the proxy without port (try to connect on defaulted ports)
+See open issues for active work and ideas:
+
+- [Authentication features](https://github.com/bluet/proxybroker2/issues?q=is%3Aopen+is%3Aissue+label%3Aauthentication) (SOCKS5 auth, HTTP Basic auth)
+- [TLS hardening](https://github.com/bluet/proxybroker2/issues?q=is%3Aopen+is%3Aissue+label%3Atls) (cert pinning, ECH, TLS 1.3-only)
+- [All open issues](https://github.com/bluet/proxybroker2/issues)
 
 Contributing
 ------------
 
-We welcome contributions! The project has excellent test coverage and development tooling.
+We welcome contributions! The project has comprehensive test coverage and development tooling.
 
 ### Development Setup
 1. **Fork it**: <https://github.com/bluet/proxybroker2/fork>
-2. **Clone and setup**:
+2. **Install [Poetry](https://python-poetry.org/)** if you don't have it (canonical dev tool):
+   ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+3. **Clone and setup**:
    ```bash
    git clone https://github.com/yourusername/proxybroker2.git
    cd proxybroker2
-   poetry install  # Install dependencies
+   poetry install  # Installs runtime + dev deps (including ruff, pytest)
    ```
+   <details>
+   <summary><b>Alternative: use <a href="https://docs.astral.sh/uv/">uv</a> as a command runner</b></summary>
+
+   Poetry remains the canonical dev tool — `poetry.lock` is the lockfile CI tests against.
+   This repo currently uses Poetry metadata (`[tool.poetry]`) without a `[project]` table, so `uv sync` is not supported here.
+   If you prefer uv ergonomics, install deps with Poetry first and then use uv only to run commands:
+   ```bash
+   poetry install
+   uv run pytest
+   ```
+   Full uv migration remains deferred until snyk supports `uv.lock` natively ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)).
+   </details>
 
 ### Development Workflow
-3. **Create your feature branch**: `git checkout -b my-new-feature`
-4. **Make changes and format**:
+4. **Create your feature branch**: `git checkout -b my-new-feature`
+5. **Make changes and format**:
    ```bash
    # Auto-format code (required before commit)
-   ruff check . --fix && ruff format .
+   poetry run ruff check . --fix && poetry run ruff format .
 
    # Run tests to ensure everything works
-   pytest tests/ -v
+   poetry run pytest tests/ -v
    ```
-5. **Commit with conventional format**:
+6. **Commit with [Conventional Commits](https://www.conventionalcommits.org/)** format:
    ```bash
-   # Use conventional commit format for better automation
    git commit -m "feat: add SOCKS5 authentication support"
    git commit -m "fix: resolve memory leak in proxy pool"
    git commit -m "docs: update installation instructions"
    ```
-6. **Push to the branch**: `git push origin my-new-feature`
-7. **Submit a pull request**!
+7. **Push to the branch**: `git push origin my-new-feature`
+8. **Submit a pull request**!
 
-### Development Tools
-- **Poetry 2.1.3+**: Modern dependency management and virtual environments
-- **ruff**: Ultra-fast linting and formatting (replaces flake8/isort)
-- **pytest 8.3.5+**: Modern testing framework with async support
-- **pytest-asyncio 0.26.0+**: Enhanced async testing capabilities
-- **pytest-cov 6.1.1+**: Comprehensive coverage reporting
-- **Sphinx 8.0+ + MyST-Parser 4.0+**: Modern documentation with auto-generation
-- **ReadTheDocs**: Professional documentation hosting
-- **Conventional commits**: Structured commit format for automation
-- **Architecture guide**: See [CLAUDE.md](CLAUDE.md) for detailed insights
+### What contributors handle manually
+The only tools you need to install yourself — everything else (ruff, pytest, pytest-asyncio, etc.) comes from `poetry install`:
+
+- **[Poetry](https://python-poetry.org/) 2.x** — canonical dependency manager (uv supported as alternative, see [#105](https://github.com/bluet/proxybroker2/issues/105))
+- **[pre-commit](https://pre-commit.com/)** (optional) — run `pre-commit install` after `poetry install` to auto-format/lint on every commit
+
+For project architecture and design conventions, see [CLAUDE.md](CLAUDE.md).
 
 
 License
 -------
 
-Licensed under the Apache License, Version 2.0
+Licensed under the Apache License, Version 2.0 — see [LICENSE](LICENSE).
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_large)
 
 *This product includes GeoLite2 data created by MaxMind, available from* [<http://www.maxmind.com>](http://www.maxmind.com).
 
 Refs
 ----
 
--   <https://github.com/constverum/ProxyBroker/pull/161>
+-   <https://github.com/constverum/ProxyBroker/pull/161> — original PR thread where ProxyBroker2 emerged from the abandoned upstream.
 
 
 ## Contributors ✨
@@ -654,10 +622,6 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
-
-
-## License
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_large)
 
 ## Star History
 

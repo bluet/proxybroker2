@@ -8,6 +8,7 @@ flows through the whole providers module.
 import pytest
 
 from proxybroker.providers import Provider
+from proxybroker.utils import canonicalize_ip
 
 
 class TestProviderConstruction:
@@ -109,7 +110,9 @@ class TestProviderFindProxies:
         p = Provider(url="http://example.com")
         page = "real proxy: [::ffff:192.0.2.1]:8080 trailer"
         results = p.find_proxies(page)
-        assert ("::ffff:192.0.2.1", "8080") in results
+        expected_mapped = canonicalize_ip("::ffff:192.0.2.1")
+        assert expected_mapped is not None
+        assert (expected_mapped, "8080") in results
         assert not any(host == "192.0.2.1" for host, _port in results)
 
     def test_ipv6_bracketed_alongside_v4_pairs(self):

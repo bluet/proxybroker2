@@ -238,6 +238,8 @@ venv_*/
 *-report.json
 *-stderr.txt
 
-# uv-managed venv lockfile. Project uses poetry.lock as the canonical
-# lockfile; committing both creates ambiguity for contributors.
+# uv-managed venv lockfile. Project uses Poetry as primary; uv is
+# supported as a best-effort alternative install/use tool but the lockfile
+# isn't canonical (would create drift with poetry.lock). Contributors
+# using `uv sync` for local dev get an unmanaged uv.lock that's gitignored.
 uv.lock

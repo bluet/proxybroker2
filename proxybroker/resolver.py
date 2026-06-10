@@ -547,10 +547,9 @@ class Resolver:
         if self._resolver is None:
             # Deferred construction - we are now inside a running loop.
             self._resolver = aiodns.DNSResolver()
+        query = getattr(self._resolver, "query_dns", self._resolver.query)
         try:
-            resp = await asyncio.wait_for(
-                self._resolver.query(host, qtype), timeout=self._timeout
-            )
+            resp = await asyncio.wait_for(query(host, qtype), timeout=self._timeout)
         except (aiodns.error.DNSError, asyncio.TimeoutError) as e:
             raise ResolveError from e
         else:
