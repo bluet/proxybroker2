@@ -113,7 +113,9 @@ async def test_resolve(mocker, resolver):
             return a_future
         raise aiodns.error.DNSError(1, "no AAAA record (test)")
 
-    resolver_method = "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    resolver_method = (
+        "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    )
     mocker.patch(f"aiodns.DNSResolver.{resolver_method}", side_effect=query_side_effect)
     assert await resolver.resolve("test.com") == "127.0.0.1"
 
@@ -254,7 +256,9 @@ async def test_resolve_family(mocker, resolver):
             return a_future
         raise aiodns.error.DNSError(1, "no AAAA record (test)")
 
-    resolver_method = "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    resolver_method = (
+        "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    )
     mocker.patch(f"aiodns.DNSResolver.{resolver_method}", side_effect=query_side_effect)
     resp = [
         {
@@ -299,7 +303,9 @@ async def test_resolve_cache(mocker, resolver):
             return f
         raise aiodns.error.DNSError(1, f"no {qtype} record for {host} (test)")
 
-    resolver_method = "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    resolver_method = (
+        "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    )
     mocker.patch(f"aiodns.DNSResolver.{resolver_method}", side_effect=query_side_effect)
     await resolver.resolve("test.com")
     await resolver.resolve("test2.com", port=80, family=socket.AF_INET)
