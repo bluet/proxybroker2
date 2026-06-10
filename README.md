@@ -535,14 +535,16 @@ We welcome contributions! The project has comprehensive test coverage and develo
    poetry install  # Installs runtime + dev deps (including ruff, pytest)
    ```
    <details>
-   <summary><b>Alternative: develop with <a href="https://docs.astral.sh/uv/">uv</a> (best-effort supported)</b></summary>
+   <summary><b>Alternative: use <a href="https://docs.astral.sh/uv/">uv</a> as a command runner</b></summary>
 
-   Poetry remains the canonical dev tool — `poetry.lock` is the lockfile CI tests against. uv is supported as an alternative for contributors who prefer it:
+   Poetry remains the canonical dev tool — `poetry.lock` is the lockfile CI tests against.
+   This repo currently uses Poetry metadata (`[tool.poetry]`) without a `[project]` table, so `uv sync` is not supported here.
+   If you prefer uv ergonomics, install deps with Poetry first and then use uv only to run commands:
    ```bash
-   uv sync  # Reads pyproject.toml deps, builds a transient uv.lock (gitignored)
+   poetry install
    uv run pytest
    ```
-   Caveat: the transient `uv.lock` is not committed (avoids drift with `poetry.lock`), so your resolved versions may differ from what CI tests. Full uv migration deferred until snyk supports `uv.lock` natively ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)).
+   Full uv migration remains deferred until snyk supports `uv.lock` natively ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)).
    </details>
 
 ### Development Workflow
