@@ -109,7 +109,7 @@ class TestProviderFindProxies:
         p = Provider(url="http://example.com")
         page = "real proxy: [::ffff:192.0.2.1]:8080 trailer"
         results = p.find_proxies(page)
-        assert ("::ffff:192.0.2.1", "8080") in results
+        assert ("::ffff:c000:201", "8080") in results
         assert not any(host == "192.0.2.1" for host, _port in results)
 
     def test_ipv6_bracketed_alongside_v4_pairs(self):

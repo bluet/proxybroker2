@@ -34,7 +34,7 @@ jobs:
         run: poetry install --no-interaction
       - name: Lint with ruff (modern replacement for flake8)
         run: |
-          # ruff is in [tool.poetry.dev-dependencies] so it's already
+          # ruff is in the Poetry dev dependency group so it's already
           # installed by `poetry install` above — no ad-hoc pip install needed
           # stop the build if there are Python syntax errors or undefined names
           poetry run ruff check . --select=E9,F63,F7,F82 --output-format=github
