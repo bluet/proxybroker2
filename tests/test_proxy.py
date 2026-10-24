@@ -106,7 +106,10 @@ async def test_create_by_domain(mocker):
             return a_future
         raise aiodns.error.DNSError(1, "no AAAA record (test)")
 
-    mocker.patch("aiodns.DNSResolver.query", side_effect=query_side_effect)
+    resolver_method = (
+        "query_dns" if hasattr(aiodns.DNSResolver, "query_dns") else "query"
+    )
+    mocker.patch(f"aiodns.DNSResolver.{resolver_method}", side_effect=query_side_effect)
     proxy = await Proxy.create("testhost.com", "80")
     assert proxy.host == "127.0.0.1"
 

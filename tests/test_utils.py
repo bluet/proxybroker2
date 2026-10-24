@@ -39,8 +39,9 @@ def test_get_all_ip_ipv6_documentation_range():
 
 def test_get_all_ip_ipv6_ipv4_mapped():
     found = get_all_ip("transparent: ::ffff:192.0.2.1 leak")
-    # IPv4-mapped form preserved as-is by stdlib canonicalisation.
-    assert "::ffff:192.0.2.1" in found
+    expected_mapped = canonicalize_ip("::ffff:192.0.2.1")
+    assert expected_mapped is not None
+    assert expected_mapped in found
     # The embedded v4 part should also be picked up by the v4 path.
     assert "192.0.2.1" in found
 

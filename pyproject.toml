@@ -1,4 +1,3 @@
-
 [tool.poetry]
 name = "proxybroker2"
 version = "2.0.0b3"
@@ -30,23 +29,37 @@ classifiers = [
 
 ]
 
+# Lower bounds bumped from prior version to clear known vulnerabilities at
+# the constraint floor (snyk scans the lower bound when no specific version
+# is locked). Notable:
+# - click ^8.3.3 fixes SNYK-PYTHON-CLICK-16347201 (HIGH, command injection
+#   in click.edit() filename param)
+# - aiohttp ^3.13.5 fixes multiple HIGH vulns (SSRF on Windows static
+#   handler, memory exhaustion in multipart/Request.post/ZLibDecompressor,
+#   request smuggling)
+# Other deps bumped to match poetry.lock current resolution for consistency.
 [tool.poetry.dependencies]
 python = "^3.10"
-aiohttp = "^3.12.0"
-aiodns = "^3.4.0"
-attrs = ">=25.3.0"
-maxminddb = "^2.7.0"
-cachetools = "^5.5.2"
-click = "^8.2.1"
-pyyaml = "^6.0.2"
+aiohttp = "^3.14.1"
+aiodns = "^4.0.4"
+attrs = ">=26.1.0,<27.0.0"
+maxminddb = "^3.1.1"
+cachetools = "^7.1.4"
+click = "^8.4.1"
+pyyaml = "^6.0.3"
 
-[tool.poetry.dev-dependencies]
-pytest = "^8.3.5"
-pytest-asyncio = "^0.26.0"
-pytest-runner = "^6.0.1"
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.3"
+pytest-asyncio = "^1.4.0"
+pytest-mock = "^3.15.1"
+pytest-cov = "^7.1.0"
 alabaster = "^1.0.0"
-pytest-mock = "^3.14.0"
-pytest-cov = "^6.1.1"
+# ruff is also pinned in .pre-commit-config.yaml; the README's contributor
+# workflow uses `poetry run ruff check / format`, so it must be installable
+# via `poetry install`. Without this, the CI workflow falls back to
+# `poetry run pip install ruff` ad-hoc, but contributors get
+# "command not found" on a clean checkout.
+ruff = "^0.15.16"
 
 [build-system]
 requires = ["poetry-core>=2.1.3"]
