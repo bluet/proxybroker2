@@ -238,6 +238,8 @@ venv_*/
 *-report.json
 *-stderr.txt
 
-# uv-managed venv lockfile. Project uses poetry.lock as the canonical
-# lockfile; committing both creates ambiguity for contributors.
+# uv lockfile. Poetry is canonical (poetry.lock is what CI tests against).
+# `uv sync` is not supported with this Poetry-only metadata (no [project]
+# table); uv is only a command runner after `poetry install` (see README).
+# Ignore any stray uv.lock so it never drifts from poetry.lock.
 uv.lock
