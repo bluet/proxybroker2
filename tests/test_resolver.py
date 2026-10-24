@@ -836,3 +836,42 @@ async def test_get_real_ext_ips_cancellation_propagates_to_probes(mocker):
     await asyncio.sleep(0.05)
     assert probe_was_cancelled["v4"], "v4 probe was leaked, never cancelled"
     assert probe_was_cancelled["v6"], "v6 probe was leaked, never cancelled"
+
+
+@pytest.mark.asyncio
+async def test_resolve_reads_aiodns4_dnsresult(mocker, resolver):
+    """aiodns 4 query_dns() returns a pycares 5 DNSResult, not a list of
+    objects with .host; resolve() must read the address records from
+    DNSResult.answer[*].data.addr and skip non-address records."""
+    pycares = pytest.importorskip("pycares")
+    if not hasattr(pycares, "DNSResult"):
+        pytest.skip("pycares < 5: legacy result shape")
+    import aiodns
+
+    if not hasattr(aiodns.DNSResolver, "query_dns"):
+        pytest.skip("aiodns < 4: legacy query() path")
+
+    def record(data, rtype):
+        return pycares.DNSRecord(
+            name="test.com", type=rtype, record_class=1, ttl=60, data=data
+        )
+
+    a_result = pycares.DNSResult(
+        answer=[
+            record(pycares.CNAMERecordData(cname="alias.test.com"), 5),
+            record(pycares.ARecordData(addr="192.0.2.7"), 1),
+        ],
+        authority=[],
+        additional=[],
+    )
+    a_future = asyncio.Future()
+    a_future.set_result(a_result)
+
+    def query_side_effect(host, qtype):
+        if qtype == "A":
+            return a_future
+        raise aiodns.error.DNSError(1, "no AAAA record (test)")
+
+    resolver._cached_hosts.clear()
+    mocker.patch("aiodns.DNSResolver.query_dns", side_effect=query_side_effect)
+    assert await resolver.resolve("test.com") == "192.0.2.7"
