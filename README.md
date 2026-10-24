@@ -539,10 +539,12 @@ We welcome contributions! The project has comprehensive test coverage and develo
 
    Poetry remains the canonical dev tool — `poetry.lock` is the lockfile CI tests against.
    This repo currently uses Poetry metadata (`[tool.poetry]`) without a `[project]` table, so `uv sync` is not supported here.
-   If you prefer uv ergonomics, install deps with Poetry first and then use uv only to run commands:
+   If you prefer uv ergonomics, install deps with Poetry first and then point uv at Poetry's environment
+   (plain `uv run` would look for a `[project]` table and use its own environment instead):
    ```bash
    poetry install
-   uv run pytest
+   poetry run pytest                                                   # canonical
+   uv run --no-project --python "$(poetry env info --executable)" pytest   # same env, uv as the runner
    ```
    Full uv migration remains deferred until snyk supports `uv.lock` natively ([snyk-python-plugin#251](https://github.com/snyk/snyk-python-plugin/issues/251)).
    </details>
