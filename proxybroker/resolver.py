@@ -12,6 +12,9 @@ import maxminddb
 from .errors import ResolveError
 from .utils import DATA_DIR, canonicalize_ip, log
 
+# One address from a DNS answer, in the legacy aiodns shape (``.host``/``.ttl``).
+_AddressRecord = namedtuple("_AddressRecord", ["host", "ttl"])
+
 GeoData = namedtuple(
     "GeoData", ["code", "name", "region_code", "region_name", "city_name"]
 )
@@ -553,4 +556,23 @@ class Resolver:
         except (aiodns.error.DNSError, asyncio.TimeoutError) as e:
             raise ResolveError from e
         else:
+            return self._address_records(resp)
+
+    @staticmethod
+    def _address_records(resp):
+        """Normalise a DNS answer to objects exposing ``.host``.
+
+        aiodns 4 ``query_dns()`` returns a pycares 5 ``DNSResult`` whose
+        address records sit in ``.answer`` as ``DNSRecord`` objects with the
+        address at ``.data.addr``. The legacy ``query()`` path (aiodns < 4)
+        returns a list of objects that already expose ``.host``. Non-address
+        records in the answer section (e.g. CNAME) are skipped.
+        """
+        answer = getattr(resp, "answer", None)
+        if answer is None:
             return resp
+        return [
+            _AddressRecord(record.data.addr, getattr(record, "ttl", 0))
+            for record in answer
+            if getattr(getattr(record, "data", None), "addr", None)
+        ]
