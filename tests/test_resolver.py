@@ -872,5 +872,6 @@ async def test_resolve_reads_aiodns4_dnsresult(mocker, resolver):
             return a_future
         raise aiodns.error.DNSError(1, "no AAAA record (test)")
 
+    resolver._cached_hosts.clear()
     mocker.patch("aiodns.DNSResolver.query_dns", side_effect=query_side_effect)
     assert await resolver.resolve("test.com") == "192.0.2.7"
