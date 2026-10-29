@@ -33,7 +33,7 @@ with codecs.open("README.md", mode="r", encoding="utf-8") as f:
     INFO["long_description"] = f.read()
 
 REQUIRES = [
-    "aiohttp>=3.14.1",
+    "aiohttp>=3.14.4",
     "aiodns>=4.0.4",
     "attrs>=26.1.0,<27.0.0",
     "maxminddb>=3.1.1",

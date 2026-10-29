@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Raise the aiohttp constraint floor to `^3.14.4` (`setup.py`: `>=3.14.4`).
+  `^3.14.1` still allowed 3.14.1–3.14.3, which miss the October 2026 fixes
+  shipped in 3.14.4 (HIGH: GHSA-2g87-pp6c-29x5, GHSA-5wr8-gcqf-gqf3,
+  GHSA-9xw5-w5jj-pvcg). `poetry.lock` stays on 3.14.5.
+
 ## [2.0.0b3] - 2026-05-09
 
 🌐 **Full IPv6 support — first-class across the stack**
