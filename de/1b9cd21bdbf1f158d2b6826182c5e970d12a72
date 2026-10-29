@@ -1,0 +1,20 @@
+CHANGELOG.md
+  h_70b54e84a6d343 10-15
+poetry.lock
+  h_70b54e84a6d343 1711
+pyproject.toml
+  h_70b54e84a6d343 35-40,44
+setup.py
+  h_70b54e84a6d343 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de1b9cd21bdbf1f158d2b6826182c5e970d12a72",
+  "prompts": {},
+  "humans": {
+    "h_70b54e84a6d343": {
+      "author": "Matthew (BlueT) Lien <bluet@bluet.org>"
+    }
+  }
+}
