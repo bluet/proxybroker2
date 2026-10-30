@@ -1,0 +1,18 @@
+.github/workflows/python-test-versions.yml
+  h_70b54e84a6d343 12-14
+CHANGELOG.md
+  h_70b54e84a6d343 18-19
+docs/source/index.rst
+  h_70b54e84a6d343 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c54b030474608f7a95f17bcb6284b25247ca1287",
+  "prompts": {},
+  "humans": {
+    "h_70b54e84a6d343": {
+      "author": "Matthew (BlueT) Lien <bluet@bluet.org>"
+    }
+  }
+}
