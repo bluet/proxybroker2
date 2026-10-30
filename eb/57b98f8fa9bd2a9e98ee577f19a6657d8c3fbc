@@ -1,0 +1,28 @@
+.github/workflows/python-test-versions.yml
+  h_70b54e84a6d343 18
+.pre-commit-config.yaml
+  h_70b54e84a6d343 5
+CHANGELOG.md
+  h_70b54e84a6d343 10-14
+CLAUDE.md
+  h_70b54e84a6d343 10
+README.md
+  h_70b54e84a6d343 6,44,75
+docs/source/index.rst
+  h_70b54e84a6d343 17,28
+pyproject.toml
+  h_70b54e84a6d343 23
+setup.py
+  h_70b54e84a6d343 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb57b98f8fa9bd2a9e98ee577f19a6657d8c3fbc",
+  "prompts": {},
+  "humans": {
+    "h_70b54e84a6d343": {
+      "author": "Matthew (BlueT) Lien <bluet@bluet.org>"
+    }
+  }
+}
