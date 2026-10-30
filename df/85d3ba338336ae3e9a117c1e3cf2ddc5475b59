@@ -1,0 +1,22 @@
+CHANGELOG.md
+  h_70b54e84a6d343 15-19
+CLAUDE.md
+  h_70b54e84a6d343 11
+docs/requirements.txt
+  h_70b54e84a6d343 5-11
+docs/source/index.rst
+  h_70b54e84a6d343 49-59
+environment.yml
+  h_70b54e84a6d343 11-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "df85d3ba338336ae3e9a117c1e3cf2ddc5475b59",
+  "prompts": {},
+  "humans": {
+    "h_70b54e84a6d343": {
+      "author": "Matthew (BlueT) Lien <bluet@bluet.org>"
+    }
+  }
+}
