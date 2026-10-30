@@ -1,0 +1,14 @@
+tests/test_integration.py
+  h_70b54e84a6d343 20-21,23-30,34-39,41-48,50,52-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e041a1bef74317c6a469186e75faf33c7f8a910b",
+  "prompts": {},
+  "humans": {
+    "h_70b54e84a6d343": {
+      "author": "Matthew (BlueT) Lien <bluet@bluet.org>"
+    }
+  }
+}
