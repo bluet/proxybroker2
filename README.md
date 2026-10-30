@@ -3,7 +3,7 @@ ProxyBroker2
 
 *🚀 Production-Ready Async Proxy Management*
 
-**The modernized, actively-maintained successor to ProxyBroker (v0.3.2, abandoned 2018) — Python 3.10-3.14, comprehensive test coverage, first-class IPv6.**
+**The modernized, actively-maintained successor to ProxyBroker (v0.3.2, abandoned 2018) — Python 3.10-3.15, comprehensive test coverage, first-class IPv6.**
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbluet%2Fproxybroker2?ref=badge_shield)
@@ -41,7 +41,7 @@ ProxyBroker2 is the actively-maintained successor to the original ProxyBroker (v
 ### 🚀 What you get over v0.3.2
 
 - **Active maintenance** — regular security updates and feature work
-- **Modern Python support** — Python 3.10-3.14 (v0.3.2 was Python 3.5+ only)
+- **Modern Python support** — Python 3.10-3.15 (v0.3.2 was Python 3.5+ only)
 - **Zero critical bugs** — fixed deadlocks, memory leaks, signal handler leaks, race conditions that existed in v0.3.2
 - **First-class IPv6** — RFC 5952 canonical form, SOCKS5 `ATYP=0x04`, bracketed URI authority. v0.3.2 was IPv4-only.
 - **Custom providers** — drop YAML/JSON config files into a folder, no code required (see [Custom Proxy Providers](#-custom-proxy-providers) below)
@@ -72,7 +72,7 @@ $ docker run --rm bluet/proxybroker2 --help
 Requirements
 ------------
 
-- **Python 3.10-3.14**
+- **Python 3.10-3.15**
 
 That's it — all Python dependencies are installed automatically by pip / Poetry / uv.
 

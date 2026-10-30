@@ -17,39 +17,45 @@ class TestUserWorkflows:
     """Test real user workflows based on examples/ directory."""
 
     @pytest.mark.asyncio
-    async def test_basic_find_workflow(self):
-        """Test the basic find workflow from examples/basic.py.
+    async def test_basic_find_workflow(self, mocker):
+        """find() accepts the example kwargs and finishes an empty run.
 
-        Users depend on this workflow pattern working consistently.
+        ``examples/basic.py`` stops when the proxy queue yields ``None``.
+        ``find()`` discovers this host's external IP before it creates the
+        checker. That probe has no overall deadline (each candidate gets
+        the full timeout), so a live call can sit there longer than any
+        fixed poll when CI cannot reach the IP services. The probe and
+        the judge/provider fan-out are covered elsewhere; this test stubs
+        them and uses ``providers=[]``, which is the supported "no bundled
+        feeds" contract.
         """
         proxies = asyncio.Queue()
         broker = Broker(
-            proxies, timeout=2, max_conn=5, max_tries=1, stop_broker_on_sigint=False
+            proxies,
+            timeout=2,
+            max_conn=5,
+            max_tries=1,
+            stop_broker_on_sigint=False,
+            providers=[],
         )
+        discovered = frozenset({"203.0.113.10"})
+        mocker.patch.object(
+            broker._resolver,
+            "get_real_ext_ips",
+            new=mocker.AsyncMock(return_value=discovered),
+        )
+        # Default judges are real URLs. ``check_judges`` is what dials them.
+        mocker.patch("proxybroker.checker.Checker.check_judges", new=mocker.AsyncMock())
 
-        # Test that the basic API contract works - we don't need to complete the operation
-        # Just verify the API accepts the expected parameters without errors.
+        await broker.find(types=["HTTP", "HTTPS"], limit=1)
         try:
-            find_task = asyncio.create_task(
-                broker.find(types=["HTTP", "HTTPS"], limit=1)
-            )
-            # Wait for the broker to actually initialize its checker rather
-            # than relying on a fixed sleep (which races on slow CI runners).
-            for _ in range(50):  # up to 5s
-                if broker._checker is not None:
-                    break
-                await asyncio.sleep(0.1)
-            find_task.cancel()
-            try:
-                await find_task
-            except asyncio.CancelledError:
-                pass
-        except Exception as e:
-            # If it fails immediately, that indicates an API contract issue
-            pytest.fail(f"find() API contract broken: {e}")
-
-        # Verify broker was properly configured for the find operation.
-        assert broker._checker is not None  # Checker should be created for find()
+            assert broker._checker is not None
+            assert broker._checker._real_ext_ips == discovered
+            # ``_grab`` pushes this sentinel after an empty provider pass.
+            # A 2s cap only covers local scheduling, not network probes.
+            assert await asyncio.wait_for(proxies.get(), timeout=2) is None
+        finally:
+            broker.stop()
 
     @pytest.mark.asyncio
     async def test_proxy_pool_workflow(self):

@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ProxyBroker2 is an async proxy finder, checker, and server. It discovers public proxies from 50+ sources, validates them against judge servers, and can operate as a rotating proxy server.
 
 **Repository**: `bluet/proxybroker2` (GitHub)
-**Python**: 3.10-3.14
-**Key Dependencies**: aiohttp 3.12.0+, aiodns 3.4.0+, attrs 25.3.0+, asyncio
+**Python**: 3.10-3.15
+**Key Dependencies**: aiohttp >=3.14.4, aiodns >=4.0.4, attrs >=26.1.0,<27, maxminddb >=3.1.1, cachetools >=7.1.4, click >=8.4.1, PyYAML >=6.0.3
 
 ## Common Development Commands
 
