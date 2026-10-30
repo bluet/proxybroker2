@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - User-facing dependency floors now match `setup.py`. The docs homepage
   still said aiohttp >= 3.8.0, aiodns >= 3.0.0, and maxminddb >= 2.0.0.
-  `docs/requirements.txt` and `environment.yml` carried the same stale floors.
+  `docs/requirements.txt` and `environment.yml` carried older, mismatched floors
+  (aiohttp >= 3.12.0, aiodns >= 3.4.0, maxminddb >= 2.7.0).
 
 ### Security
 - Raise the aiohttp constraint floor to `^3.14.4` (`setup.py`: `>=3.14.4`).

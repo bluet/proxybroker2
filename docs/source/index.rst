@@ -55,7 +55,7 @@ Requirements
 * `click <https://pypi.python.org/pypi/click>`_ >= 8.4.1
 * `PyYAML <https://pypi.python.org/pypi/PyYAML>`_ >= 6.0.3
 
-These are the minimums ``pip`` installs. Poetry uses the same floors
+These are the minimum versions ``pip`` will accept. Poetry uses the same floors
 and caps each dependency before the next major version.
 
 
