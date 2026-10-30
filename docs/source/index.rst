@@ -14,7 +14,7 @@ ProxyBroker2
     :target: https://github.com/bluet/proxybroker2/releases
 .. image:: https://img.shields.io/github/actions/workflow/status/bluet/proxybroker2/python-test-versions.yml?style=flat-square
     :target: https://github.com/bluet/proxybroker2/actions
-.. image:: https://img.shields.io/badge/python-3.10--3.13-blue.svg?style=flat-square
+.. image:: https://img.shields.io/badge/python-3.10--3.15-blue.svg?style=flat-square
     :target: https://github.com/bluet/proxybroker2
 .. image:: https://img.shields.io/github/license/bluet/proxybroker2.svg?style=flat-square
     :target: https://github.com/bluet/proxybroker2/blob/master/LICENSE
@@ -25,7 +25,7 @@ ProxyBroker2 is a **production-ready** async proxy finder, checker, and server t
 
 * ✅ **Zero Critical Bugs** - All signal handler leaks, deadlocks, and heap corruption fixed
 * ✅ **100% Test Coverage** - All 131 tests passing with comprehensive validation
-* ✅ **Modern Python Support** - Full compatibility with Python 3.10-3.13
+* ✅ **Modern Python Support** - Full compatibility with Python 3.10-3.15
 * ✅ **Production Ready** - Thoroughly tested and optimized for real-world usage
 
 .. image:: _static/index_find_example.gif

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Python 3.15 on the supported matrix (now 3.10-3.15). CPython 3.15.0
+  shipped on 2026-10-09. The published image stays on `python:3.14-slim`;
+  the executable and publish workflows still build with 3.14.
+
 ### Security
 - Raise the aiohttp constraint floor to `^3.14.4` (`setup.py`: `>=3.14.4`).
   `^3.14.1` still allowed 3.14.1–3.14.3, which miss the October 2026 fixes
