@@ -46,10 +46,17 @@ Features
 Requirements
 ------------
 
-* Python **3.10** or higher
-* `aiohttp <https://pypi.python.org/pypi/aiohttp>`_ >= 3.8.0
-* `aiodns <https://pypi.python.org/pypi/aiodns>`_ >= 3.0.0
-* `maxminddb <https://pypi.python.org/pypi/maxminddb>`_ >= 2.0.0
+* Python **3.10** or higher (tested on 3.10–3.15)
+* `aiohttp <https://pypi.python.org/pypi/aiohttp>`_ >= 3.14.4
+* `aiodns <https://pypi.python.org/pypi/aiodns>`_ >= 4.0.4
+* `attrs <https://pypi.python.org/pypi/attrs>`_ >= 26.1.0, < 27
+* `maxminddb <https://pypi.python.org/pypi/maxminddb>`_ >= 3.1.1
+* `cachetools <https://pypi.python.org/pypi/cachetools>`_ >= 7.1.4
+* `click <https://pypi.python.org/pypi/click>`_ >= 8.4.1
+* `PyYAML <https://pypi.python.org/pypi/PyYAML>`_ >= 6.0.3
+
+These are the minimums ``pip`` installs. Poetry uses the same floors
+and caps each dependency before the next major version.
 
 
 Installation

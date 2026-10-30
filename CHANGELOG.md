@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shipped on 2026-10-09. The published image stays on `python:3.14-slim`;
   the executable and publish workflows still build with 3.14.
 
+### Fixed
+- User-facing dependency floors now match `setup.py`. The docs homepage
+  still said aiohttp >= 3.8.0, aiodns >= 3.0.0, and maxminddb >= 2.0.0.
+  `docs/requirements.txt` and `environment.yml` carried the same stale floors.
+
 ### Security
 - Raise the aiohttp constraint floor to `^3.14.4` (`setup.py`: `>=3.14.4`).
   `^3.14.1` still allowed 3.14.1–3.14.3, which miss the October 2026 fixes
