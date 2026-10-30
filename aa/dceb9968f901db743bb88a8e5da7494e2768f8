@@ -1,0 +1,16 @@
+CHANGELOG.md
+  h_70b54e84a6d343 13-15
+pyproject.toml
+  h_70b54e84a6d343 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aadceb9968f901db743bb88a8e5da7494e2768f8",
+  "prompts": {},
+  "humans": {
+    "h_70b54e84a6d343": {
+      "author": "Matthew (BlueT) Lien <bluet@bluet.org>"
+    }
+  }
+}
