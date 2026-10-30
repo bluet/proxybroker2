@@ -35,8 +35,9 @@ classifiers = [
 # - click ^8.4.1. 8.3.3 fixes SNYK-PYTHON-CLICK-16347201 (HIGH, command
 #   injection in click.edit() filename param); the floor tracks the lock.
 # - aiohttp ^3.14.4. No current OSV advisory is fixed only after 3.14.4.
-#   3.14.1–3.14.3 still miss the October 2026 fixes, including HIGH
-#   GHSA-2g87-pp6c-29x5, GHSA-5wr8-gcqf-gqf3, and GHSA-9xw5-w5jj-pvcg.
+#   3.14.1–3.14.3 still miss the October 2026 fixes GHSA-2g87-pp6c-29x5,
+#   GHSA-9xw5-w5jj-pvcg, and GHSA-5wr8-gcqf-gqf3. OSV rates them HIGH
+#   (CVSS 4.0); aiohttp's GitHub advisories label them medium, medium, low.
 #   poetry.lock resolves 3.14.5.
 # Other deps bumped to match poetry.lock current resolution for consistency.
 [tool.poetry.dependencies]
