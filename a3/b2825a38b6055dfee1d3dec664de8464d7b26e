@@ -1,0 +1,28 @@
+.agents/hooks.json
+  h_75973e8172c903 1-34
+.codex/hooks.json
+  h_75973e8172c903 1-88
+.cursor/hooks.json
+  h_75973e8172c903 1-40
+.entire/.gitignore
+  h_75973e8172c903 1-5
+.entire/settings.json
+  h_75973e8172c903 1-9
+.github/hooks/entire.json
+  h_75973e8172c903 1-68
+.opencode/plugins/entire.ts
+  h_75973e8172c903 1-585
+.pi/extensions/entire/index.ts
+  h_75973e8172c903 1-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3b2825a38b6055dfee1d3dec664de8464d7b26e",
+  "prompts": {},
+  "humans": {
+    "h_75973e8172c903": {
+      "author": "Matthew (BlueT) Lien <BlueT@BlueT.org>"
+    }
+  }
+}
