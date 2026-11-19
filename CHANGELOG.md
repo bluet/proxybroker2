@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Python 3.15 on the supported matrix (now 3.10-3.15). CPython 3.15.0
+  shipped on 2026-10-09. The published image stays on `python:3.14-slim`;
+  the executable and publish workflows still build with 3.14.
+
+### Fixed
+- User-facing dependency floors now match `setup.py`. The docs homepage
+  still said aiohttp >= 3.8.0, aiodns >= 3.0.0, and maxminddb >= 2.0.0.
+  `docs/requirements.txt` and `environment.yml` carried older, mismatched floors
+  (aiohttp >= 3.12.0, aiodns >= 3.4.0, maxminddb >= 2.7.0).
+
+### Security
+- Raise the aiohttp constraint floor to `^3.14.4` (`setup.py`: `>=3.14.4`).
+  `^3.14.1` still allowed 3.14.1–3.14.3, which miss the October 2026 fixes
+  shipped in 3.14.4: GHSA-2g87-pp6c-29x5, GHSA-9xw5-w5jj-pvcg, and
+  GHSA-5wr8-gcqf-gqf3. OSV rates them HIGH (CVSS 4.0); aiohttp's GitHub
+  advisories label them medium, medium, and low. `poetry.lock` stays on 3.14.5.
+
 ## [2.0.0b3] - 2026-05-09
 
 🌐 **Full IPv6 support — first-class across the stack**

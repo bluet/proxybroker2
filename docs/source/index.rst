@@ -14,7 +14,7 @@ ProxyBroker2
     :target: https://github.com/bluet/proxybroker2/releases
 .. image:: https://img.shields.io/github/actions/workflow/status/bluet/proxybroker2/python-test-versions.yml?style=flat-square
     :target: https://github.com/bluet/proxybroker2/actions
-.. image:: https://img.shields.io/badge/python-3.10--3.13-blue.svg?style=flat-square
+.. image:: https://img.shields.io/badge/python-3.10--3.15-blue.svg?style=flat-square
     :target: https://github.com/bluet/proxybroker2
 .. image:: https://img.shields.io/github/license/bluet/proxybroker2.svg?style=flat-square
     :target: https://github.com/bluet/proxybroker2/blob/master/LICENSE
@@ -25,7 +25,7 @@ ProxyBroker2 is a **production-ready** async proxy finder, checker, and server t
 
 * ✅ **Zero Critical Bugs** - All signal handler leaks, deadlocks, and heap corruption fixed
 * ✅ **100% Test Coverage** - All 131 tests passing with comprehensive validation
-* ✅ **Modern Python Support** - Full compatibility with Python 3.10-3.13
+* ✅ **Modern Python Support** - Full compatibility with Python 3.10-3.15
 * ✅ **Production Ready** - Thoroughly tested and optimized for real-world usage
 
 .. image:: _static/index_find_example.gif
@@ -46,10 +46,17 @@ Features
 Requirements
 ------------
 
-* Python **3.10** or higher
-* `aiohttp <https://pypi.python.org/pypi/aiohttp>`_ >= 3.8.0
-* `aiodns <https://pypi.python.org/pypi/aiodns>`_ >= 3.0.0
-* `maxminddb <https://pypi.python.org/pypi/maxminddb>`_ >= 2.0.0
+* Python **3.10** or higher (tested on 3.10–3.15)
+* `aiohttp <https://pypi.python.org/pypi/aiohttp>`_ >= 3.14.4
+* `aiodns <https://pypi.python.org/pypi/aiodns>`_ >= 4.0.4
+* `attrs <https://pypi.python.org/pypi/attrs>`_ >= 26.1.0, < 27
+* `maxminddb <https://pypi.python.org/pypi/maxminddb>`_ >= 3.1.1
+* `cachetools <https://pypi.python.org/pypi/cachetools>`_ >= 7.1.4
+* `click <https://pypi.python.org/pypi/click>`_ >= 8.4.1
+* `PyYAML <https://pypi.python.org/pypi/PyYAML>`_ >= 6.0.3
+
+These are the minimum versions ``pip`` will accept. Poetry uses the same floors
+and caps each dependency before the next major version.
 
 
 Installation
